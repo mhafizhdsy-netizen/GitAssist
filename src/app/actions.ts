@@ -7,6 +7,9 @@ import crypto from 'crypto';
 export async function signOut() {
   // This server action is now only responsible for redirection.
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 8769a85 (coba check file actions.ts, apakah fungsi pemilihan branch yang dipilih)
   // The client will handle the actual Firebase sign-out.
   return redirect('/');
 }
@@ -49,7 +52,11 @@ export type RepoContent = {
 
 type GitHubFile = {
   path: string;
+<<<<<<< HEAD
   content: string;
+=======
+  content: string; // plain text content (will be encoded to base64 in the function)
+>>>>>>> 8769a85 (coba check file actions.ts, apakah fungsi pemilihan branch yang dipilih)
 };
 
 type CommitParams = {
@@ -67,6 +74,11 @@ type CommitParams = {
  * Formula: sha1("tree 0\0")
  */
 function generateEmptyTreeSHA(): string {
+<<<<<<< HEAD
+=======
+    // Git object format: "tree <size>\0<content>"
+    // For empty tree: "tree 0\0" (no content)
+>>>>>>> 8769a85 (coba check file actions.ts, apakah fungsi pemilihan branch yang dipilih)
     const header = 'tree 0\0';
     const hash = crypto.createHash('sha1');
     hash.update(header);
@@ -79,6 +91,10 @@ function generateEmptyTreeSHA(): string {
 /**
  * Fallback: hardcoded SHA-1 empty tree hash
  * This is the universal Git empty tree hash for SHA-1
+<<<<<<< HEAD
+=======
+ * Only used if dynamic generation fails
+>>>>>>> 8769a85 (coba check file actions.ts, apakah fungsi pemilihan branch yang dipilih)
  */
 const FALLBACK_EMPTY_TREE_SHA = '4b825dc642cb6eb9a060e54bf8d69288fbee4904';
 
@@ -89,6 +105,10 @@ function getEmptyTreeSHA(): string {
     try {
         const dynamicSHA = generateEmptyTreeSHA();
         
+<<<<<<< HEAD
+=======
+        // Verify it matches the expected value
+>>>>>>> 8769a85 (coba check file actions.ts, apakah fungsi pemilihan branch yang dipilih)
         if (dynamicSHA === FALLBACK_EMPTY_TREE_SHA) {
             console.log('✓ Dynamic SHA matches expected value');
             return dynamicSHA;
@@ -158,15 +178,32 @@ async function initializeEmptyRepository(
     repo: string,
     files: Array<{ path: string; content: string }>,
     token: string,
+<<<<<<< HEAD
     commitMessage: string
+=======
+    commitMessage: string,
+    branchName?: string
+>>>>>>> 8769a85 (coba check file actions.ts, apakah fungsi pemilihan branch yang dipilih)
 ): Promise<{ success: boolean; commitUrl: string }> {
     console.log(`Memulai inisialisasi repositori kosong untuk ${owner}/${repo}`);
 
     const repoInfo = await api(`/repos/${owner}/${repo}`, token);
+<<<<<<< HEAD
     const branchToCreate = repoInfo.default_branch || 'main';
 
     // Step 1: Buat dummy file untuk initialize branch
     console.log('Step 1: Creating dummy file to initialize branch...');
+=======
+    const branchToCreate = branchName || repoInfo.default_branch || 'main';
+
+    // METODE YANG BENAR BERDASARKAN STACKOVERFLOW UPDATE 2023:
+    // https://stackoverflow.com/questions/10790088/
+    // PENTING: Dummy file HARUS DIHAPUS sebelum membuat commit baru!
+    // Setelah dummy file dihapus, empty tree SHA baru bisa digunakan.
+
+    // Step 1: Buat dummy file untuk initialize branch
+    console.log(`Step 1: Creating dummy file to initialize branch '${branchToCreate}'...`);
+>>>>>>> 8769a85 (coba check file actions.ts, apakah fungsi pemilihan branch yang dipilih)
     const dummyContent = Buffer.from('dummy', 'utf-8').toString('base64');
     const dummyResponse = await api(`/repos/${owner}/${repo}/contents/dummy`, token, {
         method: 'PUT',
@@ -224,7 +261,11 @@ async function initializeEmptyRepository(
         body: JSON.stringify({
             message: commitMessage,
             tree: tree.sha,
+<<<<<<< HEAD
             parents: [],
+=======
+            parents: [], // Empty parents = initial commit
+>>>>>>> 8769a85 (coba check file actions.ts, apakah fungsi pemilihan branch yang dipilih)
         }),
     });
     console.log(`✓ Created commit: ${commit.sha}`);
@@ -235,7 +276,11 @@ async function initializeEmptyRepository(
         method: 'PATCH',
         body: JSON.stringify({
             sha: commit.sha,
+<<<<<<< HEAD
             force: true
+=======
+            force: true // Force update untuk overwrite
+>>>>>>> 8769a85 (coba check file actions.ts, apakah fungsi pemilihan branch yang dipilih)
         }),
     });
     console.log(`✓ Branch ${branchToCreate} now points to new commit`);
@@ -312,7 +357,11 @@ export async function commitToRepo({ repoUrl, commitMessage, files, githubToken,
         
         if (repoIsEmpty) {
             console.log('⚠️ Repositori kosong terdeteksi. Menjalankan inisialisasi...');
+<<<<<<< HEAD
             return await initializeEmptyRepository(owner, repo, finalFiles, githubToken, commitMessage);
+=======
+            return await initializeEmptyRepository(owner, repo, finalFiles, githubToken, commitMessage, branchName);
+>>>>>>> 8769a85 (coba check file actions.ts, apakah fungsi pemilihan branch yang dipilih)
         } else {
             console.log('✓ Repositori sudah ada isinya. Melanjutkan commit standar...');
             const repoInfo = await api(`/repos/${owner}/${repo}`, githubToken);
@@ -377,39 +426,31 @@ export async function fetchRepoContents(githubToken: string, owner: string, repo
       
       if (contents === null) {
           return [];
+<<<<<<< HEAD
 =======
     // The client will handle the actual Firebase sign-out.
       return redirect('/');
 >>>>>>> 99fe369 ( Rewrrok)
+=======
+>>>>>>> 8769a85 (coba check file actions.ts, apakah fungsi pemilihan branch yang dipilih)
       }
 
-      export type Repo = {
-          id: number;
-              name: string;
-                  full_name: string;
-                      html_url: string;
-                          description: string | null;
-                              language: string | null;
-                                  stargazers_count: number;
-                                      forks_count: number;
-                                          updated_at: string;
-                                              owner: {
-                                                      login: string;
-                                                          };
-                                                              default_branch: string;
-                                                                  topics: string[];
-                                                                  };
+      if (contents?.type === 'file' && typeof contents?.content === 'string' && contents.encoding === 'base64') {
+          return Buffer.from(contents.content, 'base64').toString('utf-8');
+      }
 
-                                                                  export type Branch = {
-                                                                      name: string;
-                                                                          commit: {
-                                                                                  sha: string;
-                                                                                          url: string;
-                                                                                              };
-                                                                                                  protected: boolean;
-                                                                                                  };
+      if (!Array.isArray(contents)) return [];
+      
+      contents.sort((a, b) => {
+          if (a.type === 'dir' && b.type !== 'dir') return -1;
+          if (a.type !== 'dir' && b.type === 'dir') return 1;
+          return a.name.localeCompare(b.name);
+      });
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 8769a85 (coba check file actions.ts, apakah fungsi pemilihan branch yang dipilih)
       return contents.map((item: any) => ({
           name: item.name,
           path: item.path,
@@ -425,6 +466,7 @@ export async function fetchRepoContents(githubToken: string, owner: string, repo
       }
       throw error;
     }
+<<<<<<< HEAD
 }
 =======
                                                                                                   export type RepoContent = {
@@ -807,3 +849,6 @@ export async function fetchRepoContents(githubToken: string, owner: string, repo
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 }
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 }
 >>>>>>> 99fe369 ( Rewrrok)
+=======
+}
+>>>>>>> 8769a85 (coba check file actions.ts, apakah fungsi pemilihan branch yang dipilih)
