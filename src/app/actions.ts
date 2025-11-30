@@ -70,15 +70,23 @@ async function api(url: string, token: string, options: RequestInit = {}) {
         'X-GitHub-Api-Version': '2022-11-28',
       },
     });
-  
-    if (response.status === 404 || response.status === 409) {
-      return null; 
-    }
-  
+
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ message: response.statusText }));
-      console.error('GitHub API Error:', `[${options.method || 'GET'}] ${url}`, response.status, error);
-      throw new Error(error.message || `Permintaan GitHub API ke ${url} gagal dengan status ${response.status}`);
+        const errorBody = await response.json().catch(() => ({ message: response.statusText }));
+        
+        console.error('--- GITHUB API ERROR DETAIL ---');
+        console.error(`METHOD: ${options.method || 'GET'}`);
+        console.error(`URL: https://api.github.com${url}`);
+        console.error(`STATUS: ${response.status} ${response.statusText}`);
+        console.error('BODY:', errorBody);
+        console.error('-----------------------------');
+
+        // Check for specific scenario of checking a non-existent ref
+        if ((response.status === 404 || response.status === 409) && url.includes('/git/ref/')) {
+            return null;
+        }
+
+        throw new Error(errorBody.message || `GitHub API error: ${response.status} ${response.statusText}`);
     }
   
     if (response.status === 204 || response.headers.get('Content-Length') === '0') {
@@ -91,15 +99,18 @@ async function api(url: string, token: string, options: RequestInit = {}) {
 async function isRepositoryEmpty(owner: string, repo: string, token: string): Promise<boolean> {
     try {
         const repoData = await api(`/repos/${owner}/${repo}`, token);
-        if (!repoData) return true;
+        if (!repoData) return true; // Should not happen if repo exists, but as a safeguard
 
         const branchName = repoData.default_branch || 'main';
-        const refData = await api(`/repos/${owner}/${repo}/git/refs/heads/${branchName}`, token);
+        const refData = await api(`/repos/${owner}/${repo}/git/ref/heads/${branchName}`, token);
         
+        // If refData is null, it means the branch does not exist, thus repo is empty
         return refData === null;
     } catch (error) {
         console.error("Error saat mendeteksi repositori kosong:", error);
-        return true;
+        // In case of other errors (like repo not found), assume it's not a valid target
+        // Or handle as empty to attempt initialization, which might fail informatively.
+        return true; 
     }
 }
 
@@ -114,7 +125,7 @@ async function initializeEmptyRepository(
 
     const blobs = await Promise.all(
       files.map(async (file) => {
-        const base64Content = Buffer.from(file.content).toString('base64');
+        const base64Content = Buffer.from(file.content, 'utf-8').toString('base64');
         const blobData = await api(`/repos/${owner}/${repo}/git/blobs`, token, {
             method: 'POST',
             body: JSON.stringify({ content: base64Content, encoding: 'base64' }),
@@ -176,7 +187,7 @@ async function commitToExistingRepo(
 
     const blobs = await Promise.all(
         files.map(async (file) => {
-            const base64Content = Buffer.from(file.content).toString('base64');
+            const base64Content = Buffer.from(file.content, 'utf-8').toString('base64');
             const blob = await api(`/repos/${owner}/${repo}/git/blobs`, token, {
                 method: 'POST',
                 body: JSON.stringify({ content: base64Content, encoding: 'base64' }),
@@ -322,3 +333,5 @@ export async function fetchRepoContents(githubToken: string, owner: string, repo
       throw error;
     }
 }
+
+    
