@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import JSZip from 'jszip';
 import { Buffer } from 'buffer';
-import { UploadCloud, File, Github, Sparkles, Folder, PlusCircle, Trash2, Loader2, ArrowRight, GitBranch } from 'lucide-react';
+import { UploadCloud, File, Github, Sparkles, Folder, PlusCircle, Trash2, Loader2, ArrowRight, GitBranch, X } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,6 +19,7 @@ import { Checkbox } from '../ui/checkbox';
 import { cn } from '@/lib/utils';
 import { UploadStatusModal } from './UploadStatusModal';
 import { Alert, AlertDescription } from '../ui/alert';
+import { motion, AnimatePresence } from "framer-motion";
 
 
 // Make Buffer available globally for JSZip to use
@@ -33,14 +34,12 @@ type FileOrFolder = {
   content?: File | Blob;
 };
 
-type UploadStep = 'upload' | 'select-repo';
 type ModalStatus = 'inactive' | 'processing' | 'committing' | 'done';
 
 export function FileUploader() {
   const [files, setFiles] = useState<FileOrFolder[]>([]);
   const [selectedFilePaths, setSelectedFilePaths] = useState<Set<string>>(new Set());
   const [uploadProgress, setUploadProgress] = useState(0);
-  const [step, setStep] = useState<UploadStep>('upload');
   
   const [repos, setRepos] = useState<Repo[]>([]);
   const [isFetchingRepos, setIsFetchingRepos] = useState(false);
@@ -68,7 +67,7 @@ export function FileUploader() {
   }, []);
 
   useEffect(() => {
-    if (step === 'select-repo' && githubToken) {
+    if (files.length > 0 && githubToken && repos.length === 0) {
       setIsFetchingRepos(true);
       fetchUserRepos(githubToken, 1, 100) // Fetch up to 100 repos
         .then(setRepos)
@@ -82,7 +81,7 @@ export function FileUploader() {
         })
         .finally(() => setIsFetchingRepos(false));
     }
-  }, [step, githubToken, toast]);
+  }, [files.length, githubToken, toast, repos.length]);
 
   const handleRepoChange = (repoFullName: string) => {
     const repo = repos.find(r => r.full_name === repoFullName);
@@ -146,7 +145,6 @@ export function FileUploader() {
         extracted.forEach(f => newSelection.add(f.path));
         return newSelection;
       });
-      if (step !== 'select-repo') setStep('select-repo');
       toast({ title: 'Berhasil', description: `${extracted.length} file diekstrak dan ditambahkan.` });
     } catch (error: any) {
       console.error(error);
@@ -159,7 +157,7 @@ export function FileUploader() {
     } finally {
       setModalStatus('inactive');
     }
-  }, [step, toast]);
+  }, [toast]);
 
   const onDrop = useCallback(
     (acceptedFiles: File[]) => {
@@ -195,11 +193,9 @@ export function FileUploader() {
             newUniqueFiles.forEach(f => newSelection.add(f.path));
             return newSelection;
         });
-
-        if (step !== 'select-repo') setStep('select-repo');
       }
     },
-    [files, step, toast, handleZipExtraction]
+    [files, toast, handleZipExtraction]
   );
 
   const { getRootProps, getInputProps, isDragActive, open: openFileDialog } = useDropzone({
@@ -282,7 +278,7 @@ export function FileUploader() {
     });
     setSelectedFilePaths(new Set());
     if (newFiles.length === 0) {
-      resetState();
+      resetState(false);
     }
   };
 
@@ -368,21 +364,21 @@ export function FileUploader() {
         setModalStatus('inactive');
     }
   };
-
-  const resetState = () => {
+  
+  const resetState = (fullReset = true) => {
     setFiles([]);
     setSelectedFilePaths(new Set());
     setUploadProgress(0);
-    setStep('upload');
     setSelectedRepo('');
     setDestinationPath('');
     setCommitMessage('');
     setModalStatus('inactive');
     setCommitUrl('');
-    setRepos([]);
     setBranches([]);
     setSelectedBranch('');
-    // Token state is preserved
+    if (fullReset) {
+      setRepos([]);
+    }
   };
   
   const renderUploadStep = () => (
@@ -402,6 +398,8 @@ export function FileUploader() {
   );
 
   const isAllSelected = files.length > 0 && selectedFilePaths.size === files.length;
+  const isIndeterminate = files.length > 0 && selectedFilePaths.size > 0 && selectedFilePaths.size < files.length;
+
 
   const renderFileTree = () => (
     <div {...getRootProps({className: "w-full flex-grow flex flex-col", onClick: (e) => e.preventDefault()})}>
@@ -411,7 +409,7 @@ export function FileUploader() {
             <div className='flex items-center gap-2 sm:gap-3'>
             <Checkbox 
                 id="select-all"
-                checked={isAllSelected}
+                checked={isAllSelected || isIndeterminate}
                 onCheckedChange={handleSelectAll}
                 aria-label="Pilih semua file"
             />
@@ -452,105 +450,97 @@ export function FileUploader() {
     </div>
   );
 
-  const renderSelectRepoStep = () => (
-    <>
-        {files.length > 0 ? renderFileTree() :
-            <div className="w-full h-full flex items-center justify-center">
-                {renderUploadStep()}
-            </div>
-        }
-        
-        <div className="mt-6 space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
-            <div className="space-y-4">
-                 <div>
-                    <label htmlFor="repo-select" className="block text-sm font-medium mb-2">
-                    1. Pilih Repositori
-                    </label>
-                    {isFetchingRepos ? (
-                        <Skeleton className="h-11 w-full" />
-                    ) : (
-                        <Select value={repos.find(r => r.html_url === selectedRepo)?.full_name} onValueChange={handleRepoChange} disabled={!githubToken}>
-                            <SelectTrigger id="repo-select" className="h-11">
-                                <Github className="h-5 w-5 text-muted-foreground mr-2" />
-                                <SelectValue placeholder="Pilih repositori..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {repos.length > 0 ? repos.map(repo => (
-                                    <SelectItem key={repo.id} value={repo.full_name}>{repo.full_name}</SelectItem>
-                                )) : (
-                                    <SelectItem value="none" disabled>Tidak ada repositori ditemukan.</SelectItem>
-                                )}
-                            </SelectContent>
-                        </Select>
-                    )}
-                </div>
-                {selectedRepo && (branches.length > 0 || isFetchingBranches) && (
-                     <div>
-                        <label htmlFor="branch-select" className="block text-sm font-medium mb-2">
-                        2. Pilih Branch
-                        </label>
-                        {isFetchingBranches ? (
-                             <Skeleton className="h-11 w-full" />
-                        ) : (
-                            <Select value={selectedBranch} onValueChange={setSelectedBranch} disabled={branches.length === 0}>
-                                <SelectTrigger id="branch-select" className="h-11">
-                                    <GitBranch className="h-5 w-5 text-muted-foreground mr-2" />
-                                    <SelectValue placeholder="Pilih branch..." />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {branches.map(branch => (
-                                        <SelectItem key={branch.name} value={branch.name}>{branch.name}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        )}
-                    </div>
-                )}
-                 {selectedRepo && branches.length === 0 && !isFetchingBranches && (
-                    <Alert>
-                        <AlertDescription>
-                            Repositori ini tampaknya kosong. Commit pertama akan dibuat pada branch <strong>main</strong>.
-                        </AlertDescription>
-                    </Alert>
-                )}
-            </div>
-            <div>
-                <label htmlFor="dest-path" className="block text-sm font-medium mb-2">
-                Folder Tujuan (Opsional)
-                </label>
-                <div className="relative">
-                <Folder className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                <Input
-                    id="dest-path"
-                    placeholder="cth., src/assets"
-                    value={destinationPath}
-                    onChange={(e) => setDestinationPath(e.target.value)}
-                    className="pl-10 h-11"
-                />
-                </div>
-            </div>
-            </div>
-            
-            <div>
-            <label htmlFor="commit-msg" className="block text-sm font-medium mb-2">
-                Pesan Commit
-            </label>
-            <Textarea
-                id="commit-msg"
-                placeholder="feat: Menambahkan fitur baru"
-                value={commitMessage}
-                onChange={(e) => setCommitMessage(e.target.value)}
-                className="font-code"
-                rows={3}
-            />
-            <Button variant="outline" size="sm" onClick={handleGenerateCommitMessage} disabled={isGenerating} className="mt-2">
-                {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-                Buat dengan AI
-            </Button>
-            </div>
-        </div>
-    </>
+  const renderCommitSettings = () => (
+      <div className="mt-6 space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+          <div className="space-y-4">
+              <div>
+                  <label htmlFor="repo-select" className="block text-sm font-medium mb-2">
+                  1. Pilih Repositori
+                  </label>
+                  {isFetchingRepos ? (
+                      <Skeleton className="h-11 w-full" />
+                  ) : (
+                      <Select value={repos.find(r => r.html_url === selectedRepo)?.full_name} onValueChange={handleRepoChange} disabled={!githubToken}>
+                          <SelectTrigger id="repo-select" className="h-11">
+                              <Github className="h-5 w-5 text-muted-foreground mr-2" />
+                              <SelectValue placeholder="Pilih repositori..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                              {repos.length > 0 ? repos.map(repo => (
+                                  <SelectItem key={repo.id} value={repo.full_name}>{repo.full_name}</SelectItem>
+                              )) : (
+                                  <SelectItem value="none" disabled>Tidak ada repositori ditemukan.</SelectItem>
+                              )}
+                          </SelectContent>
+                      </Select>
+                  )}
+              </div>
+              {selectedRepo && (branches.length > 0 || isFetchingBranches) && (
+                    <div>
+                      <label htmlFor="branch-select" className="block text-sm font-medium mb-2">
+                      2. Pilih Branch
+                      </label>
+                      {isFetchingBranches ? (
+                            <Skeleton className="h-11 w-full" />
+                      ) : (
+                          <Select value={selectedBranch} onValueChange={setSelectedBranch} disabled={branches.length === 0}>
+                              <SelectTrigger id="branch-select" className="h-11">
+                                  <GitBranch className="h-5 w-5 text-muted-foreground mr-2" />
+                                  <SelectValue placeholder="Pilih branch..." />
+                              </SelectTrigger>
+                              <SelectContent>
+                                  {branches.map(branch => (
+                                      <SelectItem key={branch.name} value={branch.name}>{branch.name}</SelectItem>
+                                  ))}
+                              </SelectContent>
+                          </Select>
+                      )}
+                  </div>
+              )}
+              {selectedRepo && branches.length === 0 && !isFetchingBranches && (
+                  <Alert>
+                      <AlertDescription>
+                          Repositori ini tampaknya kosong. Commit pertama akan dibuat pada branch <strong>{selectedBranch || 'main'}</strong>.
+                      </AlertDescription>
+                  </Alert>
+              )}
+          </div>
+          <div>
+              <label htmlFor="dest-path" className="block text-sm font-medium mb-2">
+              Folder Tujuan (Opsional)
+              </label>
+              <div className="relative">
+              <Folder className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+              <Input
+                  id="dest-path"
+                  placeholder="cth., src/assets"
+                  value={destinationPath}
+                  onChange={(e) => setDestinationPath(e.target.value)}
+                  className="pl-10 h-11"
+              />
+              </div>
+          </div>
+          </div>
+          
+          <div>
+          <label htmlFor="commit-msg" className="block text-sm font-medium mb-2">
+              Pesan Commit
+          </label>
+          <Textarea
+              id="commit-msg"
+              placeholder="feat: Menambahkan fitur baru"
+              value={commitMessage}
+              onChange={(e) => setCommitMessage(e.target.value)}
+              className="font-code"
+              rows={3}
+          />
+          <Button variant="outline" size="sm" onClick={handleGenerateCommitMessage} disabled={isGenerating || selectedFilePaths.size === 0} className="mt-2">
+              {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+              Buat dengan AI
+          </Button>
+          </div>
+      </div>
   );
 
   return (
@@ -559,13 +549,13 @@ export function FileUploader() {
         status={modalStatus}
         progress={uploadProgress}
         commitUrl={commitUrl}
-        onRestart={resetState}
+        onRestart={() => resetState(true)}
         repoName={selectedRepo.split('/').pop() || ''}
       />
       <Card className="glass-card flex flex-col h-full">
         <CardHeader>
           <div className="flex items-center gap-3">
-              {(step === 'upload' || files.length === 0) && (
+              {(files.length === 0) && (
                   <div className="w-12 h-12 rounded-lg flex items-center justify-center bg-primary/10 border border-primary/20">
                       <UploadCloud className="h-6 w-6 text-primary" />
                   </div>
@@ -573,17 +563,35 @@ export function FileUploader() {
               <div>
                   <CardTitle className="font-headline text-2xl">Unggah ke GitHub</CardTitle>
                   <CardDescription>
-                      {step === 'upload' ? 'Seret & lepas file, folder, atau ZIP untuk memulai.' : 'Atur detail commit Anda.'}
+                      {files.length === 0 ? 'Seret & lepas file, folder, atau ZIP untuk memulai.' : 'Atur detail commit Anda.'}
                   </CardDescription>
               </div>
           </div>
         </CardHeader>
         <CardContent className="p-6 flex-grow flex flex-col">
-          {renderSelectRepoStep()}
+            {files.length > 0 ? renderFileTree() :
+                <div className="w-full h-full flex items-center justify-center">
+                    {renderUploadStep()}
+                </div>
+            }
+
+            <AnimatePresence>
+                {files.length > 0 && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 20, height: 0 }}
+                        animate={{ opacity: 1, y: 0, height: 'auto' }}
+                        exit={{ opacity: 0, y: 20, height: 0 }}
+                        transition={{ duration: 0.3, ease: 'easeOut' }}
+                        className="overflow-hidden"
+                    >
+                        {renderCommitSettings()}
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </CardContent>
-        {step === 'select-repo' && files.length > 0 && (
+        {files.length > 0 && (
           <CardFooter className="border-t pt-6 flex justify-between items-center">
-            <Button variant="ghost" onClick={resetState}>Mulai Ulang</Button>
+            <Button variant="ghost" onClick={() => resetState(true)}>Mulai Ulang</Button>
             <Button size="lg" onClick={handleCommit} disabled={modalStatus !== 'inactive' || isFetchingRepos || !githubToken || selectedFilePaths.size === 0}>
               {modalStatus === 'committing' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : `Commit (${selectedFilePaths.size}) File`}
               {modalStatus !== 'committing' && <ArrowRight className="ml-2 h-4 w-4" />}
@@ -594,9 +602,3 @@ export function FileUploader() {
     </>
   );
 }
-
-    
-
-    
-
-    
