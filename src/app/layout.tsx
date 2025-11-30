@@ -31,6 +31,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="id" className="dark">
+      <head>
+        <link rel="icon" href="data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3ccircle cx='6' cy='18' r='3' /%3e%3ccircle cx='6' cy='6' r='3' /%3e%3ccircle cx='18' cy='18' r='3' /%3e%3cpath d='M18 9a3 3 0 0 0-3-3H9' /%3e%3cpath d='M6 9v6' /%3e%3c/svg%3e" type="image/svg+xml" />
+      </head>
       <body className={cn("font-sans antialiased", fontSans.variable, fontMono.variable)}>
         <FirebaseClientProvider>
           <div className="relative min-h-screen w-full">
