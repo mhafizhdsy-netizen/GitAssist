@@ -159,10 +159,7 @@ export default function RepoDetailModal({ isOpen, onClose, repo, githubToken }: 
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-3xl w-[95vw] glass-card">
         <DialogHeader>
-          <DialogTitle className="truncate">Menjelajahi: {repo.full_name}</DialogTitle>
-          <DialogDescription>
-            Jelajahi file dan folder di dalam repositori.
-          </DialogDescription>
+          <DialogTitle className="truncate">{repo.full_name}</DialogTitle>
         </DialogHeader>
         <div>
           <Breadcrumbs />
