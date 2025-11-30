@@ -5,27 +5,11 @@
 
 @layer base {
   :root {
-<<<<<<< HEAD
-<<<<<<< HEAD
     --background: 222.2 84% 4.9%;
     --foreground: 210 40% 98%;
     --card: 222.2 84% 4.9%;
     --card-foreground: 210 40% 98%;
     --popover: 222.2 84% 4.9%;
-=======
-    --background: 222.2 47.4% 11.2%;
-=======
-    --background: 222.2 84% 4.9%;
->>>>>>> 394c450 (warnanya kurang match dengan warna ungunya)
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-<<<<<<< HEAD
-    --popover: 222.2 47.4% 11.2%;
->>>>>>> b99c475 (gunakan palette kombinasi warna tema gelap yang lain jangan gunakan warn)
-=======
-    --popover: 222.2 84% 4.9%;
->>>>>>> 394c450 (warnanya kurang match dengan warna ungunya)
     --popover-foreground: 210 40% 98%;
     --primary: 262.1 83.3% 57.8%;
     --primary-foreground: 210 20% 98%;
@@ -44,27 +28,11 @@
   }
 
   .dark {
-<<<<<<< HEAD
-<<<<<<< HEAD
     --background: 222.2 84% 4.9%;
     --foreground: 210 40% 98%;
     --card: 222.2 84% 4.9%;
     --card-foreground: 210 40% 98%;
     --popover: 222.2 84% 4.9%;
-=======
-    --background: 222.2 47.4% 11.2%;
-=======
-    --background: 222.2 84% 4.9%;
->>>>>>> 394c450 (warnanya kurang match dengan warna ungunya)
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-<<<<<<< HEAD
-    --popover: 222.2 47.4% 11.2%;
->>>>>>> b99c475 (gunakan palette kombinasi warna tema gelap yang lain jangan gunakan warn)
-=======
-    --popover: 222.2 84% 4.9%;
->>>>>>> 394c450 (warnanya kurang match dengan warna ungunya)
     --popover-foreground: 210 40% 98%;
     --primary: 262.1 83.3% 57.8%;
     --primary-foreground: 210 20% 98%;
