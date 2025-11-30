@@ -34,6 +34,7 @@ type CommitParams = {
   files: GitHubFile[];
   githubToken: string;
   destinationPath?: string;
+  branchName?: string;
 };
 
 export type Repo = {
@@ -49,7 +50,18 @@ export type Repo = {
     owner: {
         login: string;
     };
+    default_branch: string;
 };
+
+export type Branch = {
+    name: string;
+    commit: {
+        sha: string;
+        url: string;
+    };
+    protected: boolean;
+};
+
 
 export type RepoContent = {
     name: string;
@@ -114,8 +126,27 @@ export async function fetchUserRepos(githubToken: string, page: number = 1, perP
         updated_at: repo.updated_at,
         owner: {
             login: repo.owner.login,
-        }
+        },
+        default_branch: repo.default_branch,
     }));
+}
+
+export async function fetchRepoBranches(githubToken: string, owner: string, repo: string): Promise<Branch[]> {
+    if (!githubToken) {
+        throw new Error('Token GitHub diperlukan.');
+    }
+    try {
+        const branches = await api(`/repos/${owner}/${repo}/branches`, githubToken);
+        return branches || [];
+    } catch (error: any) {
+        // If the repo is empty, it will throw a 404, which api() will throw
+        // We catch it and return an empty array.
+        if (error.message.includes('Git Repository is empty')) {
+            return [];
+        }
+        console.error("Gagal mengambil branches:", error);
+        throw error;
+    }
 }
 
 
@@ -151,7 +182,7 @@ export async function fetchRepoContents(githubToken: string, owner: string, repo
 
 
 
-export async function commitToRepo({ repoUrl, commitMessage, files, githubToken, destinationPath }: CommitParams) {
+export async function commitToRepo({ repoUrl, commitMessage, files, githubToken, destinationPath, branchName }: CommitParams) {
   if (!githubToken) {
     throw new Error('Token GitHub diperlukan.');
   }
@@ -163,11 +194,16 @@ export async function commitToRepo({ repoUrl, commitMessage, files, githubToken,
   const [owner, repo] = urlParts;
 
   try {
-    const repoData = await api(`/repos/${owner}/${repo}`, githubToken);
-    const defaultBranch = repoData.default_branch;
-    const refPath = `heads/${defaultBranch}`;
+    // Branch name defaults to 'main' for initial commits or if not provided.
+    const targetBranch = branchName || 'main';
+    const refPath = `heads/${targetBranch}`;
 
-    const latestRef = await api(`/repos/${owner}/${repo}/git/ref/${refPath}`, githubToken);
+    // Get the latest ref for the branch. This will return null (404) if the branch doesn't exist.
+    const latestRef = await api(`/repos/${owner}/${repo}/git/ref/${refPath}`, githubToken).catch(err => {
+        // If the error is "Not Found", it means the repo or branch is new.
+        if (err.message === "Not Found") return null;
+        throw err;
+    });
 
     const fileBlobs = await Promise.all(
       files.map(async (file) => {
@@ -192,8 +228,8 @@ export async function commitToRepo({ repoUrl, commitMessage, files, githubToken,
 
     let newCommit;
 
-    if (latestRef) {
-      // Repositori sudah ada isinya
+    if (latestRef && latestRef.object) {
+      // Repositori/branch sudah ada isinya
       const latestCommitSha = latestRef.object.sha;
       const latestCommitData = await api(`/repos/${owner}/${repo}/git/commits/${latestCommitSha}`, githubToken);
       const baseTreeSha = latestCommitData.tree.sha;
@@ -215,6 +251,7 @@ export async function commitToRepo({ repoUrl, commitMessage, files, githubToken,
         }),
       });
 
+      // Update existing branch ref
       await api(`/repos/${owner}/${repo}/git/refs/${refPath}`, githubToken, {
         method: 'PATCH',
         body: JSON.stringify({
@@ -223,7 +260,7 @@ export async function commitToRepo({ repoUrl, commitMessage, files, githubToken,
       });
 
     } else {
-      // Repositori kosong (initial commit)
+      // Repositori kosong atau branch baru (initial commit)
       const newTree = await api(`/repos/${owner}/${repo}/git/trees`, githubToken, {
         method: 'POST',
         body: JSON.stringify({
@@ -240,6 +277,7 @@ export async function commitToRepo({ repoUrl, commitMessage, files, githubToken,
         }),
       });
 
+      // Create new branch ref
       await api(`/repos/${owner}/${repo}/git/refs`, githubToken, {
         method: 'POST',
         body: JSON.stringify({
