@@ -53,7 +53,7 @@ const Header = () => {
           </Link>
 
           {!isLoginPage && (
-             <nav className="hidden md:flex">
+             <nav className="hidden md:flex items-center gap-6">
                 <ul className="flex items-center gap-6">
                   {NAV_ITEMS.map((item) => (
                     <li key={item.label}>
@@ -66,13 +66,18 @@ const Header = () => {
                     </li>
                   ))}
                 </ul>
+                <div className="ml-6">
+                  <AuthButton />
+                </div>
               </nav>
           )}
 
           <div className="flex items-center gap-4">
-            <div className="flex-1 flex justify-end">
-              <AuthButton />
-            </div>
+            {isLoginPage && (
+              <div className="flex-1 flex justify-end">
+                <AuthButton />
+              </div>
+            )}
             
             {!isLoginPage && (
               <div className="md:hidden">
@@ -117,6 +122,9 @@ const Header = () => {
                       {item.label}
                     </Link>
                   ))}
+                  <div className="pt-4">
+                    <AuthButton />
+                  </div>
               </nav>
             </div>
           </motion.div>

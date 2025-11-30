@@ -71,7 +71,7 @@ export default function AuthButton() {
   }
 
   return (
-    <Button asChild className="w-full sm:w-auto">
+    <Button asChild size="sm">
       <Link href="/login">
         Get Started <ArrowRight className="ml-2 h-4 w-4" />
       </Link>
