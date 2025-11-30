@@ -4,13 +4,33 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
-import { Code, Menu, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 import { cn } from "@/lib/utils";
 import { NAV_ITEMS } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import AuthButton from "@/components/auth/AuthButton";
+
+const CustomGitIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    {...props}
+  >
+    <circle cx="6" cy="18" r="3" />
+    <circle cx="6" cy="6" r="3" />
+    <circle cx="18" cy="18" r="3" />
+    <path d="M18 9a3 3 0 0 0-3-3H9" />
+    <path d="M6 9v6" />
+  </svg>
+);
+
 
 const Header = () => {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -48,7 +68,7 @@ const Header = () => {
       >
         <div className="container flex h-16 items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
-            <Code className="h-6 w-6 text-primary" />
+            <CustomGitIcon className="h-6 w-6 text-primary" />
             <span className="font-bold text-lg hidden sm:inline-block">GitAssist</span>
           </Link>
 
@@ -91,7 +111,7 @@ const Header = () => {
             <div className="container flex flex-col h-full">
               <div className="flex h-16 items-center justify-between">
                  <Link href="/" className="flex items-center gap-2" onClick={() => setMobileMenuOpen(false)}>
-                  <Code className="h-6 w-6 text-primary" />
+                  <CustomGitIcon className="h-6 w-6 text-primary" />
                   <span className="font-bold text-lg">GitAssist</span>
                 </Link>
                 <Button variant="ghost" size="icon" onClick={() => setMobileMenuOpen(false)}>
