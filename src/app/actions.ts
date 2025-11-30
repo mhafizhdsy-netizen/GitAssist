@@ -186,7 +186,7 @@ export async function commitToRepo({ repoUrl, commitMessage, files, githubToken,
     const targetBranch = branchName || 'main';
     const refPath = `heads/${targetBranch}`;
 
-    // Get the latest ref for the branch. This will return null if the branch/repo doesn't exist.
+    // 1. Get the latest ref for the branch. A 404 (returns null) means the branch/repo is empty.
     const latestRef = await api(`/repos/${owner}/${repo}/git/ref/${refPath}`, githubToken);
 
     const fileBlobs = await Promise.all(
