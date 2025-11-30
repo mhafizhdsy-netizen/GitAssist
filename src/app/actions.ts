@@ -32,6 +32,14 @@ type CommitParams = {
   commitMessage: string;
   files: GitHubFile[];
   githubToken: string;
+  destinationPath?: string;
+};
+
+type Repo = {
+    id: number;
+    name: string;
+    full_name: string;
+    html_url: string;
 };
 
 async function api(url: string, token: string, options: RequestInit = {}) {
@@ -41,17 +49,33 @@ async function api(url: string, token: string, options: RequestInit = {}) {
       ...options.headers,
       Authorization: `Bearer ${token}`,
       Accept: 'application/vnd.github.v3+json',
+      'X-GitHub-Api-Version': '2022-11-28',
     },
   });
   if (!response.ok) {
     const error = await response.json();
     console.error('GitHub API Error:', error);
-    throw new Error(error.message || 'GitHub API request failed');
+    throw new Error(error.message || `GitHub API request to ${url} failed`);
   }
   return response.json();
 }
 
-export async function commitToRepo({ repoUrl, commitMessage, files, githubToken }: CommitParams) {
+export async function fetchUserRepos(githubToken: string): Promise<Repo[]> {
+    if (!githubToken) {
+        throw new Error('GitHub token is required.');
+    }
+    // Fetch repos user has access to, including private ones
+    const repos = await api('/user/repos?type=owner&sort=updated&per_page=100', githubToken);
+    return repos.map((repo: any) => ({
+        id: repo.id,
+        name: repo.name,
+        full_name: repo.full_name,
+        html_url: repo.html_url,
+    }));
+}
+
+
+export async function commitToRepo({ repoUrl, commitMessage, files, githubToken, destinationPath }: CommitParams) {
   if (!githubToken) {
     throw new Error('GitHub token is required.');
   }
@@ -63,15 +87,12 @@ export async function commitToRepo({ repoUrl, commitMessage, files, githubToken 
   const [owner, repo] = urlParts;
 
   try {
-    // 1. Get the default branch
     const repoData = await api(`/repos/${owner}/${repo}`, githubToken);
     const defaultBranch = repoData.default_branch;
 
-    // 2. Get the latest commit SHA of the default branch
     const branchData = await api(`/repos/${owner}/${repo}/branches/${defaultBranch}`, githubToken);
     const latestCommitSha = branchData.commit.sha;
 
-    // 3. Create blobs for all files
     const fileBlobs = await Promise.all(
       files.map(async (file) => {
         const blob = await api(`/repos/${owner}/${repo}/git/blobs`, githubToken, {
@@ -81,8 +102,12 @@ export async function commitToRepo({ repoUrl, commitMessage, files, githubToken 
             encoding: 'base64',
           }),
         });
+
+        // Prepend destination path if provided
+        const finalPath = destinationPath ? `${destinationPath.replace(/^\/|\/$/g, '')}/${file.path}` : file.path;
+
         return {
-          path: file.path,
+          path: finalPath,
           sha: blob.sha,
           mode: '100644', // file mode
           type: 'blob',
@@ -90,7 +115,6 @@ export async function commitToRepo({ repoUrl, commitMessage, files, githubToken 
       })
     );
 
-    // 4. Create a new tree with the file blobs
     const newTree = await api(`/repos/${owner}/${repo}/git/trees`, githubToken, {
       method: 'POST',
       body: JSON.stringify({
@@ -99,7 +123,6 @@ export async function commitToRepo({ repoUrl, commitMessage, files, githubToken 
       }),
     });
 
-    // 5. Create a new commit
     const newCommit = await api(`/repos/${owner}/${repo}/git/commits`, githubToken, {
       method: 'POST',
       body: JSON.stringify({
@@ -109,7 +132,6 @@ export async function commitToRepo({ repoUrl, commitMessage, files, githubToken 
       }),
     });
 
-    // 6. Update the branch reference to point to the new commit
     await api(`/repos/${owner}/${repo}/git/refs/heads/${defaultBranch}`, githubToken, {
       method: 'PATCH',
       body: JSON.stringify({

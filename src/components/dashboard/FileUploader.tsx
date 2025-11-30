@@ -1,10 +1,10 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import JSZip from 'jszip';
 import { Buffer } from 'buffer';
-import { UploadCloud, File, Github, Sparkles, Loader2, CheckCircle, ArrowRight } from 'lucide-react';
+import { UploadCloud, File, Github, Sparkles, Loader2, CheckCircle, ArrowRight, Folder } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -12,7 +12,9 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { generateCommitMessage } from '@/ai/flows/generate-commit-message';
-import { commitToRepo } from '@/app/actions';
+import { commitToRepo, fetchUserRepos } from '@/app/actions';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Skeleton } from '../ui/skeleton';
 
 type FileOrFolder = {
   name: string;
@@ -23,17 +25,49 @@ type FileOrFolder = {
 
 type UploadStep = 'upload' | 'select-repo' | 'committing' | 'done';
 
+type Repo = {
+  id: number;
+  name: string;
+  full_name: string;
+  html_url: string;
+};
+
 export function FileUploader() {
   const [files, setFiles] = useState<FileOrFolder[]>([]);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [step, setStep] = useState<UploadStep>('upload');
-  const [repoUrl, setRepoUrl] = useState('');
+  
+  const [repos, setRepos] = useState<Repo[]>([]);
+  const [isFetchingRepos, setIsFetchingRepos] = useState(false);
+  const [selectedRepo, setSelectedRepo] = useState<string>('');
+  const [destinationPath, setDestinationPath] = useState('');
+
   const [commitMessage, setCommitMessage] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [isCommitting, setIsCommitting] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [commitUrl, setCommitUrl] = useState('');
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (step === 'select-repo' && repos.length === 0) {
+      const githubToken = sessionStorage.getItem('github-token');
+      if (githubToken) {
+        setIsFetchingRepos(true);
+        fetchUserRepos(githubToken)
+          .then(setRepos)
+          .catch(err => {
+            console.error("Failed to fetch repos", err);
+            toast({
+              title: "Could not fetch repositories",
+              description: err.message || "Please ensure you are logged in and have granted repository access.",
+              variant: "destructive"
+            });
+          })
+          .finally(() => setIsFetchingRepos(false));
+      }
+    }
+  }, [step, repos.length, toast]);
 
   const handleZipExtraction = async (zipFile: File) => {
     setIsProcessing(true);
@@ -89,7 +123,7 @@ export function FileUploader() {
       } else {
         const fileList: FileOrFolder[] = acceptedFiles.map((file) => ({
           name: file.name,
-          path: file.webkitRelativePath || file.name,
+          path: (file as any).webkitRelativePath || file.name,
           type: 'file',
           content: file,
         }));
@@ -102,7 +136,16 @@ export function FileUploader() {
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
+    getFilesFromEvent: async (event: any) => {
+        const files = event.dataTransfer ? event.dataTransfer.files : event.target.files;
+        const fileList = [];
+        for (const file of files) {
+            fileList.push(file);
+        }
+        return fileList;
+    }
   });
+
 
   const handleGenerateCommitMessage = async () => {
     if (files.length === 0) {
@@ -111,7 +154,6 @@ export function FileUploader() {
     }
     setIsGenerating(true);
     try {
-      // Create a simplified diff for the AI
       const diff = files.map((f) => `+++ ${f.path}`).join('\n');
       const result = await generateCommitMessage({ diff });
       setCommitMessage(result.commitMessage);
@@ -133,8 +175,8 @@ export function FileUploader() {
       });
       return;
     }
-    if (!repoUrl) {
-      toast({ title: 'Repository URL required', variant: 'destructive' });
+    if (!selectedRepo) {
+      toast({ title: 'Repository selection required', description: 'Please select a destination repository.', variant: 'destructive' });
       return;
     }
     if (!commitMessage) {
@@ -159,10 +201,11 @@ export function FileUploader() {
       );
       
       const result = await commitToRepo({
-          repoUrl,
+          repoUrl: selectedRepo,
           commitMessage,
           files: filesToCommit,
           githubToken,
+          destinationPath
       });
 
       if (result.success && result.commitUrl) {
@@ -181,15 +224,16 @@ export function FileUploader() {
     }
   };
 
-
   const resetState = () => {
     setFiles([]);
     setUploadProgress(0);
     setStep('upload');
-    setRepoUrl('');
+    setSelectedRepo('');
+    setDestinationPath('');
     setCommitMessage('');
     setIsProcessing(false);
     setCommitUrl('');
+    setRepos([]);
   };
 
   const renderFileTree = () => (
@@ -206,47 +250,53 @@ export function FileUploader() {
     </div>
   );
 
-  const renderUploadStep = () => (
-    <div
-      {...getRootProps()}
-      className={`p-10 border-2 border-dashed rounded-xl text-center cursor-pointer transition-colors h-full flex flex-col justify-center items-center ${
-        isDragActive ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50'
-      }`}
-    >
-      <input {...getInputProps()} directory="" webkitdirectory="" />
-      <div className="flex flex-col items-center">
-        <UploadCloud className="h-16 w-16 text-muted-foreground mb-4" />
-        {isDragActive ? (
-          <p className="font-semibold text-xl">Drop files here</p>
-        ) : (
-          <p className="font-semibold text-xl">Drag & drop files, folders, or a ZIP</p>
-        )}
-        <p className="text-sm text-muted-foreground mt-2">or click to select from your computer</p>
-      </div>
-    </div>
-  );
-
   const renderSelectRepoStep = () => (
     <div className="space-y-6">
       {renderFileTree()}
-      <div>
-        <label htmlFor="repo-url" className="block text-sm font-medium mb-2">
-          1. GitHub Repository URL
-        </label>
-        <div className="relative">
-          <Github className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-          <Input
-            id="repo-url"
-            placeholder="e.g., https://github.com/owner/repo"
-            value={repoUrl}
-            onChange={(e) => setRepoUrl(e.target.value)}
-            className="pl-10 h-11"
-          />
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+            <label htmlFor="repo-select" className="block text-sm font-medium mb-2">
+            1. Select Repository
+            </label>
+            {isFetchingRepos ? (
+                <Skeleton className="h-11 w-full" />
+            ) : (
+                <Select value={selectedRepo} onValueChange={setSelectedRepo}>
+                    <SelectTrigger id="repo-select" className="h-11">
+                        <Github className="h-5 w-5 text-muted-foreground mr-2" />
+                        <SelectValue placeholder="Choose a repository..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {repos.length > 0 ? repos.map(repo => (
+                            <SelectItem key={repo.id} value={repo.html_url}>{repo.full_name}</SelectItem>
+                        )) : (
+                            <SelectItem value="none" disabled>No repositories found.</SelectItem>
+                        )}
+                    </SelectContent>
+                </Select>
+            )}
+        </div>
+        <div>
+            <label htmlFor="dest-path" className="block text-sm font-medium mb-2">
+            2. Destination Folder (Optional)
+            </label>
+            <div className="relative">
+            <Folder className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+            <Input
+                id="dest-path"
+                placeholder="e.g., src/assets"
+                value={destinationPath}
+                onChange={(e) => setDestinationPath(e.target.value)}
+                className="pl-10 h-11"
+            />
+            </div>
         </div>
       </div>
+      
       <div>
         <label htmlFor="commit-msg" className="block text-sm font-medium mb-2">
-          2. Commit Message
+          3. Commit Message
         </label>
         <Textarea
           id="commit-msg"
@@ -277,7 +327,7 @@ export function FileUploader() {
     <div className="text-center space-y-4 py-10 h-full flex flex-col items-center justify-center">
       <Loader2 className="mx-auto h-12 w-12 animate-spin text-primary" />
       <p className="font-semibold text-lg">Committing to Repository</p>
-      <p className="text-sm text-muted-foreground truncate max-w-sm">{repoUrl}</p>
+      <p className="text-sm text-muted-foreground truncate max-w-sm">{selectedRepo}</p>
     </div>
   );
 
@@ -324,7 +374,7 @@ export function FileUploader() {
       {step === 'select-repo' && (
         <CardFooter className="border-t pt-6 flex justify-between items-center">
           <Button variant="ghost" onClick={resetState}>Start Over</Button>
-          <Button size="lg" onClick={handleCommit} disabled={isCommitting}>
+          <Button size="lg" onClick={handleCommit} disabled={isCommitting || isFetchingRepos}>
             {isCommitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Commit Files'}
             {!isCommitting && <ArrowRight className="ml-2 h-4 w-4" />}
           </Button>
