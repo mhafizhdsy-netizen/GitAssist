@@ -81,11 +81,6 @@ async function api(url: string, token: string, options: RequestInit = {}) {
         console.error('BODY:', errorBody);
         console.error('-----------------------------');
 
-        // Check for specific scenario of checking a non-existent ref
-        if ((response.status === 404 || response.status === 409) && url.includes('/git/ref/')) {
-            return null;
-        }
-
         throw new Error(errorBody.message || `GitHub API error: ${response.status} ${response.statusText}`);
     }
   
@@ -99,20 +94,27 @@ async function api(url: string, token: string, options: RequestInit = {}) {
 async function isRepositoryEmpty(owner: string, repo: string, token: string): Promise<boolean> {
     try {
         const repoData = await api(`/repos/${owner}/${repo}`, token);
-        if (!repoData) return true; // Should not happen if repo exists, but as a safeguard
+        if (!repoData) return true;
 
         const branchName = repoData.default_branch || 'main';
-        const refData = await api(`/repos/${owner}/${repo}/git/ref/heads/${branchName}`, token);
         
-        // If refData is null, it means the branch does not exist, thus repo is empty
-        return refData === null;
-    } catch (error) {
+        // Coba dapatkan referensi branch. Jika gagal dengan "Not Found", berarti repo kosong.
+        await api(`/repos/${owner}/${repo}/git/ref/heads/${branchName}`, token);
+        
+        // Jika panggilan di atas berhasil, branch ada, repo tidak kosong.
+        return false;
+    } catch (error: any) {
+        // Jika error adalah "Not Found", itu konfirmasi repo kosong.
+        if (error.message.includes('Not Found')) {
+            console.log(`Repository ${owner}/${repo} is empty (default branch not found).`);
+            return true;
+        }
+        // Untuk error lain, lempar lagi agar bisa ditangani di level atas.
         console.error("Error saat mendeteksi repositori kosong:", error);
-        // In case of other errors (like repo not found), assume it's not a valid target
-        // Or handle as empty to attempt initialization, which might fail informatively.
-        return true; 
+        throw error;
     }
 }
+
 
 async function initializeEmptyRepository(
     owner: string,
@@ -130,7 +132,6 @@ async function initializeEmptyRepository(
             method: 'POST',
             body: JSON.stringify({ content: base64Content, encoding: 'base64' }),
         });
-        if (!blobData) throw new Error(`Gagal membuat blob untuk ${file.path}`);
         return { path: file.path, sha: blobData.sha, mode: '100644', type: 'blob' as const };
       })
     );
@@ -139,7 +140,6 @@ async function initializeEmptyRepository(
         method: 'POST',
         body: JSON.stringify({ tree: blobs }),
     });
-    if (!tree) throw new Error("Gagal membuat tree.");
 
     const commit = await api(`/repos/${owner}/${repo}/git/commits`, token, {
         method: 'POST',
@@ -149,7 +149,6 @@ async function initializeEmptyRepository(
             parents: [],
         }),
     });
-    if (!commit) throw new Error("Gagal membuat commit.");
 
     const repoInfo = await api(`/repos/${owner}/${repo}`, token);
     const branchToCreate = repoInfo.default_branch || 'main';
@@ -176,13 +175,9 @@ async function commitToExistingRepo(
     console.log(`Melakukan commit ke repositori yang sudah ada ${owner}/${repo} di branch ${targetBranch}`);
 
     const refData = await api(`/repos/${owner}/${repo}/git/refs/heads/${targetBranch}`, token);
-    if (!refData) {
-        throw new Error(`Branch ${targetBranch} tidak ditemukan di repositori ${owner}/${repo}.`);
-    }
     const latestCommitSha = refData.object.sha;
 
     const latestCommitData = await api(`/repos/${owner}/${repo}/git/commits/${latestCommitSha}`, token);
-    if (!latestCommitData) throw new Error("Gagal mendapatkan data commit terakhir.");
     const baseTreeSha = latestCommitData.tree.sha;
 
     const blobs = await Promise.all(
@@ -192,7 +187,6 @@ async function commitToExistingRepo(
                 method: 'POST',
                 body: JSON.stringify({ content: base64Content, encoding: 'base64' }),
             });
-            if (!blob) throw new Error(`Gagal membuat blob untuk ${file.path}`);
             return { path: file.path, sha: blob.sha, mode: '100644', type: 'blob' as const };
         })
     );
@@ -201,13 +195,11 @@ async function commitToExistingRepo(
         method: 'POST',
         body: JSON.stringify({ base_tree: baseTreeSha, tree: blobs }),
     });
-    if (!newTree) throw new Error("Gagal membuat tree baru.");
 
     const newCommit = await api(`/repos/${owner}/${repo}/git/commits`, token, {
         method: 'POST',
         body: JSON.stringify({ message: commitMessage, tree: newTree.sha, parents: [latestCommitSha] }),
     });
-    if (!newCommit) throw new Error("Gagal membuat commit baru.");
 
     await api(`/repos/${owner}/${repo}/git/refs/heads/${targetBranch}`, token, {
         method: 'PATCH',
@@ -333,5 +325,3 @@ export async function fetchRepoContents(githubToken: string, owner: string, repo
       throw error;
     }
 }
-
-    
