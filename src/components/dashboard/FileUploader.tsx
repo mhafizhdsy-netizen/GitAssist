@@ -306,7 +306,7 @@ export function FileUploader() {
   };
 
   const handleCommit = async () => {
-    const token = githubToken || localStorage.getItem('github-token');
+    const token = githubToken;
     if (!token) {
       toast({
         title: 'Kesalahan Autentikasi',

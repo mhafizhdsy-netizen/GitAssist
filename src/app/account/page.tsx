@@ -42,11 +42,12 @@ export default function AccountPage() {
     const token = localStorage.getItem('github-token');
     if (token) {
       setGithubToken(token);
-    } else {
-      setError("Token GitHub tidak ditemukan. Silakan masuk kembali.");
-      setReposLoading(false);
+    } else if (!userLoading) {
+        // Only set error if user loading is finished and no token is found
+        setError("Token GitHub tidak ditemukan. Silakan masuk kembali.");
+        setReposLoading(false);
     }
-  }, []);
+  }, [userLoading]);
 
   useEffect(() => {
     if (userLoading) return;

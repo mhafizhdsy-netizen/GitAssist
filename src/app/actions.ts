@@ -93,15 +93,10 @@ async function api(url: string, token: string, options: RequestInit = {}) {
 
 async function isRepositoryEmpty(owner: string, repo: string, token: string): Promise<boolean> {
     try {
-        const repoData = await api(`/repos/${owner}/${repo}`, token);
-        if (!repoData) return true;
-
-        const branchName = repoData.default_branch || 'main';
-        await api(`/repos/${owner}/${repo}/git/ref/heads/${branchName}`, token);
-        
+        await api(`/repos/${owner}/${repo}/contents/`, token);
         return false;
     } catch (error: any) {
-        if (error.message && (error.message.includes('Not Found') || error.message.includes('Git Repository is empty'))) {
+        if (error.message && (error.message.includes('This repository is empty') || error.message.includes('Not Found'))) {
             return true;
         }
         console.error("Error saat mendeteksi repositori kosong:", error);
