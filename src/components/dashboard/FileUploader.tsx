@@ -17,6 +17,7 @@ import { commitToRepo, fetchUserRepos } from '@/app/actions';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '../ui/skeleton';
 import { Checkbox } from '../ui/checkbox';
+import { cn } from '@/lib/utils';
 
 // Make Buffer available globally for JSZip to use
 if (typeof window !== 'undefined' && typeof (window as any).Buffer === 'undefined') {
@@ -108,9 +109,13 @@ export function FileUploader() {
       if (extracted.length === 0) {
           throw new Error("File ZIP tidak berisi file yang dapat diekstrak.");
       }
-
+      
       setFiles(prev => append ? [...prev, ...extracted] : extracted);
-      setSelectedFilePaths(new Set(extracted.map(f => f.path)));
+      setSelectedFilePaths(prev => {
+        const newSelection = new Set(prev);
+        extracted.forEach(f => newSelection.add(f.path));
+        return newSelection;
+      });
       if (step !== 'select-repo') setStep('select-repo');
       toast({ title: 'Berhasil', description: `${extracted.length} file diekstrak dan ditambahkan.` });
     } catch (error: any) {
@@ -307,12 +312,15 @@ export function FileUploader() {
   };
   
   const renderUploadStep = () => (
-    <div {...getRootProps()} className={`w-full h-full flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${isDragActive ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50'}`}>
+    <div {...getRootProps()} className={cn(`w-full flex-1 flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-lg cursor-pointer transition-colors`, {
+      'border-primary bg-primary/10': isDragActive,
+      'border-border hover:border-primary/50': !isDragActive,
+      'min-h-[200px]': step === 'select-repo',
+    })}>
         <input {...getInputProps()} />
         <div className="text-center">
-            <UploadCloud className="mx-auto h-16 w-16 text-muted-foreground" />
-            <p className="mt-4 font-semibold text-lg">Seret & lepas file, folder, atau arsip ZIP</p>
-            <p className="mt-1 text-sm text-muted-foreground">atau klik untuk menelusuri</p>
+            <UploadCloud className="mx-auto h-12 w-12 text-muted-foreground" />
+            <p className="mt-4 font-semibold text-base">Seret & lepas file, folder, atau arsip ZIP</p>
         </div>
     </div>
   );
@@ -331,97 +339,105 @@ export function FileUploader() {
             aria-label="Pilih semua file"
           />
           <label htmlFor="select-all" className="font-semibold text-sm cursor-pointer whitespace-nowrap">
-            File ({files.length})
+            File ({selectedFilePaths.size}/{files.length})
           </label>
         </div>
         <div className="flex items-center gap-1 sm:gap-2">
             <Button variant="ghost" size="icon" onClick={handleDeleteSelected} disabled={selectedFilePaths.size === 0} aria-label="Hapus file yang dipilih">
               <Trash2 className="h-5 w-5" />
             </Button>
+            {/* The getRootProps().onClick is a way to programmatically open the file dialog */}
             <Button variant="ghost" size="icon" onClick={() => getRootProps().onClick?.(new Event('click') as any)} aria-label="Tambah file">
               <PlusCircle className="h-5 w-5" />
             </Button>
         </div>
       </div>
       <div className="max-h-48 overflow-y-auto p-3">
-        <ul className="space-y-2">
-          {files.map((file) => (
-            <li key={file.path} className="flex items-center text-sm text-muted-foreground group">
-              <Checkbox
-                id={`select-${file.path}`}
-                className='mr-3'
-                checked={selectedFilePaths.has(file.path)}
-                onCheckedChange={(checked) => handleFileSelectionChange(file.path, checked)}
-              />
-              <File className="mr-2 h-4 w-4 flex-shrink-0" />
-              <label htmlFor={`select-${file.path}`} className="truncate flex-grow cursor-pointer">{file.path}</label>
-            </li>
-          ))}
-        </ul>
+        {files.length > 0 ? (
+          <ul className="space-y-2">
+            {files.map((file) => (
+              <li key={file.path} className="flex items-center text-sm text-muted-foreground group">
+                <Checkbox
+                  id={`select-${file.path}`}
+                  className='mr-3'
+                  checked={selectedFilePaths.has(file.path)}
+                  onCheckedChange={(checked) => handleFileSelectionChange(file.path, checked)}
+                />
+                <File className="mr-2 h-4 w-4 flex-shrink-0" />
+                <label htmlFor={`select-${file.path}`} className="truncate flex-grow cursor-pointer">{file.path}</label>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-center text-xs text-muted-foreground py-4">Tidak ada file yang diunggah.</p>
+        )}
       </div>
     </div>
   );
 
   const renderSelectRepoStep = () => (
-    <div className="space-y-6">
+    <div className="w-full flex-grow flex flex-col">
+      {renderUploadStep()}
       {renderFileTree()}
       
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-            <label htmlFor="repo-select" className="block text-sm font-medium mb-2">
-            1. Pilih Repositori
-            </label>
-            {isFetchingRepos ? (
-                <Skeleton className="h-11 w-full" />
-            ) : (
-                <Select value={selectedRepo} onValueChange={setSelectedRepo} disabled={!githubToken}>
-                    <SelectTrigger id="repo-select" className="h-11">
-                        <Github className="h-5 w-5 text-muted-foreground mr-2" />
-                        <SelectValue placeholder="Pilih repositori..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {repos.length > 0 ? repos.map(repo => (
-                            <SelectItem key={repo.id} value={repo.html_url}>{repo.full_name}</SelectItem>
-                        )) : (
-                            <SelectItem value="none" disabled>Tidak ada repositori ditemukan atau token hilang.</SelectItem>
-                        )}
-                    </SelectContent>
-                </Select>
-            )}
+      <div className="mt-6 space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+              <label htmlFor="repo-select" className="block text-sm font-medium mb-2">
+              1. Pilih Repositori
+              </label>
+              {isFetchingRepos ? (
+                  <Skeleton className="h-11 w-full" />
+              ) : (
+                  <Select value={selectedRepo} onValueChange={setSelectedRepo} disabled={!githubToken}>
+                      <SelectTrigger id="repo-select" className="h-11">
+                          <Github className="h-5 w-5 text-muted-foreground mr-2" />
+                          <SelectValue placeholder="Pilih repositori..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                          {repos.length > 0 ? repos.map(repo => (
+                              <SelectItem key={repo.id} value={repo.html_url}>{repo.full_name}</SelectItem>
+                          )) : (
+                              <SelectItem value="none" disabled>Tidak ada repositori ditemukan atau token hilang.</SelectItem>
+                          )}
+                      </SelectContent>
+                  </Select>
+              )}
+          </div>
+          <div>
+              <label htmlFor="dest-path" className="block text-sm font-medium mb-2">
+              2. Folder Tujuan (Opsional)
+              </label>
+              <div className="relative">
+              <Folder className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+              <Input
+                  id="dest-path"
+                  placeholder="cth., src/assets"
+                  value={destinationPath}
+                  onChange={(e) => setDestinationPath(e.target.value)}
+                  className="pl-10 h-11"
+              />
+              </div>
+          </div>
         </div>
+        
         <div>
-            <label htmlFor="dest-path" className="block text-sm font-medium mb-2">
-            2. Folder Tujuan (Opsional)
-            </label>
-            <div className="relative">
-            <Folder className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-            <Input
-                id="dest-path"
-                placeholder="cth., src/assets"
-                value={destinationPath}
-                onChange={(e) => setDestinationPath(e.target.value)}
-                className="pl-10 h-11"
-            />
-            </div>
+          <label htmlFor="commit-msg" className="block text-sm font-medium mb-2">
+            3. Pesan Commit
+          </label>
+          <Textarea
+            id="commit-msg"
+            placeholder="feat: Menambahkan fitur baru"
+            value={commitMessage}
+            onChange={(e) => setCommitMessage(e.target.value)}
+            className="font-code"
+            rows={3}
+          />
+          <Button variant="outline" size="sm" onClick={handleGenerateCommitMessage} disabled={isGenerating} className="mt-2">
+            {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+            Buat dengan AI
+          </Button>
         </div>
-      </div>
-      
-      <div>
-        <label htmlFor="commit-msg" className="block text-sm font-medium mb-2">
-          3. Pesan Commit
-        </label>
-        <Textarea
-          id="commit-msg"
-          placeholder="feat: Menambahkan fitur baru"
-          value={commitMessage}
-          onChange={(e) => setCommitMessage(e.target.value)}
-          className="font-code"
-          rows={3}
-        />
-        <Button variant="outline" size="sm" onClick={handleGenerateCommitMessage} disabled={isGenerating} className="mt-2">
-          {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-          Buat dengan AI
-        </Button>
       </div>
     </div>
   );
@@ -460,15 +476,18 @@ export function FileUploader() {
       </div>
     </div>
   );
-
-  const currentStepContent = isProcessing
-  ? renderProcessing()
-  : {
-      'upload': renderUploadStep(),
-      'select-repo': renderSelectRepoStep(),
-      'committing': renderCommittingStep(),
-      'done': renderDoneStep(),
-    }[step];
+  
+  const renderContent = () => {
+    if (isProcessing) return renderProcessing();
+    if (isCommitting || step === 'committing') return renderCommittingStep();
+    if (step === 'done') return renderDoneStep();
+    if (step === 'select-repo') return renderSelectRepoStep();
+    return (
+      <div className="w-full h-full flex items-center justify-center">
+        {renderUploadStep()}
+      </div>
+    );
+  };
 
   return (
     <Card className="glass-card flex flex-col h-full">
@@ -483,8 +502,8 @@ export function FileUploader() {
           </div>
         </div>
       </CardHeader>
-      <CardContent className="p-6 flex-grow flex">
-        {currentStepContent}
+      <CardContent className="p-6 flex-grow flex flex-col">
+        {renderContent()}
       </CardContent>
       {step === 'select-repo' && (
         <CardFooter className="border-t pt-6 flex justify-between items-center">
@@ -498,5 +517,3 @@ export function FileUploader() {
     </Card>
   );
 }
-
-    
