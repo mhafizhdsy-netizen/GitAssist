@@ -1,55 +1,81 @@
-import { Github, Zap, ShieldCheck, UploadCloud, FileArchive, Code } from "lucide-react";
-import type { NavItem, FeatureCard, FAQItem } from "@/lib/types";
+import { type LucideIcon, Sparkles, UploadCloud, GitBranch, LogIn, Zap, FileArchive, ShieldCheck } from "lucide-react";
+import type { NavItem, FAQItem, FeatureCard } from "@/lib/types";
 
 export const NAV_ITEMS: NavItem[] = [
   { label: "Features", href: "#features" },
+  { label: "How It Works", href: "#how-it-works" },
   { label: "FAQ", href: "#faq" },
+  { label: "Donate", href: "/donate" },
 ];
 
 export const FEATURES: FeatureCard[] = [
   {
-    icon: Github,
-    title: "GitHub Integration",
-    description: "Securely authenticate with your GitHub account and manage repositories directly.",
+    icon: Zap,
+    title: "Batch Upload",
+    description: "Upload multiple files at once, improving upload efficiency.",
     color: "purple",
   },
   {
-    icon: UploadCloud,
-    title: "Drag & Drop Upload",
-    description: "Easily upload files with a modern drag-and-drop interface, with progress indicators.",
+    icon: FileArchive,
+    title: "ZIP Extraction",
+    description: "Automatically extract ZIP files and upload their contents to the repository.",
     color: "blue",
   },
   {
-    icon: FileArchive,
-    title: "Automatic ZIP Extraction",
-    description: "Upload ZIP archives and have them automatically extracted into your repository.",
+    icon: Sparkles,
+    title: "AI Commit Messages",
+    description: "Let our AI generate smart and conventional commit messages from your diffs.",
     color: "green",
   },
   {
-    icon: Code,
-    title: "AI Commit Assistant",
-    description: "Generate insightful commit messages from your file changes using generative AI.",
+    icon: GitBranch,
+    title: "Post-Upload Repo Selection",
+    description: "Select a repository after uploading a file or after successful ZIP extraction.",
     color: "pink",
   },
   {
-    icon: Zap,
-    title: "Batch Uploads",
-    description: "Save time by uploading multiple files and folders at once efficiently.",
+    icon: ShieldCheck,
+    title: "Secure Authentication",
+    description: "Your data is safe with us. We use secure GitHub OAuth for authentication.",
     color: "yellow",
   },
   {
-    icon: ShieldCheck,
-    title: "Secure & Private",
-    description: "Your data is stored securely, and we respect your privacy. No compromises.",
+    icon: UploadCloud,
+    title: "Seamless Uploads",
+    description: "A clear and intuitive user interface for a smooth upload process.",
     color: "indigo",
   },
 ];
+
+
+export const HOW_IT_WORKS_STEPS = [
+    {
+      icon: LogIn,
+      title: "Authenticate",
+      description: "Securely connect your GitHub account in one click.",
+    },
+    {
+      icon: UploadCloud,
+      title: "Upload Files",
+      description: "Drag and drop your files or ZIP archives into the app.",
+    },
+    {
+      icon: Sparkles,
+      title: "Generate Message",
+      description: "Use our AI assistant to generate the perfect commit message.",
+    },
+    {
+      icon: GitBranch,
+      title: "Commit to Repo",
+      description: "Select your repository and commit your files directly.",
+    },
+  ];
 
 export const FAQ_ITEMS: FAQItem[] = [
   {
     question: "Is GitAssist free to use?",
     answer:
-      "Yes, GitAssist offers a generous 'Free Forever' plan that includes all core features for public repositories. We believe in providing powerful tools to the developer community.",
+      "Yes, GitAssist offers a generous free plan that includes all core features for public repositories. We believe in providing powerful tools to the developer community.",
   },
   {
     question: "How does the AI commit message generation work?",
@@ -59,12 +85,12 @@ export const FAQ_ITEMS: FAQItem[] = [
   {
     question: "Is my GitHub account and data secure?",
     answer:
-      "Absolutely. We use Supabase for secure GitHub OAuth, and we only request the permissions necessary to manage your repositories. Your credentials are never stored on our servers.",
+      "Absolutely. We use secure GitHub OAuth, and we only request the permissions necessary to manage your repositories. Your credentials are never stored on our servers.",
   },
   {
     question: "Can I use GitAssist with private repositories?",
     answer:
-      "Our 'Free Forever' plan supports public repositories. Support for private repositories is available on our upcoming Enterprise plan. Contact us for more details.",
+      "Support for private repositories is a planned feature for a future premium offering. For now, the service is focused on public repositories.",
   },
   {
     question: "What happens when I upload a ZIP file?",
@@ -76,6 +102,7 @@ export const FAQ_ITEMS: FAQItem[] = [
 export const FOOTER_LINKS = {
     "Product": [
         { label: "Features", href: "#features" },
+        { label: "How It Works", href: "#how-it-works" },
         { label: "Donate", href: "/donate" },
     ],
     "Company": [
@@ -85,6 +112,5 @@ export const FOOTER_LINKS = {
     "Support": [
         { label: "FAQ", href: "#faq" },
         { label: "Contact Us", href: "mailto:support@gitassist.com" },
-        { label: "Status", href: "#" },
     ],
 }

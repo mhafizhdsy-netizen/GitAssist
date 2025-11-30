@@ -18,7 +18,7 @@ const Header = () => {
   const pathname = usePathname();
 
   useMotionValueEvent(scrollY, "change", (latest) => {
-    setIsScrolled(latest > 50);
+    setIsScrolled(latest > 30);
   });
   
   useEffect(() => {
@@ -46,14 +46,12 @@ const Header = () => {
         <motion.div
           className={cn(
             "relative container flex items-center justify-between px-4 py-2 transition-all",
-            isScrolled && "bg-background/50 backdrop-blur-lg border"
+            isScrolled ? "bg-background/50 backdrop-blur-lg border" : "bg-transparent"
           )}
           layout
           transition={{ duration: 0.4, ease: [0.32, 0.72, 0, 1] }}
           style={{ 
-            borderRadius: isScrolled ? 9999 : 12,
-            width: isScrolled ? 'fit-content' : '100%',
-            margin: isScrolled ? '0 auto' : undefined
+            borderRadius: isScrolled ? 9999 : 0,
           }}
         >
           <Link href="/" className="flex items-center gap-2">
@@ -63,7 +61,7 @@ const Header = () => {
               animate={{ opacity: isScrolled ? 0 : 1, width: isScrolled ? 0 : 'auto' }}
               transition={{ duration: 0.2 }}
             >
-             {!isScrolled && "GitAssist"}
+             <span className={cn(isScrolled && "hidden")}>GitAssist</span>
             </motion.span>
           </Link>
 
@@ -122,12 +120,12 @@ const Header = () => {
               </div>
               <nav className="flex-1 p-8">
                 <ul className="flex flex-col items-center justify-center h-full gap-8">
-                  {!isDashboard && NAV_ITEMS.map((item) => (
+                  {!isDashboard && NAV_ITEMS.map((item, index) => (
                     <motion.li
                       key={item.label}
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.1 + NAV_ITEMS.indexOf(item) * 0.1 }}
+                      transition={{ delay: 0.1 + index * 0.1 }}
                     >
                       <Link
                         href={item.href}
@@ -140,7 +138,7 @@ const Header = () => {
                   ))}
                 </ul>
               </nav>
-              <div className="p-8 border-t">
+              <div className="p-8 border-t w-full">
                 <AuthButton />
               </div>
             </motion.div>

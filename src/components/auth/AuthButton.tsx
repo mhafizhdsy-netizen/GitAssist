@@ -15,10 +15,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { signOut } from "@/app/actions";
-import { ChevronRight, LogOut, User as UserIcon } from "lucide-react";
+import { ArrowRight, LogOut, User as UserIcon } from "lucide-react";
 
 export default function AuthButton() {
   const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const supabase = createClient();
@@ -26,11 +27,13 @@ export default function AuthButton() {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
       setUser(session?.user ?? null);
+      setIsLoading(false);
     });
 
     // Initial check
     supabase.auth.getUser().then(({ data: { user } }) => {
       setUser(user);
+      setIsLoading(false);
     });
 
     return () => {
@@ -45,6 +48,10 @@ export default function AuthButton() {
     }
     return name.substring(0, 2);
   };
+  
+  if (isLoading) {
+    return <Button className="w-full sm:w-auto">Loading...</Button>
+  }
 
   if (user) {
     return (
@@ -74,7 +81,7 @@ export default function AuthButton() {
           <DropdownMenuSeparator />
           <form action={signOut}>
             <DropdownMenuItem asChild>
-              <button type="submit" className="w-full">
+              <button type="submit" className="w-full text-left">
                 <LogOut className="mr-2 h-4 w-4" />
                 <span>Log out</span>
               </button>
@@ -86,9 +93,9 @@ export default function AuthButton() {
   }
 
   return (
-    <Button asChild>
+    <Button asChild className="w-full sm:w-auto">
       <Link href="/login">
-        Get Started <ChevronRight className="ml-2 h-4 w-4" />
+        Get Started <ArrowRight className="ml-2 h-4 w-4" />
       </Link>
     </Button>
   );
