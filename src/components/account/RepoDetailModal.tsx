@@ -8,7 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Folder, File as FileIcon, Loader2, ArrowLeft, Home, ChevronRight, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { ScrollArea } from '../ui/scroll-area';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 
 type RepoDetailModalProps = {
   isOpen: boolean;
@@ -50,17 +50,17 @@ export default function RepoDetailModal({ isOpen, onClose, repo, githubToken }: 
       loadContents('');
     } else {
       // Reset state when modal is closed
-      setCurrentPath('');
-      setContents(null);
-      setLoading(true);
-      setError(null);
+      setTimeout(() => {
+        setCurrentPath('');
+        setContents(null);
+        setLoading(true);
+        setError(null);
+      }, 300); // Delay to allow for closing animation
     }
   }, [isOpen, loadContents]);
 
   const handleItemClick = (item: RepoContent) => {
-    if (item.type === 'dir') {
-      loadContents(item.path);
-    } else if(item.type === 'file') {
+    if (item.type === 'dir' || item.type === 'file') {
       loadContents(item.path);
     }
   };
@@ -71,14 +71,14 @@ export default function RepoDetailModal({ isOpen, onClose, repo, githubToken }: 
 
   const Breadcrumbs = () => {
     const pathParts = currentPath.split('/').filter(Boolean);
-    const isFile = typeof contents === 'string' || (contents as RepoContent[])?.length === 1 && (contents as any)[0]?.type === 'file';
+    const isFile = typeof contents === 'string';
 
     return (
-        <div className="flex items-center gap-1.5 text-sm text-muted-foreground mb-4 flex-wrap">
+        <div className="flex items-center gap-1.5 text-sm text-muted-foreground mb-4 flex-wrap bg-background/50 p-2 rounded-md">
             <button onClick={() => handleBreadcrumbClick('')} className="flex items-center gap-1 hover:text-foreground">
                 <Home className="h-4 w-4" />
             </button>
-            {(pathParts.length > 0 || isFile) && <ChevronRight className="h-4 w-4" />}
+            {(pathParts.length > 0) && <ChevronRight className="h-4 w-4" />}
             {pathParts.map((part, index) => {
                 const path = pathParts.slice(0, index + 1).join('/');
                 const isLast = index === pathParts.length - 1;
@@ -87,7 +87,7 @@ export default function RepoDetailModal({ isOpen, onClose, repo, githubToken }: 
                         <button 
                             onClick={() => !isLast && handleBreadcrumbClick(path)} 
                             className={`hover:text-foreground ${isLast ? 'text-foreground font-medium' : ''}`}
-                            disabled={isLast}
+                            disabled={isLast && isFile}
                         >
                             {part}
                         </button>
@@ -116,15 +116,16 @@ export default function RepoDetailModal({ isOpen, onClose, repo, githubToken }: 
 
     if (typeof contents === 'string') {
         return (
-            <ScrollArea className="h-[50vh] mt-4 rounded-md border bg-background/50">
-                <pre className="p-4 text-sm font-code">{contents}</pre>
+            <ScrollArea className="h-[60vh] lg:h-[50vh] mt-4 rounded-md border bg-background/50">
+                <pre className="p-4 text-sm font-mono">{contents}</pre>
+                <ScrollBar orientation="horizontal" />
             </ScrollArea>
         )
     }
 
-    if (Array.isArray(contents)) {
+    if (Array.isArray(contents) && contents.length > 0) {
       return (
-        <ScrollArea className="h-[50vh] mt-4">
+        <ScrollArea className="h-[60vh] lg:h-[50vh] mt-4">
             <ul className="space-y-1">
             {contents.map(item => (
                 <li key={item.sha}>
@@ -147,7 +148,7 @@ export default function RepoDetailModal({ isOpen, onClose, repo, githubToken }: 
       );
     }
     
-    return <p className="text-center mt-4">Folder ini kosong.</p>;
+    return <p className="text-center mt-4 py-8 text-muted-foreground">Folder ini kosong.</p>;
   };
 
   return (
@@ -159,7 +160,7 @@ export default function RepoDetailModal({ isOpen, onClose, repo, githubToken }: 
             Jelajahi file dan folder di dalam repositori.
           </DialogDescription>
         </DialogHeader>
-        <div className="py-4">
+        <div className="py-2">
             <Breadcrumbs />
             {renderContent()}
         </div>

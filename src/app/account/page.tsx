@@ -140,12 +140,12 @@ export default function AccountPage() {
                                     {repo.name}
                                 </Link>
                             </CardTitle>
-                            <CardDescription className="h-10 overflow-hidden text-ellipsis">
+                            <CardDescription className="h-12 text-ellipsis-3-lines">
                                 {repo.description || "Tidak ada deskripsi"}
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="flex-grow space-y-4">
-                             <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                             <div className="flex items-center flex-wrap gap-x-4 gap-y-2 text-sm text-muted-foreground">
                                 {repo.language && (
                                     <span className="flex items-center gap-1.5">
                                         <Code className="h-4 w-4 text-primary" />
@@ -161,7 +161,7 @@ export default function AccountPage() {
                                     {repo.forks_count}
                                 </span>
                             </div>
-                             <p className="text-xs text-muted-foreground">
+                             <p className="text-xs text-muted-foreground pt-2">
                                 Diperbarui {formatDate(repo.updated_at)}
                             </p>
                         </CardContent>
@@ -203,6 +203,15 @@ export default function AccountPage() {
             githubToken={githubToken}
         />
     )}
+    <style jsx>{`
+      .text-ellipsis-3-lines {
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;  
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+    `}</style>
     </>
   );
 }
