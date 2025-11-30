@@ -1,10 +1,18 @@
 
+'use client';
+
 import { FileText } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { motion } from "framer-motion";
 
 export default function TermsPage() {
     return (
-      <div className="container py-24 sm:py-32">
+      <motion.div 
+        className="container py-24 sm:py-32"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: "easeOut" }}
+      >
         <Card className="max-w-4xl mx-auto glass-card">
             <CardHeader className="text-center">
                 <div className="mx-auto w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-4 border border-primary/20">
@@ -58,6 +66,6 @@ export default function TermsPage() {
                 </article>
             </CardContent>
         </Card>
-      </div>
+      </motion.div>
     );
   }

@@ -14,6 +14,7 @@ import { Star, GitFork, Code, ArrowLeft, ArrowRight, Eye, BookText } from 'lucid
 import { formatDistanceToNow } from 'date-fns';
 import { id } from 'date-fns/locale';
 import RepoDetailModal from '@/components/account/RepoDetailModal';
+import { motion } from 'framer-motion';
 
 export default function AccountPage() {
   const { user, loading: userLoading } = useUser();
@@ -83,9 +84,26 @@ export default function AccountPage() {
     }
   };
 
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: { staggerChildren: 0.05 },
+    },
+  };
+
+  const itemVariants = {
+    hidden: { y: 20, opacity: 0 },
+    visible: {
+      y: 0,
+      opacity: 1,
+      transition: { duration: 0.3, ease: 'easeOut' },
+    },
+  };
+
   if (userLoading) {
     return (
-      <div className="container py-12">
+      <div className="container py-12 sm:py-16">
         <div className="flex flex-col items-center justify-center gap-4 mb-12">
           <Skeleton className="h-24 w-24 rounded-full" />
           <div className="flex flex-col items-center gap-2">
@@ -93,10 +111,13 @@ export default function AccountPage() {
             <Skeleton className="h-5 w-64" />
           </div>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8 max-w-7xl mx-auto">
-          {Array.from({ length: 9 }).map((_, i) => (
-            <Skeleton key={i} className="h-56 w-full" />
-          ))}
+        <div className="max-w-7xl mx-auto">
+          <Skeleton className="h-8 w-48 mx-auto mb-8" />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {Array.from({ length: 9 }).map((_, i) => (
+              <Card key={i} className="glass-card h-56"><CardContent className="p-6"><Skeleton className="h-full w-full" /></CardContent></Card>
+            ))}
+          </div>
         </div>
       </div>
     );
@@ -106,12 +127,23 @@ export default function AccountPage() {
 
   return (
     <>
-      <div className="container py-12 sm:py-16">
+      <motion.div 
+        className="container py-12 sm:py-16"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: 'easeOut' }}
+      >
         <div className="flex flex-col items-center justify-center text-center gap-4 mb-12">
-            <Avatar className="h-24 w-24 border-4 border-primary/50">
-              <AvatarImage src={user.photoURL || ''} alt={user.displayName || 'User Avatar'} />
-              <AvatarFallback>{getInitials(user.displayName)}</AvatarFallback>
-            </Avatar>
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ delay: 0.1, type: "spring", stiffness: 200, damping: 20 }}
+            >
+              <Avatar className="h-24 w-24 border-4 border-primary/50">
+                <AvatarImage src={user.photoURL || ''} alt={user.displayName || 'User Avatar'} />
+                <AvatarFallback>{getInitials(user.displayName)}</AvatarFallback>
+              </Avatar>
+            </motion.div>
             <div>
               <h1 className="text-3xl font-bold font-headline">{user.displayName}</h1>
               <p className="text-muted-foreground">{user.email}</p>
@@ -137,50 +169,57 @@ export default function AccountPage() {
           ) : (
             <>
               {repos.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <motion.div 
+                  className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+                  variants={containerVariants}
+                  initial="hidden"
+                  animate="visible"
+                >
                   {repos.map(repo => (
-                    <Card key={repo.id} className="glass-card flex flex-col h-full hover:border-primary/50 transition-colors duration-300">
-                      <CardHeader>
-                        <CardTitle className="flex items-start gap-2">
-                          <BookText className="h-5 w-5 text-primary flex-shrink-0 mt-1" />
-                          <Link href={repo.html_url} target="_blank" rel="noopener noreferrer" className="hover:underline flex-grow truncate">
-                            {repo.name}
-                          </Link>
-                        </CardTitle>
-                        <CardDescription className="h-10 text-ellipsis-2-lines">
-                          {repo.description || "Tidak ada deskripsi"}
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent className="flex-grow space-y-4">
-                        <div className="flex items-center flex-wrap gap-x-4 gap-y-2 text-sm text-muted-foreground">
-                          {repo.language && (
+                    <motion.div key={repo.id} variants={itemVariants}>
+                      <Card className="glass-card flex flex-col h-full hover:border-primary/50 transition-colors duration-300">
+                        <CardHeader>
+                          <CardTitle className="flex items-start gap-2">
+                            <BookText className="h-5 w-5 text-primary flex-shrink-0 mt-1" />
+                            <Link href={repo.html_url} target="_blank" rel="noopener noreferrer" className="hover:underline flex-grow truncate">
+                              {repo.name}
+                            </Link>
+                          </CardTitle>
+                          <CardDescription className="h-10 text-ellipsis-2-lines">
+                            {repo.description || "Tidak ada deskripsi"}
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent className="flex-grow space-y-4">
+                          <div className="flex items-center flex-wrap gap-x-4 gap-y-2 text-sm text-muted-foreground">
+                            {repo.language && (
+                              <span className="flex items-center gap-1.5">
+                                <Code className="h-4 w-4 text-primary" />
+                                {repo.language}
+                              </span>
+                            )}
                             <span className="flex items-center gap-1.5">
-                              <Code className="h-4 w-4 text-primary" />
-                              {repo.language}
+                              <Star className="h-4 w-4 text-yellow-400" />
+                              {repo.stargazers_count}
                             </span>
-                          )}
-                          <span className="flex items-center gap-1.5">
-                            <Star className="h-4 w-4 text-yellow-400" />
-                            {repo.stargazers_count}
-                          </span>
-                          <span className="flex items-center gap-1.5">
-                            <GitFork className="h-4 w-4 text-green-400" />
-                            {repo.forks_count}
-                          </span>
-                        </div>
-                        <p className="text-xs text-muted-foreground pt-2">
-                          Diperbarui {formatDate(repo.updated_at)}
-                        </p>
-                      </CardContent>
-                      <CardFooter>
-                        <Button variant="outline" className="w-full" onClick={() => handleViewRepo(repo)}>
-                          <Eye className="mr-2 h-4 w-4" />
-                          Lihat Isi
-                        </Button>
-                      </CardFooter>
-                    </Card>
+                            <span className="flex items-center gap-1.5">
+                              <GitFork className="h-4 w-4 text-green-400" />
+                              {repo.forks_count}
+                            </span>
+                          </div>
+                          <p className="text-xs text-muted-foreground pt-2">
+                            Diperbarui {formatDate(repo.updated_at)}
+                          </p>
+                        </CardContent>
+                        <CardFooter>
+                          <Button variant="outline" className="w-full" onClick={() => handleViewRepo(repo)}>
+                            <Eye className="mr-2 h-4 w-4" />
+                            Lihat Isi
+                          </Button>
+                        </CardFooter>
+                      </Card>
+                    </motion.div>
                   ))}
-                </div>
+                </motion.div>
               ) : (
                 <p className="text-center py-10 text-muted-foreground">Anda tidak memiliki repositori.</p>
               )}
@@ -197,7 +236,7 @@ export default function AccountPage() {
             </>
           )}
         </div>
-      </div>
+      </motion.div>
       
       {selectedRepo && githubToken && (
         <RepoDetailModal 

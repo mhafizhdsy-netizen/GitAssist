@@ -1,3 +1,4 @@
+
 'use client';
 
 import { redirect } from 'next/navigation';
@@ -17,7 +18,7 @@ export default function DashboardPage() {
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 max-w-7xl mx-auto">
           <div className="lg:col-span-3">
-            <Skeleton className="h-[500px] w-full" />
+            <Skeleton className="h-[600px] w-full" />
           </div>
           <div className="lg:col-span-2">
             <Skeleton className="h-[500px] w-full" />
