@@ -1,7 +1,7 @@
 
 "use client";
 
-import { type User } from "@supabase/supabase-js";
+import { type User } from "firebase/auth";
 import { AiCommitHelper } from "@/components/dashboard/AiCommitHelper";
 import { FileUploader } from "@/components/dashboard/FileUploader";
 
@@ -14,7 +14,7 @@ export default function DashboardClient({ user }: DashboardClientProps) {
     <div className="container py-24 sm:py-32">
       <div className="text-center mb-16">
         <h1 className="text-4xl md:text-5xl font-headline font-bold">
-          Welcome, {user.user_metadata.full_name || user.email}
+          Welcome, {user.displayName || user.email}
         </h1>
         <p className="text-muted-foreground mt-2 text-lg">
           Let's get started. What would you like to do today?

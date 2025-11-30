@@ -1,30 +1,40 @@
-"use server";
+'use server';
 
-import { createClient } from "@/lib/supabase/server";
-import { headers } from "next/headers";
-import { redirect } from "next/navigation";
+import {
+  Auth,
+  getAuth,
+  signInWithPopup,
+  GithubAuthProvider,
+} from 'firebase/auth';
+import { initializeApp, getApps, getApp } from 'firebase/app';
+import { redirect } from 'next/navigation';
+
+import { firebaseConfig } from '@/firebase/config';
+
+let app;
+if (!getApps().length) {
+  app = initializeApp(firebaseConfig);
+} else {
+  app = getApp();
+}
+
+const auth: Auth = getAuth(app);
+const provider = new GithubAuthProvider();
 
 export async function signInWithGithub() {
-  const supabase = createClient();
-  const origin = headers().get("origin");
-
-  const { data, error } = await supabase.auth.signInWithOAuth({
-    provider: "github",
-    options: {
-      redirectTo: `${origin}/auth/callback`,
-    },
-  });
-
-  if (error) {
-    console.error("Error signing in with GitHub:", error);
-    return redirect("/login?message=Could not authenticate user");
+  try {
+    const result = await signInWithPopup(auth, provider);
+    const user = result.user;
+    if (user) {
+      redirect('/dashboard');
+    }
+  } catch (error) {
+    console.error('Error signing in with GitHub:', error);
+    return redirect('/login?message=Could not authenticate user');
   }
-
-  return redirect(data.url);
 }
 
 export async function signOut() {
-  const supabase = createClient();
-  await supabase.auth.signOut();
-  return redirect("/");
+  await auth.signOut();
+  return redirect('/');
 }
