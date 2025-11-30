@@ -192,7 +192,7 @@ export function FileUploader() {
     try {
       const filesToCommit = await Promise.all(
         files
-          .filter((f) => f.type === 'file' && f.content instanceof File)
+          .filter((f) => f.type === 'file' && f.content)
           .map(async (file) => {
             const content = await (file.content as File).arrayBuffer();
             return {
@@ -397,5 +397,7 @@ export function FileUploader() {
     </Card>
   );
 }
+
+    
 
     
