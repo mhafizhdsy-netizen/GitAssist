@@ -156,12 +156,19 @@ export async function commitToRepo({ repoUrl, commitMessage, files, githubToken,
   const [owner, repo] = urlParts;
 
   try {
+    // 1. Get the default branch
     const repoData = await api(`/repos/${owner}/${repo}`, githubToken);
     const defaultBranch = repoData.default_branch;
 
+    // 2. Get the latest commit on the default branch
     const branchData = await api(`/repos/${owner}/${repo}/branches/${defaultBranch}`, githubToken);
     const latestCommitSha = branchData.commit.sha;
 
+    // 3. Get the tree SHA of the latest commit
+    const latestCommitData = await api(`/repos/${owner}/${repo}/git/commits/${latestCommitSha}`, githubToken);
+    const baseTreeSha = latestCommitData.tree.sha;
+
+    // 4. Create blobs for each new file
     const fileBlobs = await Promise.all(
       files.map(async (file) => {
         const blob = await api(`/repos/${owner}/${repo}/git/blobs`, githubToken, {
@@ -184,14 +191,16 @@ export async function commitToRepo({ repoUrl, commitMessage, files, githubToken,
       })
     );
 
-    const newTree = await api(`/repos/${owner}/${repo}/git/trees?recursive=1`, githubToken, {
-      method: 'POST',
-      body: JSON.stringify({
-        base_tree: latestCommitSha,
-        tree: fileBlobs,
-      }),
-    });
+    // 5. Create a new tree with the new files, based on the latest tree
+    const newTree = await api(`/repos/${owner}/${repo}/git/trees`, githubToken, {
+        method: 'POST',
+        body: JSON.stringify({
+          base_tree: baseTreeSha,
+          tree: fileBlobs,
+        }),
+      });
 
+    // 6. Create a new commit with the new tree
     const newCommit = await api(`/repos/${owner}/${repo}/git/commits`, githubToken, {
       method: 'POST',
       body: JSON.stringify({
@@ -201,6 +210,7 @@ export async function commitToRepo({ repoUrl, commitMessage, files, githubToken,
       }),
     });
 
+    // 7. Update the branch reference to point to the new commit
     await api(`/repos/${owner}/${repo}/git/refs/heads/${defaultBranch}`, githubToken, {
       method: 'PATCH',
       body: JSON.stringify({
