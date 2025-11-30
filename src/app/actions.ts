@@ -93,7 +93,7 @@ async function api(url: string, token: string, options: RequestInit = {}) {
   return response.json();
 }
 
-export async function fetchUserRepos(githubToken: string, page: number = 1, perPage: number = 9): Promise<Repo[]> {
+export async function fetchUserRepos(githubToken: string, page: number = 1, perPage: number = 100): Promise<Repo[]> {
     if (!githubToken) {
         throw new Error('Token GitHub diperlukan.');
     }
