@@ -86,7 +86,13 @@ export default function AccountPage() {
   if (userLoading) {
     return (
       <div className="container py-12">
-        <Skeleton className="h-32 w-full max-w-4xl mx-auto" />
+        <div className="flex flex-col items-center justify-center gap-4 mb-12">
+          <Skeleton className="h-24 w-24 rounded-full" />
+          <div className="flex flex-col items-center gap-2">
+            <Skeleton className="h-8 w-48" />
+            <Skeleton className="h-5 w-64" />
+          </div>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8 max-w-7xl mx-auto">
           {Array.from({ length: 9 }).map((_, i) => (
             <Skeleton key={i} className="h-56 w-full" />
@@ -101,18 +107,16 @@ export default function AccountPage() {
   return (
     <>
       <div className="container py-12 sm:py-16">
-        <Card className="max-w-4xl mx-auto glass-card mb-12 shadow-2xl shadow-primary/10">
-          <CardContent className="p-6 flex flex-col sm:flex-row items-center gap-6">
+        <div className="flex flex-col items-center justify-center text-center gap-4 mb-12">
             <Avatar className="h-24 w-24 border-4 border-primary/50">
               <AvatarImage src={user.photoURL || ''} alt={user.displayName || 'User Avatar'} />
               <AvatarFallback>{getInitials(user.displayName)}</AvatarFallback>
             </Avatar>
-            <div className="text-center sm:text-left">
+            <div>
               <h1 className="text-3xl font-bold font-headline">{user.displayName}</h1>
               <p className="text-muted-foreground">{user.email}</p>
             </div>
-          </CardContent>
-        </Card>
+        </div>
         
         <div className="max-w-7xl mx-auto">
           <h2 className="text-3xl font-bold font-headline mb-8 text-center">Repositori Saya</h2>
@@ -216,5 +220,3 @@ export default function AccountPage() {
     </>
   );
 }
-
-    
