@@ -70,11 +70,7 @@ async function api(url: string, token: string, options: RequestInit = {}) {
         'X-GitHub-Api-Version': '2022-11-28',
       },
     });
-<<<<<<< HEAD
 
-=======
-  
->>>>>>> 8867fc5 (// Di dalam initializeEmptyRepository atau commitToExistingRepo)
     if (!response.ok) {
         const errorBody = await response.json().catch(() => ({ message: response.statusText }));
         
@@ -101,21 +97,6 @@ async function isRepositoryEmpty(owner: string, repo: string, token: string): Pr
         if (!repoData) return true;
 
         const branchName = repoData.default_branch || 'main';
-<<<<<<< HEAD
-        
-        // Coba dapatkan referensi branch. Jika gagal dengan "Not Found", berarti repo kosong.
-        await api(`/repos/${owner}/${repo}/git/ref/heads/${branchName}`, token);
-        
-        // Jika panggilan di atas berhasil, branch ada, repo tidak kosong.
-        return false;
-    } catch (error: any) {
-        // Jika error adalah "Not Found", itu konfirmasi repo kosong.
-        if (error.message.includes('Not Found')) {
-            console.log(`Repository ${owner}/${repo} is empty (default branch not found).`);
-            return true;
-        }
-        // Untuk error lain, lempar lagi agar bisa ditangani di level atas.
-=======
         await api(`/repos/${owner}/${repo}/git/ref/heads/${branchName}`, token);
         
         return false;
@@ -123,7 +104,6 @@ async function isRepositoryEmpty(owner: string, repo: string, token: string): Pr
         if (error.message && (error.message.includes('Not Found') || error.message.includes('Git Repository is empty'))) {
             return true;
         }
->>>>>>> 8867fc5 (// Di dalam initializeEmptyRepository atau commitToExistingRepo)
         console.error("Error saat mendeteksi repositori kosong:", error);
         throw error;
     }
