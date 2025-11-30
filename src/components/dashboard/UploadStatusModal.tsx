@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -102,7 +103,7 @@ export function UploadStatusModal({ status, progress, commitUrl, repoName, onRes
 
   return (
     <Dialog open={isOpen}>
-      <DialogContent className="glass-card sm:max-w-md" onInteractOutside={(e) => e.preventDefault()}>
+      <DialogContent className="glass-card w-[95vw] max-w-md" onInteractOutside={(e) => e.preventDefault()}>
         {renderContent()}
       </DialogContent>
     </Dialog>
