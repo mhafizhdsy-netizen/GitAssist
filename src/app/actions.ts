@@ -184,7 +184,7 @@ export async function commitToRepo({ repoUrl, commitMessage, files, githubToken,
       })
     );
 
-    const newTree = await api(`/repos/${owner}/${repo}/git/trees`, githubToken, {
+    const newTree = await api(`/repos/${owner}/${repo}/git/trees?recursive=1`, githubToken, {
       method: 'POST',
       body: JSON.stringify({
         base_tree: latestCommitSha,
