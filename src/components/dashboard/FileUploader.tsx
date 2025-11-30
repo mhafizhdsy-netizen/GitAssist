@@ -70,7 +70,7 @@ export function FileUploader() {
   useEffect(() => {
     if (step === 'select-repo' && repos.length === 0 && githubToken) {
       setIsFetchingRepos(true);
-      fetchUserRepos(githubToken)
+      fetchUserRepos(githubToken, 1, 100) // Fetch up to 100 repos
         .then(setRepos)
         .catch(err => {
           console.error("Gagal mengambil repositori", err);
@@ -593,3 +593,5 @@ export function FileUploader() {
     </>
   );
 }
+
+    
