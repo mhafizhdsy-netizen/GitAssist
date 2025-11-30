@@ -189,7 +189,7 @@ export async function commitToRepo({ repoUrl, commitMessage, files, githubToken,
 
     // Get the latest ref for the branch. This will return null (404) if the branch doesn't exist.
     const latestRef = await api(`/repos/${owner}/${repo}/git/ref/${refPath}`, githubToken).catch(err => {
-        // If the error is "Not Found", it means the repo or branch is new.
+        // If the error is "Not Found" or related to empty repo, it means the repo or branch is new.
         if (err.message === "Not Found" || err.message.includes("Git Repository is empty")) return null;
         throw err;
     });
@@ -218,7 +218,7 @@ export async function commitToRepo({ repoUrl, commitMessage, files, githubToken,
     let newCommit;
 
     if (latestRef && latestRef.object) {
-      // Repositori/branch sudah ada isinya
+      // ===== EXISTING REPO/BRANCH LOGIC =====
       const latestCommitSha = latestRef.object.sha;
       const latestCommitData = await api(`/repos/${owner}/${repo}/git/commits/${latestCommitSha}`, githubToken);
       const baseTreeSha = latestCommitData.tree.sha;
@@ -249,7 +249,7 @@ export async function commitToRepo({ repoUrl, commitMessage, files, githubToken,
       });
 
     } else {
-      // Repositori kosong atau branch baru (initial commit)
+      // ===== EMPTY REPO/NEW BRANCH LOGIC (INITIAL COMMIT) =====
       const newTree = await api(`/repos/${owner}/${repo}/git/trees`, githubToken, {
         method: 'POST',
         body: JSON.stringify({
