@@ -36,11 +36,16 @@ type CommitParams = {
   destinationPath?: string;
 };
 
-type Repo = {
+export type Repo = {
     id: number;
     name: string;
     full_name: string;
     html_url: string;
+    description: string | null;
+    language: string | null;
+    stargazers_count: number;
+    forks_count: number;
+    updated_at: string;
 };
 
 async function api(url: string, token: string, options: RequestInit = {}) {
@@ -58,20 +63,31 @@ async function api(url: string, token: string, options: RequestInit = {}) {
     console.error('GitHub API Error:', error);
     throw new Error(error.message || `Permintaan GitHub API ke ${url} gagal`);
   }
+  // Check if the response is empty
+  if (response.headers.get('Content-Length') === '0' || response.status === 204) {
+    return null;
+  }
   return response.json();
 }
 
-export async function fetchUserRepos(githubToken: string): Promise<Repo[]> {
+export async function fetchUserRepos(githubToken: string, page: number = 1, perPage: number = 9): Promise<Repo[]> {
     if (!githubToken) {
         throw new Error('Token GitHub diperlukan.');
     }
-    // Fetch repos user has access to, including private ones
-    const repos = await api('/user/repos?type=owner&sort=updated&per_page=100', githubToken);
+    const repos = await api(`/user/repos?type=owner&sort=updated&per_page=${perPage}&page=${page}`, githubToken);
+    
+    if (!repos) return [];
+
     return repos.map((repo: any) => ({
         id: repo.id,
         name: repo.name,
         full_name: repo.full_name,
         html_url: repo.html_url,
+        description: repo.description,
+        language: repo.language,
+        stargazers_count: repo.stargazers_count,
+        forks_count: repo.forks_count,
+        updated_at: repo.updated_at,
     }));
 }
 

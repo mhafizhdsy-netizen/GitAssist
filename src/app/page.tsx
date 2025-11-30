@@ -16,7 +16,7 @@ export default function Home() {
 
   useEffect(() => {
     if (!loading && user) {
-      redirect('/dashboard');
+      redirect('/account');
     }
   }, [user, loading]);
 
