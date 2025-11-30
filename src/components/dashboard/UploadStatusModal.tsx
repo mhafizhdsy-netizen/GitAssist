@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose } from '@/components/ui/dialog';
@@ -42,13 +43,6 @@ export function UploadStatusModal({ status, zipExtractProgress, commitStatus, co
               </DialogDescription>
             </DialogHeader>
             <div className="py-8 text-center space-y-4">
-              <motion.div
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.5, ease: 'easeOut' }}
-              >
-                <Loader2 className="mx-auto h-16 w-16 animate-spin text-primary" />
-              </motion.div>
               <div className="w-full max-w-sm mx-auto pt-4">
                 <Progress value={zipExtractProgress} className="h-2" />
                 <p className="text-sm text-muted-foreground mt-2 font-medium">{Math.round(zipExtractProgress)}%</p>

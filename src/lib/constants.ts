@@ -3,9 +3,9 @@ import { type LucideIcon, Sparkles, UploadCloud, GitBranch, Zap, FileArchive, Sh
 import type { NavItem, FAQItem, FeatureCard } from "@/lib/types";
 
 export const NAV_ITEMS: NavItem[] = [
-  { label: "Fitur", href: "/#features" },
-  { label: "Cara Kerja", href: "/#how-it-works" },
-  { label: "FAQ", href: "/#faq" },
+  { label: "Fitur", href: "/features" },
+  { label: "Cara Kerja", href: "/how-it-works" },
+  { label: "FAQ", href: "/faq" },
 ];
 
 export const FEATURES: FeatureCard[] = [
@@ -78,8 +78,8 @@ export const FAQ_ITEMS: FAQItem[] = [
 
 export const FOOTER_LINKS = {
     "Produk": [
-        { label: "Fitur", href: "/#features" },
-        { label: "Cara Kerja", href: "/#how-it-works" },
+        { label: "Fitur", href: "/features" },
+        { label: "Cara Kerja", href: "/how-it-works" },
         { label: "Donasi", href: "https://saweria.co/Antraxxx" },
     ],
     "Perusahaan": [
@@ -87,7 +87,7 @@ export const FOOTER_LINKS = {
         { label: "Ketentuan Layanan", href: "/terms" },
     ],
     "Dukungan": [
-        { label: "FAQ", href: "/#faq" },
+        { label: "FAQ", href: "/faq" },
         { label: "Hubungi Kami", href: "mailto:mhafizhdsy@gmail.com" },
     ],
 }

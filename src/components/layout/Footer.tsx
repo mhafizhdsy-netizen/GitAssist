@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Github, Instagram } from "lucide-react";
 import { FOOTER_LINKS } from "@/lib/constants";
+import { Separator } from "../ui/separator";
 
 const CustomGitIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg
@@ -74,7 +75,16 @@ const LargeFooter = () => (
 
 const SmallFooter = () => (
     <footer className="py-6 border-t">
-        <div className="container">
+        <div className="container flex flex-col items-center justify-center gap-4">
+            <div className="flex gap-4">
+                 <Link href="/terms" className="text-sm text-muted-foreground transition-colors hover:text-primary">
+                    Ketentuan
+                </Link>
+                <Separator orientation="vertical" className="h-5" />
+                 <Link href="/privacy" className="text-sm text-muted-foreground transition-colors hover:text-primary">
+                    Privasi
+                </Link>
+            </div>
             <p className="text-center text-sm text-muted-foreground">
                 © {new Date().getFullYear()} GitAssist. Semua hak dilindungi.
             </p>
