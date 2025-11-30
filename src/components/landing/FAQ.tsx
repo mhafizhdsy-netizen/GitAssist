@@ -1,4 +1,10 @@
 
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { FAQ_ITEMS } from "@/lib/constants";
 
 export function FAQ() {
@@ -11,14 +17,22 @@ export function FAQ() {
         </p>
       </div>
 
-      <div className="mt-16 grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8 max-w-5xl mx-auto">
+      <Accordion
+        type="single"
+        collapsible
+        className="w-full max-w-3xl mx-auto mt-12"
+      >
         {FAQ_ITEMS.map((item, index) => (
-          <div key={index} className="space-y-2">
-            <h3 className="font-semibold text-lg text-foreground">{item.question}</h3>
-            <p className="text-muted-foreground">{item.answer}</p>
-          </div>
+          <AccordionItem key={index} value={`item-${index}`}>
+            <AccordionTrigger className="text-left text-lg hover:no-underline">
+              {item.question}
+            </AccordionTrigger>
+            <AccordionContent className="text-base text-muted-foreground">
+              {item.answer}
+            </AccordionContent>
+          </AccordionItem>
         ))}
-      </div>
+      </Accordion>
     </section>
   );
 }
