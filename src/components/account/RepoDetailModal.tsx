@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -112,7 +111,7 @@ export default function RepoDetailModal({ isOpen, onClose, repo, githubToken }: 
     if (typeof contents === 'string') {
       return (
         <ScrollArea className="h-[60vh] mt-4 rounded-md border bg-black/50">
-          <pre className="p-4 text-xs sm:text-sm font-mono whitespace-pre w-full">
+          <pre className="p-4 text-xs sm:text-sm font-mono whitespace-pre-wrap break-words">
             <code>{contents}</code>
           </pre>
           <ScrollBar orientation="horizontal" />
