@@ -143,15 +143,10 @@ async function isRepositoryEmpty(owner: string, repo: string, token: string): Pr
         const repoData = await api(`/repos/${owner}/${repo}`, token);
         if (!repoData) return true;
 
-        // An empty repo created on GitHub now comes with a size of 0
-        if (repoData.size === 0) {
-            return true;
-        }
+        const branchName = repoData.default_branch || 'main';
+        await api(`/repos/${owner}/${repo}/git/ref/heads/${branchName}`, token);
         
-        // As a fallback, check for branches
-        const branches = await api(`/repos/${owner}/${repo}/branches`, token);
-        return branches.length === 0;
-
+        return false;
     } catch (error: any) {
         if (error.message && (error.message.includes('Not Found') || error.message.includes('Git Repository is empty'))) {
             return true;
@@ -173,7 +168,39 @@ async function initializeEmptyRepository(
     const repoInfo = await api(`/repos/${owner}/${repo}`, token);
     const branchToCreate = repoInfo.default_branch || 'main';
 
-    // Step 1: Create blobs for all files
+    // METODE YANG BENAR BERDASARKAN STACKOVERFLOW UPDATE 2023:
+    // https://stackoverflow.com/questions/10790088/
+    // PENTING: Dummy file HARUS DIHAPUS sebelum membuat commit baru!
+    // Setelah dummy file dihapus, empty tree SHA baru bisa digunakan.
+
+    // Step 1: Buat dummy file untuk initialize branch
+    console.log('Step 1: Creating dummy file to initialize branch...');
+    const dummyContent = Buffer.from('dummy', 'utf-8').toString('base64');
+    const dummyResponse = await api(`/repos/${owner}/${repo}/contents/dummy`, token, {
+        method: 'PUT',
+        body: JSON.stringify({
+            message: 'Create dummy file for branch initialization',
+            content: dummyContent,
+            branch: branchToCreate
+        }),
+    });
+    console.log(`✓ Branch ${branchToCreate} initialized`);
+    const dummySHA = dummyResponse.content?.sha;
+
+    // Step 2: HAPUS dummy file (CRITICAL!)
+    console.log('Step 2: Deleting dummy file (REQUIRED!)...');
+    await api(`/repos/${owner}/${repo}/contents/dummy`, token, {
+        method: 'DELETE',
+        body: JSON.stringify({
+            message: 'Delete dummy file',
+            sha: dummySHA,
+            branch: branchToCreate
+        }),
+    });
+    console.log('✓ Dummy file deleted - empty tree SHA now assignable');
+
+    // Step 3: Buat blobs untuk semua file
+    console.log(`Step 3: Creating ${files.length} blob(s)...`);
     const blobs = await Promise.all(
         files.map(async (file) => {
             const base64Content = Buffer.from(file.content, 'utf-8').toString('base64');
@@ -181,41 +208,51 @@ async function initializeEmptyRepository(
                 method: 'POST',
                 body: JSON.stringify({ content: base64Content, encoding: 'base64' }),
             });
+            console.log(`✓ Created blob for ${file.path}: ${blob.sha}`);
             return { path: file.path, sha: blob.sha, mode: '100644', type: 'blob' as const };
         })
     );
 
-    // Step 2: Create a tree from the blobs. Since it's the first commit, there's no base tree.
+    // Step 4: Buat tree dari blobs
+    console.log('Step 4: Creating tree from blobs...');
+    const emptyTreeSHA = getEmptyTreeSHA();
     const tree = await api(`/repos/${owner}/${repo}/git/trees`, token, {
         method: 'POST',
-        body: JSON.stringify({ tree: blobs }),
+        body: JSON.stringify({ 
+            base_tree: emptyTreeSHA,
+            tree: blobs 
+        }),
     });
+    console.log(`✓ Created tree: ${tree.sha}`);
 
-    // Step 3: Create the commit with the new tree
+    // Step 5: Buat commit yang menunjuk ke tree
+    console.log('Step 5: Creating commit...');
     const commit = await api(`/repos/${owner}/${repo}/git/commits`, token, {
         method: 'POST',
         body: JSON.stringify({
             message: commitMessage,
             tree: tree.sha,
-            parents: [], // No parent for the initial commit
+            parents: [], // Empty parents = initial commit
         }),
     });
+    console.log(`✓ Created commit: ${commit.sha}`);
 
-    // Step 4: Create the branch (ref) to point to the new commit
-    await api(`/repos/${owner}/${repo}/git/refs`, token, {
-        method: 'POST',
+    // Step 6: Force update branch reference ke commit baru
+    console.log('Step 6: Updating branch reference...');
+    await api(`/repos/${owner}/${repo}/git/refs/heads/${branchToCreate}`, token, {
+        method: 'PATCH',
         body: JSON.stringify({
-            ref: `refs/heads/${branchToCreate}`,
             sha: commit.sha,
+            force: true // Force update untuk overwrite
         }),
     });
+    console.log(`✓ Branch ${branchToCreate} now points to new commit`);
 
     return { 
         success: true, 
         commitUrl: commit.html_url || `https://github.com/${owner}/${repo}/commit/${commit.sha}`
     };
 }
-
 
 async function commitToExistingRepo(
     owner: string,
@@ -295,6 +332,89 @@ export async function commitToRepo({ repoUrl, commitMessage, files, githubToken,
         throw new Error(error.message || 'Gagal melakukan commit file ke repositori.');
     }
 }
+
+export async function fetchUserRepos(githubToken: string, page: number = 1, perPage: number = 100): Promise<Repo[]> {
+    if (!githubToken) {
+        throw new Error('Token GitHub diperlukan.');
+    }
+    
+    const repos = await api(`/user/repos?type=owner&sort=updated&per_page=${perPage}&page=${page}`, githubToken);
+    
+    if (!Array.isArray(repos)) return [];
+
+    return repos.map((repo: any) => ({
+        id: repo.id,
+        name: repo.name,
+        full_name: repo.full_name,
+        html_url: repo.html_url,
+        description: repo.description,
+        language: repo.language,
+        stargazers_count: repo.stargazers_count,
+        forks_count: repo.forks_count,
+        updated_at: repo.updated_at,
+        owner: {
+            login: repo.owner.login,
+        },
+        default_branch: repo.default_branch,
+        topics: repo.topics || [],
+    }));
+}
+
+export async function fetchRepoBranches(githubToken: string, owner: string, repo: string): Promise<Branch[]> {
+    if (!githubToken) {
+        throw new Error('Token GitHub diperlukan.');
+    }
+    try {
+        const branches = await api(`/repos/${owner}/${repo}/branches`, githubToken);
+        return branches || [];
+    } catch (error: any) {
+        if (error.message && (error.message.includes('Git Repository is empty') || error.message.includes('Not Found'))) {
+            return [];
+        }
+        console.error("Gagal mengambil branches:", error);
+        throw error;
+    }
+}
+
+export async function fetchRepoContents(githubToken: string, owner: string, repo: string, path: string = ''): Promise<RepoContent[] | string> {
+    if (!githubToken) {
+        throw new Error('Token GitHub diperlukan.');
+    }
+    try {
+      const contents = await api(`/repos/${owner}/${repo}/contents/${path}`, githubToken);
+      
+      if (contents === null) {
+          return [];
+      }
+
+      if (contents?.type === 'file' && typeof contents?.content === 'string' && contents.encoding === 'base64') {
+          return Buffer.from(contents.content, 'base64').toString('utf-8');
+      }
+
+      if (!Array.isArray(contents)) return [];
+      
+      contents.sort((a, b) => {
+          if (a.type === 'dir' && b.type !== 'dir') return -1;
+          if (a.type !== 'dir' && b.type === 'dir') return 1;
+          return a.name.localeCompare(b.name);
+      });
+
+      return contents.map((item: any) => ({
+          name: item.name,
+          path: item.path,
+          sha: item.sha,
+          size: item.size,
+          type: item.type,
+          html_url: item.html_url,
+          download_url: item.download_url
+      }));
+    } catch (error: any) {
+      if (error.message && (error.message.includes("This repository is empty") || error.message.includes("Not Found"))) {
+        return [];
+      }
+      throw error;
+    }
+}}
 
 export async function fetchUserRepos(githubToken: string, page: number = 1, perPage: number = 100): Promise<Repo[]> {
     if (!githubToken) {
