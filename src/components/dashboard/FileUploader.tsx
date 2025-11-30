@@ -202,9 +202,10 @@ export function FileUploader() {
     [files, step, toast, handleZipExtraction]
   );
 
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+  const { getRootProps, getInputProps, isDragActive, open: openFileDialog } = useDropzone({
     onDrop,
-    noClick: files.length > 0, // Disable click if files are already present
+    noClick: true, // We'll handle clicks manually
+    noKeyboard: true,
     getFilesFromEvent: async (event: any) => {
         const items = event.dataTransfer ? event.dataTransfer.items : [];
         const files: File[] = [];
@@ -389,7 +390,8 @@ export function FileUploader() {
       className: cn(`w-full flex-1 flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-lg cursor-pointer transition-colors`, {
         'border-primary bg-primary/10': isDragActive,
         'border-border hover:border-primary/50': !isDragActive,
-      })
+      }),
+      onClick: openFileDialog,
     })}>
         <input {...getInputProps()} />
         <div className="text-center">
@@ -421,9 +423,8 @@ export function FileUploader() {
                 <Button variant="ghost" size="icon" onClick={handleDeleteSelected} disabled={selectedFilePaths.size === 0} aria-label="Hapus file yang dipilih">
                 <Trash2 className="h-5 w-5" />
                 </Button>
-                <Button variant="ghost" size="icon" {...getRootProps({onClick: (e) => e.preventDefault()})} aria-label="Tambah file">
-                <PlusCircle className="h-5 w-5" />
-                <input {...getInputProps()} style={{ display: 'none' }} />
+                <Button variant="ghost" size="icon" onClick={openFileDialog} aria-label="Tambah file">
+                    <PlusCircle className="h-5 w-5" />
                 </Button>
             </div>
         </div>
@@ -593,6 +594,8 @@ export function FileUploader() {
     </>
   );
 }
+
+    
 
     
 

@@ -1,10 +1,10 @@
 
 'use client';
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { Loader2, CheckCircle, Github } from 'lucide-react';
+import { Loader2, CheckCircle, Github, X } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 type ModalStatus = 'inactive' | 'processing' | 'committing' | 'done';
@@ -70,6 +70,15 @@ export function UploadStatusModal({ status, progress, commitUrl, repoName, onRes
       case 'done':
         return (
           <>
+             <DialogClose asChild>
+                <button 
+                  onClick={onRestart}
+                  className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground"
+                >
+                  <X className="h-4 w-4" />
+                  <span className="sr-only">Close</span>
+                </button>
+            </DialogClose>
             <DialogHeader>
                 <motion.div
                     initial={{ scale: 0.5, opacity: 0 }}
@@ -102,10 +111,12 @@ export function UploadStatusModal({ status, progress, commitUrl, repoName, onRes
   };
 
   return (
-    <Dialog open={isOpen}>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onRestart()}>
       <DialogContent className="glass-card w-[95vw] max-w-md" onInteractOutside={(e) => e.preventDefault()}>
         {renderContent()}
       </DialogContent>
     </Dialog>
   );
 }
+
+    
