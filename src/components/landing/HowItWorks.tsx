@@ -1,4 +1,3 @@
-
 "use client";
 
 import { motion } from "framer-motion";
@@ -44,7 +43,7 @@ export function HowItWorks() {
   };
 
   return (
-    <section id="how-it-works" className="py-24 sm:py-32">
+    <section id="how-it-works" className="container py-24 sm:py-32">
       <div className="text-center mb-16">
         <h2 className="text-3xl md:text-5xl font-bold">Empat Langkah Sederhana</h2>
         <p className="mt-4 max-w-2xl mx-auto text-lg text-muted-foreground">
