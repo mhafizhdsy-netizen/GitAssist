@@ -5,8 +5,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import JSZip from 'jszip';
 import { Buffer } from 'buffer';
-import { UploadCloud, File, Github, Sparkles, Loader2, CheckCircle, ArrowRight, Folder, X, PlusCircle, Trash2 } from 'lucide-react';
-import { Progress } from '@/components/ui/progress';
+import { UploadCloud, File, Github, Sparkles, Folder, X, PlusCircle, Trash2, Loader2, ArrowRight } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,6 +17,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '../ui/skeleton';
 import { Checkbox } from '../ui/checkbox';
 import { cn } from '@/lib/utils';
+import { UploadStatusModal } from './UploadStatusModal';
+
 
 // Make Buffer available globally for JSZip to use
 if (typeof window !== 'undefined' && typeof (window as any).Buffer === 'undefined') {
@@ -31,7 +32,8 @@ type FileOrFolder = {
   content?: File | Blob;
 };
 
-type UploadStep = 'upload' | 'select-repo' | 'committing' | 'done';
+type UploadStep = 'upload' | 'select-repo';
+type ModalStatus = 'inactive' | 'processing' | 'committing' | 'done';
 
 type Repo = {
   id: number;
@@ -53,8 +55,7 @@ export function FileUploader() {
   const [githubToken, setGithubToken] = useState<string | null>(null);
 
   const [commitMessage, setCommitMessage] = useState('');
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [isCommitting, setIsCommitting] = useState(false);
+  const [modalStatus, setModalStatus] = useState<ModalStatus>('inactive');
   const [isGenerating, setIsGenerating] = useState(false);
   const [commitUrl, setCommitUrl] = useState('');
   const { toast } = useToast();
@@ -85,7 +86,7 @@ export function FileUploader() {
   }, [step, repos.length, toast, githubToken]);
 
   const handleZipExtraction = useCallback(async (zipFile: File, append = false) => {
-    setIsProcessing(true);
+    setModalStatus('processing');
     setUploadProgress(0);
     try {
       const zip = await JSZip.loadAsync(zipFile);
@@ -127,7 +128,7 @@ export function FileUploader() {
       });
       if (!append) resetState();
     } finally {
-      setIsProcessing(false);
+      setModalStatus('inactive');
     }
   }, [step, toast]);
 
@@ -299,8 +300,7 @@ export function FileUploader() {
         return;
     }
     
-    setIsCommitting(true);
-    setStep('committing');
+    setModalStatus('committing');
 
     try {
       const filesToCommitContent = await Promise.all(
@@ -326,7 +326,7 @@ export function FileUploader() {
 
       if (result.success && result.commitUrl) {
         setCommitUrl(result.commitUrl);
-        setStep('done');
+        setModalStatus('done');
         toast({ title: 'Berhasil!', description: 'File telah di-commit ke repositori.' });
       } else {
         throw new Error('Commit gagal karena alasan yang tidak diketahui.');
@@ -334,9 +334,7 @@ export function FileUploader() {
     } catch (error: any) {
         console.error(error);
         toast({ title: 'Commit Gagal', description: error.message || 'Tidak dapat melakukan commit file. Periksa URL dan izin.', variant: 'destructive' });
-        setStep('select-repo');
-    } finally {
-        setIsCommitting(false);
+        setModalStatus('inactive');
     }
   };
 
@@ -348,7 +346,7 @@ export function FileUploader() {
     setSelectedRepo('');
     setDestinationPath('');
     setCommitMessage('');
-    setIsProcessing(false);
+    setModalStatus('inactive');
     setCommitUrl('');
     setRepos([]);
     // Token state is preserved
@@ -373,55 +371,57 @@ export function FileUploader() {
   const isIndeterminate = selectedFilePaths.size > 0 && selectedFilePaths.size < files.length;
 
   const renderFileTree = () => (
-    <div className="mt-4 rounded-lg border bg-background/50">
-      <div className="flex justify-between items-center p-2 sm:p-3 border-b">
-        <div className='flex items-center gap-2 sm:gap-3'>
-          <Checkbox 
-            id="select-all"
-            checked={isAllSelected}
-            onCheckedChange={handleSelectAll}
-            aria-label="Pilih semua file"
-          />
-          <label htmlFor="select-all" className="font-semibold text-sm cursor-pointer whitespace-nowrap">
-            File ({selectedFilePaths.size}/{files.length})
-          </label>
+    <div {...getRootProps({className: "w-full flex-grow flex flex-col", onClick: (e) => e.preventDefault()})}>
+        <input {...getInputProps()} />
+        <div className="mt-4 rounded-lg border bg-background/50">
+        <div className="flex justify-between items-center p-2 sm:p-3 border-b">
+            <div className='flex items-center gap-2 sm:gap-3'>
+            <Checkbox 
+                id="select-all"
+                checked={isAllSelected}
+                onCheckedChange={handleSelectAll}
+                aria-label="Pilih semua file"
+            />
+            <label htmlFor="select-all" className="font-semibold text-sm cursor-pointer whitespace-nowrap">
+                File ({selectedFilePaths.size}/{files.length})
+            </label>
+            </div>
+            <div className="flex items-center gap-1 sm:gap-2">
+                <Button variant="ghost" size="icon" onClick={handleDeleteSelected} disabled={selectedFilePaths.size === 0} aria-label="Hapus file yang dipilih">
+                <Trash2 className="h-5 w-5" />
+                </Button>
+                <Button variant="ghost" size="icon" {...getRootProps({onClick: (e) => e.preventDefault()})} aria-label="Tambah file">
+                <PlusCircle className="h-5 w-5" />
+                <input {...getInputProps()} style={{ display: 'none' }} />
+                </Button>
+            </div>
         </div>
-        <div className="flex items-center gap-1 sm:gap-2">
-            <Button variant="ghost" size="icon" onClick={handleDeleteSelected} disabled={selectedFilePaths.size === 0} aria-label="Hapus file yang dipilih">
-              <Trash2 className="h-5 w-5" />
-            </Button>
-            <Button variant="ghost" size="icon" {...getRootProps({onClick: (e) => e.preventDefault()})} aria-label="Tambah file">
-              <PlusCircle className="h-5 w-5" />
-              <input {...getInputProps()} style={{ display: 'none' }} />
-            </Button>
+        <div className="max-h-48 overflow-y-auto p-3">
+            {files.length > 0 ? (
+            <ul className="space-y-2">
+                {files.map((file) => (
+                <li key={file.path} className="flex items-center text-sm text-muted-foreground group">
+                    <Checkbox
+                    id={`select-${file.path}`}
+                    className='mr-3'
+                    checked={selectedFilePaths.has(file.path)}
+                    onCheckedChange={(checked) => handleFileSelectionChange(file.path, checked)}
+                    />
+                    <File className="mr-2 h-4 w-4 flex-shrink-0" />
+                    <label htmlFor={`select-${file.path}`} className="truncate flex-grow cursor-pointer">{file.path}</label>
+                </li>
+                ))}
+            </ul>
+            ) : (
+            <p className="text-center text-xs text-muted-foreground py-4">Tidak ada file yang diunggah.</p>
+            )}
         </div>
-      </div>
-      <div className="max-h-48 overflow-y-auto p-3">
-        {files.length > 0 ? (
-          <ul className="space-y-2">
-            {files.map((file) => (
-              <li key={file.path} className="flex items-center text-sm text-muted-foreground group">
-                <Checkbox
-                  id={`select-${file.path}`}
-                  className='mr-3'
-                  checked={selectedFilePaths.has(file.path)}
-                  onCheckedChange={(checked) => handleFileSelectionChange(file.path, checked)}
-                />
-                <File className="mr-2 h-4 w-4 flex-shrink-0" />
-                <label htmlFor={`select-${file.path}`} className="truncate flex-grow cursor-pointer">{file.path}</label>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="text-center text-xs text-muted-foreground py-4">Tidak ada file yang diunggah.</p>
-        )}
-      </div>
+        </div>
     </div>
   );
 
   const renderSelectRepoStep = () => (
-    <div {...getRootProps({className: "w-full flex-grow flex flex-col", onClick: (e) => e.preventDefault()})}>
-        <input {...getInputProps()} />
+    <>
         {renderFileTree()}
         
         <div className="mt-6 space-y-6">
@@ -483,86 +483,59 @@ export function FileUploader() {
             </Button>
             </div>
         </div>
-    </div>
+    </>
   );
 
-  const renderProcessing = () => (
-    <div className="text-center space-y-4 py-10 h-full flex flex-col items-center justify-center">
-      <Loader2 className="mx-auto h-12 w-12 animate-spin text-primary" />
-      <p className="font-semibold text-lg">Memproses file ZIP...</p>
-      <Progress value={uploadProgress} className="w-full max-w-sm mx-auto" />
-      <p className="text-sm text-muted-foreground">{Math.round(uploadProgress)}%</p>
-    </div>
-  );
-
-  const renderCommittingStep = () => (
-    <div className="text-center space-y-4 py-10 h-full flex flex-col items-center justify-center">
-      <Loader2 className="mx-auto h-12 w-12 animate-spin text-primary" />
-      <p className="font-semibold text-lg">Melakukan Commit ke Repositori</p>
-      <p className="text-sm text-muted-foreground truncate max-w-sm">{selectedRepo}</p>
-    </div>
-  );
-
-  const renderDoneStep = () => (
-    <div className="text-center space-y-6 py-10 h-full flex flex-col items-center justify-center">
-      <CheckCircle className="mx-auto h-16 w-16 text-green-500" />
-      <div>
-        <p className="font-semibold text-xl">Commit Berhasil!</p>
-        <p className="text-muted-foreground mt-1">File Anda telah diunggah.</p>
-      </div>
-      <div className="flex flex-col sm:flex-row gap-4 justify-center">
-        <Button onClick={resetState} size="lg">Unggah File Lagi</Button>
-        <Button variant="outline" size="lg" asChild>
-          <a href={commitUrl} target="_blank" rel="noopener noreferrer">
-            Lihat Commit di GitHub <Github className="ml-2 h-4 w-4" />
-          </a>
-        </Button>
-      </div>
-    </div>
-  );
   
   const renderContent = () => {
-    if (isProcessing) return renderProcessing();
-    if (isCommitting || step === 'committing') return renderCommittingStep();
-    if (step === 'done') return renderDoneStep();
     if (step === 'select-repo') return renderSelectRepoStep();
-    return (
-      <div className="w-full h-full flex items-center justify-center">
-        {renderUploadStep()}
-      </div>
-    );
+    return renderUploadStep();
   };
 
   return (
-    <Card className="glass-card flex flex-col h-full">
-      <CardHeader>
-        <div className="flex items-center gap-3">
-            {step === 'upload' && !isProcessing && (
-                <div className="w-12 h-12 rounded-lg flex items-center justify-center bg-primary/10 border border-primary/20">
-                    <UploadCloud className="h-6 w-6 text-primary" />
-                </div>
-            )}
-            <div>
-                <CardTitle className="font-headline text-2xl">Unggah ke GitHub</CardTitle>
-                <CardDescription>
-                    {step === 'upload' ? 'Seret & lepas file, folder, atau ZIP untuk memulai.' : 'Atur detail commit Anda.'}
-                </CardDescription>
-            </div>
-        </div>
-      </CardHeader>
-      <CardContent className="p-6 flex-grow flex flex-col">
-        {renderContent()}
-      </CardContent>
-      {step === 'select-repo' && (
-        <CardFooter className="border-t pt-6 flex justify-between items-center">
-          <Button variant="ghost" onClick={resetState}>Mulai Ulang</Button>
-          <Button size="lg" onClick={handleCommit} disabled={isCommitting || isFetchingRepos || !githubToken || selectedFilePaths.size === 0}>
-            {isCommitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : `Commit (${selectedFilePaths.size}) File`}
-            {!isCommitting && <ArrowRight className="ml-2 h-4 w-4" />}
-          </Button>
-        </CardFooter>
-      )}
-    </Card>
+    <>
+      <UploadStatusModal 
+        status={modalStatus}
+        progress={uploadProgress}
+        commitUrl={commitUrl}
+        onRestart={resetState}
+        repoName={selectedRepo.split('/').pop() || ''}
+      />
+      <Card className="glass-card flex flex-col h-full">
+        <CardHeader>
+          <div className="flex items-center gap-3">
+              {step === 'upload' && (
+                  <div className="w-12 h-12 rounded-lg flex items-center justify-center bg-primary/10 border border-primary/20">
+                      <UploadCloud className="h-6 w-6 text-primary" />
+                  </div>
+              )}
+              <div>
+                  <CardTitle className="font-headline text-2xl">Unggah ke GitHub</CardTitle>
+                  <CardDescription>
+                      {step === 'upload' ? 'Seret & lepas file, folder, atau ZIP untuk memulai.' : 'Atur detail commit Anda.'}
+                  </CardDescription>
+              </div>
+          </div>
+        </CardHeader>
+        <CardContent className="p-6 flex-grow flex flex-col">
+            {step === 'upload' ? 
+              <div className="w-full h-full flex items-center justify-center">
+                {renderUploadStep()}
+              </div>
+            : renderSelectRepoStep()
+            }
+        </CardContent>
+        {step === 'select-repo' && (
+          <CardFooter className="border-t pt-6 flex justify-between items-center">
+            <Button variant="ghost" onClick={resetState}>Mulai Ulang</Button>
+            <Button size="lg" onClick={handleCommit} disabled={modalStatus !== 'inactive' || isFetchingRepos || !githubToken || selectedFilePaths.size === 0}>
+              {modalStatus === 'committing' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : `Commit (${selectedFilePaths.size}) File`}
+              {modalStatus !== 'committing' && <ArrowRight className="ml-2 h-4 w-4" />}
+            </Button>
+          </CardFooter>
+        )}
+      </Card>
+    </>
   );
 }
 
