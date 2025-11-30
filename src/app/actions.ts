@@ -97,8 +97,7 @@ export async function fetchUserRepos(githubToken: string, page: number = 1, perP
     if (!githubToken) {
         throw new Error('Token GitHub diperlukan.');
     }
-    // Using per_page to fetch up to 100 repositories, which is usually enough for the dropdown.
-    const repos = await api(`/user/repos?type=owner&sort=updated&page=${page}&per_page=${perPage}`, githubToken);
+    const repos = await api(`/user/repos?type=owner&sort=updated&per_page=100`, githubToken);
     
     if (!repos) return [];
 
@@ -280,3 +279,4 @@ export async function commitToRepo({ repoUrl, commitMessage, files, githubToken,
     throw new Error(error.message || 'Gagal melakukan commit file ke repositori.');
   }
 }
+
