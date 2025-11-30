@@ -37,7 +37,6 @@ export default function AccountPage() {
   };
   
   useEffect(() => {
-    // Moved token retrieval to its own effect to run once on mount
     const token = sessionStorage.getItem('github-token');
     if (!token) {
       setError("Token GitHub tidak ditemukan. Silakan masuk kembali.");
