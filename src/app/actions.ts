@@ -119,20 +119,18 @@ async function initializeEmptyRepository(
 ): Promise<{ success: boolean; commitUrl: string }> {
     console.log(`Memulai inisialisasi repositori kosong untuk ${owner}/${repo}`);
 
-    const blobs = await Promise.all(
-      files.map(async (file) => {
-        const base64Content = Buffer.from(file.content, 'utf-8').toString('base64');
-        const blobData = await api(`/repos/${owner}/${repo}/git/blobs`, token, {
-            method: 'POST',
-            body: JSON.stringify({ content: base64Content, encoding: 'base64' }),
-        });
-        return { path: file.path, sha: blobData.sha, mode: '100644', type: 'blob' as const };
-      })
-    );
+    const treeItems = files.map((file) => {
+        return {
+            path: file.path,
+            mode: '100644' as const,
+            type: 'blob' as const,
+            content: file.content
+        };
+    });
 
     const tree = await api(`/repos/${owner}/${repo}/git/trees`, token, {
         method: 'POST',
-        body: JSON.stringify({ tree: blobs }),
+        body: JSON.stringify({ tree: treeItems }),
     });
 
     const commit = await api(`/repos/${owner}/${repo}/git/commits`, token, {
@@ -181,7 +179,7 @@ async function commitToExistingRepo(
                 method: 'POST',
                 body: JSON.stringify({ content: base64Content, encoding: 'base64' }),
             });
-            return { path: file.path, sha: blob.sha, mode: '100644', type: 'blob' as const };
+            return { path: file.path, sha: blob.sha, mode: '100644' as const, type: 'blob' as const };
         })
     );
 
