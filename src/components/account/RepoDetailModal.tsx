@@ -5,8 +5,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { fetchRepoContents, type Repo, type RepoContent } from '@/app/actions';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Button } from '@/components/ui/button';
-import { Folder, File as FileIcon, Loader2, ArrowLeft, Home, ChevronRight, X } from 'lucide-react';
+import { Folder, File as FileIcon, Home, ChevronRight } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 
@@ -168,3 +167,5 @@ export default function RepoDetailModal({ isOpen, onClose, repo, githubToken }: 
     </Dialog>
   );
 }
+
+    
