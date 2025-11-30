@@ -112,9 +112,10 @@ export default function RepoDetailModal({ isOpen, onClose, repo, githubToken }: 
     if (typeof contents === 'string') {
       return (
         <ScrollArea className="h-[60vh] mt-4 rounded-md border bg-black/50">
-          <pre className="p-4 text-xs sm:text-sm font-mono whitespace-pre-wrap break-words">
+          <pre className="p-4 text-xs sm:text-sm font-mono">
             <code>{contents}</code>
           </pre>
+          <ScrollBar orientation="vertical" />
           <ScrollBar orientation="horizontal" />
         </ScrollArea>
       )
