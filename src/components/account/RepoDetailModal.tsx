@@ -167,5 +167,3 @@ export default function RepoDetailModal({ isOpen, onClose, repo, githubToken }: 
     </Dialog>
   );
 }
-
-    

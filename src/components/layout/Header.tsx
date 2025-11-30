@@ -72,31 +72,33 @@ const Header = () => {
             <span className="font-bold text-lg hidden sm:inline-block">GitAssist</span>
           </Link>
 
-          <nav className="hidden md:flex items-center gap-6">
-            <ul className="flex items-center gap-6">
-              {NAV_ITEMS.map((item) => (
-                <li key={item.label}>
-                  <Link
-                    href={item.href}
-                    className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-                  >
-                    {item.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-            <div className="ml-4">
-              <AuthButton />
+          {!isLoginPage && (
+            <>
+            <nav className="hidden md:flex items-center gap-6">
+                <ul className="flex items-center gap-6">
+                {NAV_ITEMS.map((item) => (
+                    <li key={item.label}>
+                    <Link
+                        href={item.href}
+                        className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+                    >
+                        {item.label}
+                    </Link>
+                    </li>
+                ))}
+                </ul>
+            </nav>
+            <div className="flex items-center gap-2">
+                <div className="hidden md:block">
+                    <AuthButton />
+                </div>
+                <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setMobileMenuOpen(true)}>
+                    <Menu />
+                    <span className="sr-only">Buka menu</span>
+                </Button>
             </div>
-          </nav>
-          
-          <div className="md:hidden flex items-center gap-2">
-            <AuthButton />
-            <Button variant="ghost" size="icon" onClick={() => setMobileMenuOpen(true)}>
-              <Menu />
-              <span className="sr-only">Buka menu</span>
-            </Button>
-          </div>
+          </>
+          )}
         </div>
       </header>
 
@@ -115,10 +117,13 @@ const Header = () => {
                   <CustomGitIcon className="h-6 w-6 text-primary" />
                   <span className="font-bold text-lg">GitAssist</span>
                 </Link>
-                <Button variant="ghost" size="icon" onClick={() => setMobileMenuOpen(false)}>
-                  <X />
-                  <span className="sr-only">Tutup menu</span>
-                </Button>
+                <div className="flex items-center gap-2">
+                    <AuthButton />
+                    <Button variant="ghost" size="icon" onClick={() => setMobileMenuOpen(false)}>
+                      <X />
+                      <span className="sr-only">Tutup menu</span>
+                    </Button>
+                </div>
               </div>
               <nav className="flex flex-col items-center justify-center flex-1 gap-8">
                  {NAV_ITEMS.map((item) => (
