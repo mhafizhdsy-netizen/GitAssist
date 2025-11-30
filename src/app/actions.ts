@@ -191,7 +191,7 @@ export async function commitToRepo({ repoUrl, commitMessage, files, githubToken,
   const refPath = `heads/${targetBranch}`;
 
   try {
-    // 1. Detect if the repository is empty by checking for the branch's ref
+    // 1. Detect if the repository branch exists
     const latestRef = await api(`/repos/${owner}/${repo}/git/refs/${refPath}`, githubToken);
 
     if (latestRef) {
@@ -221,7 +221,7 @@ export async function commitToRepo({ repoUrl, commitMessage, files, githubToken,
         body: JSON.stringify({ message: commitMessage, tree: newTree.sha, parents: [latestCommitSha] }),
       });
 
-      await api(`/repos/${owner}/${repo}/git/refs/${refPath}`, githubToken, {
+      const updatedRef = await api(`/repos/${owner}/${repo}/git/refs/${refPath}`, githubToken, {
         method: 'PATCH',
         body: JSON.stringify({ sha: newCommit.sha }),
       });
@@ -271,7 +271,8 @@ export async function commitToRepo({ repoUrl, commitMessage, files, githubToken,
         }),
       });
       
-      return { success: true, commitUrl: newCommit.html_url };
+      const commitHtmlUrl = `https://github.com/${owner}/${repo}/commit/${newCommit.sha}`;
+      return { success: true, commitUrl: commitHtmlUrl };
     }
   } catch (error: any) {
     console.error('Gagal melakukan commit ke GitHub:', error);
