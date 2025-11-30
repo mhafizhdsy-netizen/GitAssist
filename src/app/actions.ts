@@ -97,7 +97,7 @@ export async function fetchUserRepos(githubToken: string, page: number = 1, perP
     if (!githubToken) {
         throw new Error('Token GitHub diperlukan.');
     }
-    const repos = await api(`/user/repos?type=owner&sort=updated&per_page=100`, githubToken);
+    const repos = await api(`/user/repos?type=owner&sort=updated&per_page=${perPage}&page=${page}`, githubToken);
     
     if (!repos) return [];
 
