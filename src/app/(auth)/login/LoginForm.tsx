@@ -47,7 +47,7 @@ export function LoginForm() {
           title: 'Login Berhasil',
           description: `Selamat datang kembali, ${user.displayName || user.email}!`,
         });
-        router.push('/account');
+        router.push('/dashboard');
       } else {
         throw new Error("Tidak dapat mengambil token akses GitHub.");
       }
