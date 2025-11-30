@@ -5,9 +5,10 @@ import { useState, useEffect, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { fetchRepoContents, type Repo, type RepoContent } from '@/app/actions';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Folder, File as FileIcon, Home, ChevronRight } from 'lucide-react';
+import { Folder, File as FileIcon, Home, ChevronRight, ServerCrash } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import { Button } from '../ui/button';
 
 type RepoDetailModalProps = {
   isOpen: boolean;
@@ -26,7 +27,6 @@ export default function RepoDetailModal({ isOpen, onClose, repo, githubToken }: 
   const loadContents = useCallback((path: string) => {
     setLoading(true);
     setError(null);
-    setContents(null);
     fetchRepoContents(githubToken, repo.owner.login, repo.name, path)
       .then(data => {
         setContents(data);
@@ -47,62 +47,50 @@ export default function RepoDetailModal({ isOpen, onClose, repo, githubToken }: 
   useEffect(() => {
     if (isOpen) {
       loadContents('');
-    } else {
-      // Reset state when modal is closed
-      setTimeout(() => {
-        setCurrentPath('');
-        setContents(null);
-        setLoading(true);
-        setError(null);
-      }, 300); // Delay to allow for closing animation
     }
   }, [isOpen, loadContents]);
 
-  const handleItemClick = (item: RepoContent) => {
-    if (item.type === 'dir' || item.type === 'file') {
-      loadContents(item.path);
-    }
-  };
-  
   const handleBreadcrumbClick = (path: string) => {
       loadContents(path);
   };
+  
+  const handleItemClick = (item: RepoContent) => {
+    loadContents(item.path);
+  };
 
   const Breadcrumbs = () => {
-    const pathParts = currentPath.split('/').filter(Boolean);
-    const isFile = typeof contents === 'string';
+    const pathParts = ['root', ...currentPath.split('/').filter(Boolean)];
 
     return (
-        <div className="flex items-center gap-1.5 text-sm text-muted-foreground mb-4 flex-wrap bg-background/50 p-2 rounded-md">
-            <button onClick={() => handleBreadcrumbClick('')} className="flex items-center gap-1 hover:text-foreground">
-                <Home className="h-4 w-4" />
-            </button>
-            {(pathParts.length > 0) && <ChevronRight className="h-4 w-4" />}
-            {pathParts.map((part, index) => {
-                const path = pathParts.slice(0, index + 1).join('/');
-                const isLast = index === pathParts.length - 1;
-                return (
-                    <div key={path} className="flex items-center gap-1.5">
-                        <button 
-                            onClick={() => !isLast && handleBreadcrumbClick(path)} 
-                            className={`hover:text-foreground ${isLast ? 'text-foreground font-medium' : ''}`}
-                            disabled={isLast && isFile}
-                        >
-                            {part}
-                        </button>
-                        {!isLast && <ChevronRight className="h-4 w-4" />}
-                    </div>
-                )
-            })}
-        </div>
-    )
-  }
+      <div className="flex items-center gap-1.5 text-sm text-muted-foreground mb-4 flex-wrap bg-background/50 p-2 rounded-md border">
+        {pathParts.map((part, index) => {
+          const path = pathParts.slice(1, index + 1).join('/');
+          const isLast = index === pathParts.length - 1;
+          const Icon = part === 'root' ? Home : Folder;
+
+          return (
+            <div key={path} className="flex items-center gap-1.5">
+              <button
+                onClick={() => handleBreadcrumbClick(path)}
+                className={`flex items-center gap-1.5 ${isLast ? 'text-foreground font-medium cursor-default' : 'hover:text-foreground'}`}
+                disabled={isLast}
+              >
+                {part === 'root' && <Home className="h-4 w-4 flex-shrink-0" />}
+                <span className="truncate max-w-[150px]">{part === 'root' ? repo.name : part}</span>
+              </button>
+              {!isLast && <ChevronRight className="h-4 w-4 flex-shrink-0" />}
+            </div>
+          )
+        })}
+      </div>
+    );
+  };
 
   const renderContent = () => {
     if (loading) {
       return (
         <div className="space-y-2 mt-4">
-          {Array.from({ length: 5 }).map((_, i) => (
+          {Array.from({ length: 7 }).map((_, i) => (
             <Skeleton key={i} className="h-10 w-full" />
           ))}
         </div>
@@ -110,60 +98,77 @@ export default function RepoDetailModal({ isOpen, onClose, repo, githubToken }: 
     }
 
     if (error) {
-      return <p className="text-destructive text-center mt-4">{error}</p>;
+      return (
+        <div className="text-center py-10 flex flex-col items-center gap-4">
+          <ServerCrash className="h-12 w-12 text-destructive" />
+          <p className="text-destructive font-semibold">Gagal Memuat Konten</p>
+          <p className="text-sm text-muted-foreground max-w-sm">{error}</p>
+          <Button onClick={() => loadContents(currentPath)}>Coba lagi</Button>
+        </div>
+      );
     }
 
     if (typeof contents === 'string') {
-        return (
-            <ScrollArea className="h-[60vh] lg:h-[50vh] mt-4 rounded-md border bg-background/50">
-                <pre className="p-4 text-sm font-mono">{contents}</pre>
-                <ScrollBar orientation="horizontal" />
-            </ScrollArea>
-        )
+      return (
+        <ScrollArea className="h-[calc(80vh-150px)] sm:h-[calc(70vh-150px)] mt-4 rounded-md border bg-black/50">
+            <pre className="p-4 text-xs sm:text-sm font-mono"><code className="language-js">{contents}</code></pre>
+            <ScrollBar orientation="horizontal" />
+        </ScrollArea>
+      )
     }
 
-    if (Array.isArray(contents) && contents.length > 0) {
+    if (Array.isArray(contents)) {
+      if (contents.length === 0) {
+        return (
+          <div className="text-center py-10 flex flex-col items-center gap-4">
+            <Folder className="h-12 w-12 text-muted-foreground" />
+            <p className="text-muted-foreground">Folder ini kosong.</p>
+          </div>
+        );
+      }
       return (
-        <ScrollArea className="h-[60vh] lg:h-[50vh] mt-4">
-            <ul className="space-y-1">
+        <ScrollArea className="h-[calc(80vh-150px)] sm:h-[calc(70vh-150px)] mt-4">
+          <ul className="space-y-1">
             {contents.map(item => (
-                <li key={item.sha}>
+              <li key={item.sha}>
                 <button
-                    onClick={() => handleItemClick(item)}
-                    className="w-full flex items-center gap-3 p-2 rounded-md hover:bg-accent text-left"
+                  onClick={() => handleItemClick(item)}
+                  className="w-full flex items-center gap-3 p-2 rounded-md hover:bg-accent text-left transition-colors"
                 >
-                    {item.type === 'dir' ? (
-                    <Folder className="h-5 w-5 text-primary" />
-                    ) : (
-                    <FileIcon className="h-5 w-5 text-muted-foreground" />
-                    )}
-                    <span className="flex-grow truncate">{item.name}</span>
-                    {item.type === 'dir' && <ChevronRight className="h-5 w-5 text-muted-foreground" />}
+                  {item.type === 'dir' ? (
+                    <Folder className="h-5 w-5 text-primary flex-shrink-0" />
+                  ) : (
+                    <FileIcon className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                  )}
+                  <span className="flex-grow truncate">{item.name}</span>
+                  {item.type === 'dir' && <ChevronRight className="h-5 w-5 text-muted-foreground flex-shrink-0" />}
                 </button>
-                </li>
+              </li>
             ))}
-            </ul>
+          </ul>
         </ScrollArea>
       );
     }
     
-    return <p className="text-center mt-4 py-8 text-muted-foreground">Folder ini kosong.</p>;
+    return null;
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl glass-card">
+      <DialogContent className="max-w-3xl w-[95vw] glass-card">
         <DialogHeader>
           <DialogTitle className="truncate">Menjelajahi: {repo.full_name}</DialogTitle>
           <DialogDescription>
             Jelajahi file dan folder di dalam repositori.
           </DialogDescription>
         </DialogHeader>
-        <div className="py-2">
-            <Breadcrumbs />
-            {renderContent()}
+        <div>
+          <Breadcrumbs />
+          {renderContent()}
         </div>
       </DialogContent>
     </Dialog>
   );
 }
+
+    
