@@ -55,7 +55,9 @@ export default function RepoDetailModal({ isOpen, onClose, repo, githubToken }: 
   };
   
   const handleItemClick = (item: RepoContent) => {
-    loadContents(item.path);
+    if (item.type === 'dir' || item.type === 'file') {
+      loadContents(item.path);
+    }
   };
 
   const Breadcrumbs = () => {
@@ -66,8 +68,7 @@ export default function RepoDetailModal({ isOpen, onClose, repo, githubToken }: 
         {pathParts.map((part, index) => {
           const path = pathParts.slice(1, index + 1).join('/');
           const isLast = index === pathParts.length - 1;
-          const Icon = part === 'root' ? Home : Folder;
-
+          
           return (
             <div key={path} className="flex items-center gap-1.5">
               <button
@@ -75,7 +76,7 @@ export default function RepoDetailModal({ isOpen, onClose, repo, githubToken }: 
                 className={`flex items-center gap-1.5 ${isLast ? 'text-foreground font-medium cursor-default' : 'hover:text-foreground'}`}
                 disabled={isLast}
               >
-                {part === 'root' && <Home className="h-4 w-4 flex-shrink-0" />}
+                {part === 'root' ? <Home className="h-4 w-4 flex-shrink-0" /> : <Folder className="h-4 w-4 flex-shrink-0" />}
                 <span className="truncate max-w-[150px]">{part === 'root' ? repo.name : part}</span>
               </button>
               {!isLast && <ChevronRight className="h-4 w-4 flex-shrink-0" />}
@@ -110,9 +111,11 @@ export default function RepoDetailModal({ isOpen, onClose, repo, githubToken }: 
 
     if (typeof contents === 'string') {
       return (
-        <ScrollArea className="h-[calc(80vh-150px)] sm:h-[calc(70vh-150px)] mt-4 rounded-md border bg-black/50">
-            <pre className="p-4 text-xs sm:text-sm font-mono"><code className="language-js">{contents}</code></pre>
-            <ScrollBar orientation="horizontal" />
+        <ScrollArea className="h-[60vh] mt-4 rounded-md border bg-black/50">
+          <pre className="p-4 text-xs sm:text-sm font-mono whitespace-pre w-full">
+            <code>{contents}</code>
+          </pre>
+          <ScrollBar orientation="horizontal" />
         </ScrollArea>
       )
     }
@@ -127,7 +130,7 @@ export default function RepoDetailModal({ isOpen, onClose, repo, githubToken }: 
         );
       }
       return (
-        <ScrollArea className="h-[calc(80vh-150px)] sm:h-[calc(70vh-150px)] mt-4">
+        <ScrollArea className="h-[60vh] mt-4">
           <ul className="space-y-1">
             {contents.map(item => (
               <li key={item.sha}>
@@ -170,5 +173,3 @@ export default function RepoDetailModal({ isOpen, onClose, repo, githubToken }: 
     </Dialog>
   );
 }
-
-    
