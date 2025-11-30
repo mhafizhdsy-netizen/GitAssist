@@ -60,8 +60,8 @@ export function FileUploader() {
   const { toast } = useToast();
 
   useEffect(() => {
-    // Safely access sessionStorage only on the client side after mount
-    const token = sessionStorage.getItem('github-token');
+    // Safely access localStorage only on the client side
+    const token = localStorage.getItem('github-token');
     if (token) {
       setGithubToken(token);
     }
@@ -306,7 +306,7 @@ export function FileUploader() {
   };
 
   const handleCommit = async () => {
-    const token = githubToken || sessionStorage.getItem('github-token');
+    const token = githubToken || localStorage.getItem('github-token');
     if (!token) {
       toast({
         title: 'Kesalahan Autentikasi',
@@ -337,10 +337,10 @@ export function FileUploader() {
           .filter((f) => f.type === 'file' && f.content)
           .map(async (file) => {
             const fileContent = file.content as (File | Blob);
-            const content = await fileContent.arrayBuffer();
+            const textContent = await fileContent.text();
             return {
               path: file.path,
-              content: Buffer.from(content).toString('base64'),
+              content: textContent,
             };
           })
       );

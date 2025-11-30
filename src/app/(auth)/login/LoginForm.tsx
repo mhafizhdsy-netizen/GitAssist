@@ -40,8 +40,8 @@ export function LoginForm() {
       const githubToken = credential?.accessToken;
 
       if (user && githubToken) {
-        // Store the token in session storage for the current session
-        sessionStorage.setItem('github-token', githubToken);
+        // Store the token in local storage for persistence
+        localStorage.setItem('github-token', githubToken);
 
         toast({
           title: 'Login Berhasil',
@@ -53,7 +53,7 @@ export function LoginForm() {
       }
     } catch (error: any) {
       console.error('Error saat masuk dengan GitHub:', error);
-      sessionStorage.removeItem('github-token');
+      localStorage.removeItem('github-token');
       toast({
         title: 'Autentikasi Gagal',
         description: error.message || 'Tidak dapat melakukan autentikasi dengan GitHub. Silakan coba lagi.',

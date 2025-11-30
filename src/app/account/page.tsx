@@ -39,7 +39,7 @@ export default function AccountPage() {
   };
   
   useEffect(() => {
-    const token = sessionStorage.getItem('github-token');
+    const token = localStorage.getItem('github-token');
     if (token) {
       setGithubToken(token);
     } else {

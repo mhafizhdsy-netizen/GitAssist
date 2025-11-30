@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -33,8 +34,8 @@ export default function AuthButton() {
   };
 
   const handleSignOut = async () => {
-    // Clear the session storage on the client
-    sessionStorage.removeItem('github-token');
+    // Clear the local storage on the client
+    localStorage.removeItem('github-token');
     
     if (auth) {
         // Sign out on the client
