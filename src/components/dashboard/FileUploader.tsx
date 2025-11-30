@@ -96,6 +96,7 @@ export function FileUploader() {
       for (const zipEntry of allFiles) {
         const blob = await zipEntry.async('blob');
         const fileName = zipEntry.name.split('/').pop() || zipEntry.name;
+        // CORRECTED: Use the full zipEntry.name as the path
         const newFile = new File([blob], fileName, { type: blob.type });
 
         extracted.push({ name: fileName, path: zipEntry.name, type: 'file', content: newFile });
@@ -439,3 +440,5 @@ export function FileUploader() {
     </Card>
   );
 }
+
+    
