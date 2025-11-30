@@ -111,6 +111,7 @@ export function FileUploader() {
     }
     setIsGenerating(true);
     try {
+      // Create a simplified diff for the AI
       const diff = files.map((f) => `+++ ${f.path}`).join('\n');
       const result = await generateCommitMessage({ diff });
       setCommitMessage(result.commitMessage);
