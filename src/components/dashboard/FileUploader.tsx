@@ -83,7 +83,7 @@ export function FileUploader() {
     }
   }, [step, repos.length, toast, githubToken]);
 
-  const handleZipExtraction = async (zipFile: File, append = false) => {
+  const handleZipExtraction = useCallback(async (zipFile: File, append = false) => {
     setIsProcessing(true);
     setUploadProgress(0);
     try {
@@ -110,6 +110,7 @@ export function FileUploader() {
       }
 
       setFiles(prev => append ? [...prev, ...extracted] : extracted);
+      setSelectedFilePaths(new Set(extracted.map(f => f.path)));
       if (step !== 'select-repo') setStep('select-repo');
       toast({ title: 'Berhasil', description: `${extracted.length} file diekstrak dan ditambahkan.` });
     } catch (error: any) {
@@ -123,7 +124,7 @@ export function FileUploader() {
     } finally {
       setIsProcessing(false);
     }
-  };
+  }, [step, toast]);
 
   const onDrop = useCallback(
     (acceptedFiles: File[]) => {
@@ -149,17 +150,19 @@ export function FileUploader() {
           type: 'file',
           content: file,
         }));
-        setFiles(prev => [...prev, ...fileList]);
+        setFiles(prev => {
+          const newFiles = [...prev, ...fileList];
+          setSelectedFilePaths(new Set(newFiles.map(f => f.path)));
+          return newFiles;
+        });
         if (step !== 'select-repo') setStep('select-repo');
       }
     },
-    [toast, files.length, step, handleZipExtraction]
+    [files.length, step, toast, handleZipExtraction]
   );
 
-  const { getRootProps, getInputProps, isDragActive, open: openFilePicker } = useDropzone({
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
-    noClick: true,
-    noKeyboard: true,
     getFilesFromEvent: async (event: any) => {
         const files = event.dataTransfer ? event.dataTransfer.files : event.target.files;
         const fileList: File[] = [];
@@ -191,6 +194,7 @@ export function FileUploader() {
   };
 
   const handleDeleteSelected = () => {
+    if (selectedFilePaths.size === 0) return;
     const newFiles = files.filter(f => !selectedFilePaths.has(f.path));
     setFiles(newFiles);
     toast({
@@ -204,14 +208,15 @@ export function FileUploader() {
   };
 
   const handleGenerateCommitMessage = async () => {
-    if (files.length === 0) {
-      toast({ title: 'Tidak ada file', description: 'Tidak ada file untuk membuat pesan commit.', variant: 'destructive' });
+    const filesToConsider = files.filter(f => selectedFilePaths.has(f.path));
+    if (filesToConsider.length === 0) {
+      toast({ title: 'Tidak ada file dipilih', description: 'Pilih file untuk membuat pesan commit.', variant: 'destructive' });
       return;
     }
     setIsGenerating(true);
     try {
       // Create a simplified diff for AI context
-      const diff = files.map((f) => `A ${f.path}`).join('\n');
+      const diff = filesToConsider.map((f) => `A ${f.path}`).join('\n');
       const result = await generateCommitMessage({ diff });
       setCommitMessage(result.commitMessage);
     } catch (error) {
@@ -240,13 +245,18 @@ export function FileUploader() {
       toast({ title: 'Pesan commit diperlukan', variant: 'destructive' });
       return;
     }
+    const filesToCommitPaths = files.filter(f => selectedFilePaths.has(f.path));
+    if (filesToCommitPaths.length === 0) {
+        toast({ title: 'Tidak ada file dipilih', description: 'Pilih setidaknya satu file untuk di-commit.', variant: 'destructive' });
+        return;
+    }
     
     setIsCommitting(true);
     setStep('committing');
 
     try {
-      const filesToCommit = await Promise.all(
-        files
+      const filesToCommitContent = await Promise.all(
+        filesToCommitPaths
           .filter((f) => f.type === 'file' && f.content)
           .map(async (file) => {
             const fileContent = file.content as (File | Blob);
@@ -261,7 +271,7 @@ export function FileUploader() {
       const result = await commitToRepo({
           repoUrl: selectedRepo,
           commitMessage,
-          files: filesToCommit,
+          files: filesToCommitContent,
           githubToken: token,
           destinationPath
       });
@@ -297,13 +307,12 @@ export function FileUploader() {
   };
   
   const renderUploadStep = () => (
-    <div {...getRootProps({onClick: (e) => e.preventDefault()})} className={`w-full h-full flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${isDragActive ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50'}`}>
+    <div {...getRootProps()} className={`w-full h-full flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${isDragActive ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50'}`}>
         <input {...getInputProps()} />
         <div className="text-center">
             <UploadCloud className="mx-auto h-16 w-16 text-muted-foreground" />
             <p className="mt-4 font-semibold text-lg">Seret & lepas file, folder, atau arsip ZIP</p>
-            <p className="mt-1 text-sm text-muted-foreground">atau</p>
-            <Button onClick={openFilePicker} variant="link" className="text-base">klik untuk menelusuri</Button>
+            <p className="mt-1 text-sm text-muted-foreground">atau klik untuk menelusuri</p>
         </div>
     </div>
   );
@@ -313,28 +322,24 @@ export function FileUploader() {
 
   const renderFileTree = () => (
     <div className="mt-4 rounded-lg border bg-background/50">
-      <div className="flex justify-between items-center p-3 border-b">
-        <div className='flex items-center gap-3'>
+      <div className="flex justify-between items-center p-2 sm:p-3 border-b">
+        <div className='flex items-center gap-2 sm:gap-3'>
           <Checkbox 
             id="select-all"
             checked={isAllSelected}
             onCheckedChange={handleSelectAll}
             aria-label="Pilih semua file"
           />
-          <label htmlFor="select-all" className="font-semibold text-sm cursor-pointer">
-            File yang akan di-commit ({files.length})
+          <label htmlFor="select-all" className="font-semibold text-sm cursor-pointer whitespace-nowrap">
+            File ({files.length})
           </label>
         </div>
-        <div className="flex items-center gap-2">
-            {selectedFilePaths.size > 0 && (
-                <Button variant="destructive" size="sm" onClick={handleDeleteSelected}>
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Hapus ({selectedFilePaths.size})
-                </Button>
-            )}
-            <Button variant="outline" size="sm" onClick={openFilePicker}>
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Tambah
+        <div className="flex items-center gap-1 sm:gap-2">
+            <Button variant="ghost" size="icon" onClick={handleDeleteSelected} disabled={selectedFilePaths.size === 0} aria-label="Hapus file yang dipilih">
+              <Trash2 className="h-5 w-5" />
+            </Button>
+            <Button variant="ghost" size="icon" onClick={() => getRootProps().onClick?.(new Event('click') as any)} aria-label="Tambah file">
+              <PlusCircle className="h-5 w-5" />
             </Button>
         </div>
       </div>
@@ -478,15 +483,14 @@ export function FileUploader() {
           </div>
         </div>
       </CardHeader>
-      <CardContent {...getRootProps({onClick: (e) => e.preventDefault()})} className="p-6 flex-grow">
-        <input {...getInputProps()} />
+      <CardContent className="p-6 flex-grow flex">
         {currentStepContent}
       </CardContent>
       {step === 'select-repo' && (
         <CardFooter className="border-t pt-6 flex justify-between items-center">
           <Button variant="ghost" onClick={resetState}>Mulai Ulang</Button>
-          <Button size="lg" onClick={handleCommit} disabled={isCommitting || isFetchingRepos || !githubToken}>
-            {isCommitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Commit File'}
+          <Button size="lg" onClick={handleCommit} disabled={isCommitting || isFetchingRepos || !githubToken || selectedFilePaths.size === 0}>
+            {isCommitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : `Commit (${selectedFilePaths.size}) File`}
             {!isCommitting && <ArrowRight className="ml-2 h-4 w-4" />}
           </Button>
         </CardFooter>
@@ -495,4 +499,4 @@ export function FileUploader() {
   );
 }
 
-  
+    
