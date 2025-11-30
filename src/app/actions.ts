@@ -61,51 +61,47 @@ type CommitParams = {
 };
 
 async function api(url: string, token: string, options: RequestInit = {}) {
-  const response = await fetch(`https://api.github.com${url}`, {
-    ...options,
-    headers: {
-      ...options.headers,
-      Authorization: `Bearer ${token}`,
-      Accept: 'application/vnd.github.v3+json',
-      'X-GitHub-Api-Version': '2022-11-28',
-    },
-  });
-
-  if (response.status === 404 || response.status === 409) {
-    if (url.includes('/git/ref/heads/') || url.includes('/repos/')) {
-        return null;
-    }
-  }
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: response.statusText }));
-    console.error('GitHub API Error:', `[${options.method || 'GET'}] ${url}`, response.status, error);
-    throw new Error(error.message || `Permintaan GitHub API ke ${url} gagal dengan status ${response.status}`);
-  }
-
-  if (response.status === 204 || response.headers.get('Content-Length') === '0') {
-    return null;
-  }
+    const response = await fetch(`https://api.github.com${url}`, {
+      ...options,
+      headers: {
+        ...options.headers,
+        Authorization: `Bearer ${token}`,
+        Accept: 'application/vnd.github.v3+json',
+        'X-GitHub-Api-Version': '2022-11-28',
+      },
+    });
   
-  return response.json();
+    // Handle 404 for 'get ref' specifically to detect empty repos
+    if (response.status === 404 && url.includes('/git/refs/heads/')) {
+      return null;
+    }
+  
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: response.statusText }));
+      console.error('GitHub API Error:', `[${options.method || 'GET'}] ${url}`, response.status, error);
+      throw new Error(error.message || `Permintaan GitHub API ke ${url} gagal dengan status ${response.status}`);
+    }
+  
+    if (response.status === 204 || response.headers.get('Content-Length') === '0') {
+      return null;
+    }
+    
+    return response.json();
 }
 
 async function isRepositoryEmpty(owner: string, repo: string, token: string): Promise<boolean> {
     try {
         const repoData = await api(`/repos/${owner}/${repo}`, token);
-        if (!repoData) return true; // Repositori tidak ditemukan
+        if (!repoData) return true; // Should not happen if repo exists
 
-        // Jika tidak ada commit sama sekali (size=0), repo kosong
-        if (repoData.size === 0) return true;
-
+        // A truly empty repository (just created) will have size 0 and no default branch findable
         const branchName = repoData.default_branch || 'main';
-        const refData = await api(`/repos/${owner}/${repo}/git/ref/heads/${branchName}`, token);
+        const refData = await api(`/repos/${owner}/${repo}/git/refs/heads/${branchName}`, token);
         
-        // Jika ref tidak ditemukan (null), maka repositori kosong
         return refData === null;
     } catch (error) {
         console.error("Error saat mendeteksi repositori kosong:", error);
-        return true; // Asumsikan kosong jika ada error
+        return true; // Fail-safe: assume empty on error
     }
 }
 
@@ -114,11 +110,10 @@ async function initializeEmptyRepository(
     repo: string,
     files: Array<{ path: string; content: string }>,
     token: string,
-    branchName: string,
+    targetBranch: string,
     commitMessage: string
 ): Promise<{ success: boolean; commitUrl: string }> {
-
-    console.log(`Starting empty repository initialization for ${owner}/${repo}`);
+    console.log(`Memulai inisialisasi repositori kosong untuk ${owner}/${repo}`);
 
     const blobs = await Promise.all(
       files.map(async (file) => {
@@ -132,7 +127,7 @@ async function initializeEmptyRepository(
 
     const tree = await api(`/repos/${owner}/${repo}/git/trees`, token, {
         method: 'POST',
-        body: JSON.stringify({ tree: blobs }),
+        body: JSON.stringify({ tree: blobs }), // No base_tree for initial commit
     });
 
     const commit = await api(`/repos/${owner}/${repo}/git/commits`, token, {
@@ -140,21 +135,21 @@ async function initializeEmptyRepository(
         body: JSON.stringify({
             message: commitMessage,
             tree: tree.sha,
-            parents: [],
+            parents: [], // No parents for initial commit
         }),
     });
 
+    // CRITICAL: Create the new branch reference
     await api(`/repos/${owner}/${repo}/git/refs`, token, {
         method: 'POST',
         body: JSON.stringify({
-            ref: `refs/heads/${branchName}`,
+            ref: `refs/heads/${targetBranch}`,
             sha: commit.sha,
         }),
     });
 
     return { success: true, commitUrl: commit.html_url };
 }
-
 
 async function commitToExistingRepo(
     owner: string,
@@ -164,7 +159,7 @@ async function commitToExistingRepo(
     targetBranch: string,
     commitMessage: string
 ): Promise<{ success: boolean; commitUrl: string }> {
-    console.log(`Committing to existing repository ${owner}/${repo} on branch ${targetBranch}`);
+    console.log(`Melakukan commit ke repositori yang sudah ada ${owner}/${repo} di branch ${targetBranch}`);
 
     const refData = await api(`/repos/${owner}/${repo}/git/refs/heads/${targetBranch}`, token);
     if (!refData) {
@@ -221,16 +216,14 @@ export async function commitToRepo({ repoUrl, commitMessage, files, githubToken,
 
     try {
         const repoIsEmpty = await isRepositoryEmpty(owner, repo, githubToken);
+        const repoInfo = await api(`/repos/${owner}/${repo}`, githubToken);
+        const targetBranch = branchName || repoInfo.default_branch || 'main';
         
         if (repoIsEmpty) {
-            console.log('Repository kosong terdeteksi. Menjalankan inisialisasi...');
-            const repoInfo = await api(`/repos/${owner}/${repo}`, githubToken);
-            const targetBranch = branchName || repoInfo?.default_branch || 'main';
+            console.log('⚠️ Repositori kosong terdeteksi. Menjalankan inisialisasi...');
             return await initializeEmptyRepository(owner, repo, finalFiles, githubToken, targetBranch, commitMessage);
         } else {
-            console.log('Repository sudah ada isinya. Melanjutkan commit standar...');
-            const repoInfo = await api(`/repos/${owner}/${repo}`, githubToken);
-            const targetBranch = branchName || repoInfo.default_branch || 'main';
+            console.log('✓ Repositori sudah ada isinya. Melanjutkan commit standar...');
             return await commitToExistingRepo(owner, repo, finalFiles, githubToken, targetBranch, commitMessage);
         }
     } catch (error: any) {
@@ -289,7 +282,6 @@ export async function fetchRepoContents(githubToken: string, owner: string, repo
     try {
       const contents = await api(`/repos/${owner}/${repo}/contents/${path}`, githubToken);
       
-      // If the repo is completely empty, the initial call might return null
       if (contents === null) {
           return [];
       }
