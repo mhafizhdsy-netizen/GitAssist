@@ -71,18 +71,15 @@ async function api(url: string, token: string, options: RequestInit = {}) {
     },
   });
 
-  // Specifically for get ref, a 404 means the branch/repo is empty or doesn't exist.
-  if (response.status === 404 && url.includes('/git/ref')) {
-      return null;
-  }
-  
-  if (response.status === 409 && url.includes('/git/ref')) { // 409 Conflict can also mean empty repo
-      return null;
+  if (response.status === 404 || response.status === 409) {
+    if (url.includes('/git/ref/heads/') || url.includes('/repos/')) {
+        return null;
+    }
   }
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({ message: response.statusText }));
-    console.error('GitHub API Error:', error);
+    console.error('GitHub API Error:', `[${options.method || 'GET'}] ${url}`, response.status, error);
     throw new Error(error.message || `Permintaan GitHub API ke ${url} gagal dengan status ${response.status}`);
   }
 
@@ -93,24 +90,45 @@ async function api(url: string, token: string, options: RequestInit = {}) {
   return response.json();
 }
 
+async function isRepositoryEmpty(owner: string, repo: string, token: string): Promise<boolean> {
+    try {
+        const repoData = await api(`/repos/${owner}/${repo}`, token);
+        if (!repoData) return true; // Repositori tidak ditemukan
+
+        // Jika tidak ada commit sama sekali (size=0), repo kosong
+        if (repoData.size === 0) return true;
+
+        const branchName = repoData.default_branch || 'main';
+        const refData = await api(`/repos/${owner}/${repo}/git/ref/heads/${branchName}`, token);
+        
+        // Jika ref tidak ditemukan (null), maka repositori kosong
+        return refData === null;
+    } catch (error) {
+        console.error("Error saat mendeteksi repositori kosong:", error);
+        return true; // Asumsikan kosong jika ada error
+    }
+}
+
 async function initializeEmptyRepository(
     owner: string,
     repo: string,
     files: Array<{ path: string; content: string }>,
     token: string,
-    targetBranch: string,
-    commitMessage: string = 'Initial commit via GitAssist'
+    branchName: string,
+    commitMessage: string
 ): Promise<{ success: boolean; commitUrl: string }> {
 
     console.log(`Starting empty repository initialization for ${owner}/${repo}`);
 
-    const blobs = await Promise.all(files.map(async (file) => {
+    const blobs = await Promise.all(
+      files.map(async (file) => {
         const blobData = await api(`/repos/${owner}/${repo}/git/blobs`, token, {
             method: 'POST',
             body: JSON.stringify({ content: file.content, encoding: 'base64' }),
         });
-        return { path: file.path, sha: blobData.sha, mode: '100644', type: 'blob' };
-    }));
+        return { path: file.path, sha: blobData.sha, mode: '100644', type: 'blob' as const };
+      })
+    );
 
     const tree = await api(`/repos/${owner}/${repo}/git/trees`, token, {
         method: 'POST',
@@ -129,7 +147,7 @@ async function initializeEmptyRepository(
     await api(`/repos/${owner}/${repo}/git/refs`, token, {
         method: 'POST',
         body: JSON.stringify({
-            ref: `refs/heads/${targetBranch}`,
+            ref: `refs/heads/${branchName}`,
             sha: commit.sha,
         }),
     });
@@ -163,7 +181,7 @@ async function commitToExistingRepo(
                 method: 'POST',
                 body: JSON.stringify({ content: file.content, encoding: 'base64' }),
             });
-            return { path: file.path, sha: blob.sha, mode: '100644', type: 'blob' };
+            return { path: file.path, sha: blob.sha, mode: '100644', type: 'blob' as const };
         })
     );
 
@@ -196,22 +214,23 @@ export async function commitToRepo({ repoUrl, commitMessage, files, githubToken,
     }
     const [owner, repo] = urlParts;
 
-    const repoInfo = await api(`/repos/${owner}/${repo}`, githubToken);
-    const targetBranch = branchName || repoInfo.default_branch || 'main';
-    
-    const finalFiles = files.map(file => ({
-        ...file,
-        path: destinationPath ? `${destinationPath.replace(/^\/|\/$/g, '')}/${file.path}` : file.path
-    }));
+    const finalFiles = files.map(file => {
+      const finalPath = destinationPath ? `${destinationPath.replace(/^\/|\/$/g, '')}/${file.path}` : file.path;
+      return { ...file, path: finalPath };
+    });
 
     try {
-        const branchRef = await api(`/repos/${owner}/${repo}/git/ref/heads/${targetBranch}`, githubToken);
-
-        if (!branchRef) {
-            console.log('Repo / branch is empty. Initializing...');
+        const repoIsEmpty = await isRepositoryEmpty(owner, repo, githubToken);
+        
+        if (repoIsEmpty) {
+            console.log('Repository kosong terdeteksi. Menjalankan inisialisasi...');
+            const repoInfo = await api(`/repos/${owner}/${repo}`, githubToken);
+            const targetBranch = branchName || repoInfo?.default_branch || 'main';
             return await initializeEmptyRepository(owner, repo, finalFiles, githubToken, targetBranch, commitMessage);
         } else {
-            console.log('Repo / branch has content. Committing to existing...');
+            console.log('Repository sudah ada isinya. Melanjutkan commit standar...');
+            const repoInfo = await api(`/repos/${owner}/${repo}`, githubToken);
+            const targetBranch = branchName || repoInfo.default_branch || 'main';
             return await commitToExistingRepo(owner, repo, finalFiles, githubToken, targetBranch, commitMessage);
         }
     } catch (error: any) {
@@ -220,15 +239,14 @@ export async function commitToRepo({ repoUrl, commitMessage, files, githubToken,
     }
 }
 
-
 export async function fetchUserRepos(githubToken: string, page: number = 1, perPage: number = 100): Promise<Repo[]> {
     if (!githubToken) {
         throw new Error('Token GitHub diperlukan.');
     }
-    // Correctly use pagination parameters
+    
     const repos = await api(`/user/repos?type=owner&sort=updated&per_page=${perPage}&page=${page}`, githubToken);
     
-    if (!repos) return [];
+    if (!Array.isArray(repos)) return [];
 
     return repos.map((repo: any) => ({
         id: repo.id,
@@ -256,7 +274,7 @@ export async function fetchRepoBranches(githubToken: string, owner: string, repo
         const branches = await api(`/repos/${owner}/${repo}/branches`, githubToken);
         return branches || [];
     } catch (error: any) {
-        if (error.message && error.message.includes('Git Repository is empty')) {
+        if (error.message && (error.message.includes('Git Repository is empty') || error.message.includes('Not Found'))) {
             return [];
         }
         console.error("Gagal mengambil branches:", error);
@@ -264,14 +282,18 @@ export async function fetchRepoBranches(githubToken: string, owner: string, repo
     }
 }
 
-
 export async function fetchRepoContents(githubToken: string, owner: string, repo: string, path: string = ''): Promise<RepoContent[] | string> {
     if (!githubToken) {
         throw new Error('Token GitHub diperlukan.');
     }
     try {
       const contents = await api(`/repos/${owner}/${repo}/contents/${path}`, githubToken);
-    
+      
+      // If the repo is completely empty, the initial call might return null
+      if (contents === null) {
+          return [];
+      }
+
       if (typeof contents?.content === 'string' && contents.encoding === 'base64') {
           return Buffer.from(contents.content, 'base64').toString('utf-8');
       }
@@ -294,9 +316,11 @@ export async function fetchRepoContents(githubToken: string, owner: string, repo
           download_url: item.download_url
       }));
     } catch (error: any) {
-      if (error.message && error.message.includes("This repository is empty")) {
+      if (error.message && (error.message.includes("This repository is empty") || error.message.includes("Not Found"))) {
         return [];
       }
       throw error;
     }
 }
+
+    
