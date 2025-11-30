@@ -75,7 +75,7 @@ async function api(url: string, token: string, options: RequestInit = {}) {
 
   // Specifically for get ref, a 404 means the branch/repo is empty or doesn't exist.
   // This is a valid scenario for an initial commit.
-  if (response.status === 404 && url.includes('/git/ref')) {
+  if (response.status === 404 && url.includes('/git/refs/heads/')) {
       return null;
   }
 
@@ -86,7 +86,7 @@ async function api(url: string, token: string, options: RequestInit = {}) {
   }
 
   // Check if the response is empty (e.g., 204 No Content)
-  if (response.status === 204) {
+  if (response.status === 204 || response.headers.get('Content-Length') === '0') {
     return null;
   }
   
@@ -176,8 +176,6 @@ export async function fetchRepoContents(githubToken: string, owner: string, repo
     }
 }
 
-
-
 export async function commitToRepo({ repoUrl, commitMessage, files, githubToken, destinationPath, branchName }: CommitParams) {
   if (!githubToken) {
     throw new Error('Token GitHub diperlukan.');
@@ -189,79 +187,73 @@ export async function commitToRepo({ repoUrl, commitMessage, files, githubToken,
   }
   const [owner, repo] = urlParts;
 
-  try {
-    const targetBranch = branchName || 'main';
-    const refPath = `heads/${targetBranch}`;
+  const targetBranch = branchName || 'main';
+  const refPath = `heads/${targetBranch}`;
 
-    // 1. Get the latest ref for the branch. A 404 (returns null) means the branch/repo is empty.
+  try {
+    // 1. Detect if the repository is empty by checking for the branch's ref
     const latestRef = await api(`/repos/${owner}/${repo}/git/refs/${refPath}`, githubToken);
 
-    const fileBlobs = await Promise.all(
-      files.map(async (file) => {
-        const blob = await api(`/repos/${owner}/${repo}/git/blobs`, githubToken, {
-          method: 'POST',
-          body: JSON.stringify({
-            content: file.content,
-            encoding: 'base64',
-          }),
-        });
-
-        const finalPath = destinationPath ? `${destinationPath.replace(/^\/|\/$/g, '')}/${file.path}` : file.path;
-
-        return {
-          path: finalPath,
-          sha: blob.sha,
-          mode: '100644', // file mode
-          type: 'blob',
-        };
-      })
-    );
-
-    let newCommit;
-
-    if (latestRef && latestRef.object) {
+    if (latestRef) {
       // ===== EXISTING REPO/BRANCH LOGIC =====
       const latestCommitSha = latestRef.object.sha;
       const latestCommitData = await api(`/repos/${owner}/${repo}/git/commits/${latestCommitSha}`, githubToken);
       const baseTreeSha = latestCommitData.tree.sha;
 
+      const fileBlobs = await Promise.all(
+        files.map(async (file) => {
+          const blob = await api(`/repos/${owner}/${repo}/git/blobs`, githubToken, {
+            method: 'POST',
+            body: JSON.stringify({ content: file.content, encoding: 'base64' }),
+          });
+          const finalPath = destinationPath ? `${destinationPath.replace(/^\/|\/$/g, '')}/${file.path}` : file.path;
+          return { path: finalPath, sha: blob.sha, mode: '100644', type: 'blob' };
+        })
+      );
+
       const newTree = await api(`/repos/${owner}/${repo}/git/trees`, githubToken, {
         method: 'POST',
-        body: JSON.stringify({
-          base_tree: baseTreeSha,
-          tree: fileBlobs,
-        }),
+        body: JSON.stringify({ base_tree: baseTreeSha, tree: fileBlobs }),
       });
 
-      newCommit = await api(`/repos/${owner}/${repo}/git/commits`, githubToken, {
+      const newCommit = await api(`/repos/${owner}/${repo}/git/commits`, githubToken, {
         method: 'POST',
-        body: JSON.stringify({
-          message: commitMessage,
-          tree: newTree.sha,
-          parents: [latestCommitSha],
-        }),
+        body: JSON.stringify({ message: commitMessage, tree: newTree.sha, parents: [latestCommitSha] }),
       });
 
-      // Update existing branch ref
       await api(`/repos/${owner}/${repo}/git/refs/${refPath}`, githubToken, {
         method: 'PATCH',
-        body: JSON.stringify({
-          sha: newCommit.sha,
-        }),
+        body: JSON.stringify({ sha: newCommit.sha }),
       });
+
+      return { success: true, commitUrl: newCommit.html_url };
 
     } else {
       // ===== EMPTY REPO/NEW BRANCH LOGIC (INITIAL COMMIT) =====
-      // 1. Create a tree with no base_tree
+      
+      // Step 1: Create blobs for all files
+      const fileBlobs = await Promise.all(
+        files.map(async (file) => {
+          const blob = await api(`/repos/${owner}/${repo}/git/blobs`, githubToken, {
+            method: 'POST',
+            body: JSON.stringify({
+              content: file.content,
+              encoding: 'base64',
+            }),
+          });
+          const finalPath = destinationPath ? `${destinationPath.replace(/^\/|\/$/g, '')}/${file.path}` : file.path;
+          return { path: finalPath, sha: blob.sha, mode: '100644', type: 'blob' };
+        })
+      );
+
+      // Step 2: Create a tree with no base_tree
       const newTree = await api(`/repos/${owner}/${repo}/git/trees`, githubToken, {
         method: 'POST',
-        body: JSON.stringify({
-          tree: fileBlobs,
-        }),
+        body: JSON.stringify({ tree: fileBlobs }),
       });
 
-      // 2. Create a commit with no parents
-      newCommit = await api(`/repos/${owner}/${repo}/git/commits`, githubToken, {
+      // Step 3: Create a commit with no parents
+      const newCommit = await api(`/repos/${owner}/${repo}/git/commits`, githubToken, {
         method: 'POST',
         body: JSON.stringify({
           message: commitMessage,
@@ -270,21 +262,19 @@ export async function commitToRepo({ repoUrl, commitMessage, files, githubToken,
         }),
       });
 
-      // 3. Create a new branch ref pointing to the new commit
-      await api(`/repos/${owner}/${repo}/git/refs`, githubToken, {
+      // Step 4: Create a new branch reference pointing to the new commit
+      const newRef = await api(`/repos/${owner}/${repo}/git/refs`, githubToken, {
         method: 'POST',
         body: JSON.stringify({
           ref: `refs/${refPath}`,
           sha: newCommit.sha,
         }),
       });
+      
+      return { success: true, commitUrl: newCommit.html_url };
     }
-
-    return { success: true, commitUrl: newCommit.html_url };
   } catch (error: any) {
     console.error('Gagal melakukan commit ke GitHub:', error);
     throw new Error(error.message || 'Gagal melakukan commit file ke repositori.');
   }
 }
-
-    
