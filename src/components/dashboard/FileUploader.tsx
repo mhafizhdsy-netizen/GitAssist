@@ -82,7 +82,7 @@ export function FileUploader() {
         })
         .finally(() => setIsFetchingRepos(false));
     }
-  }, [step, toast, githubToken]);
+  }, [step, githubToken, toast]);
 
   const handleRepoChange = (repoFullName: string) => {
     const repo = repos.find(r => r.full_name === repoFullName);
@@ -593,7 +593,5 @@ export function FileUploader() {
     </>
   );
 }
-
-    
 
     
