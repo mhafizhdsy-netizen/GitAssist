@@ -33,12 +33,16 @@ type FileOrFolder = {
   content?: File | Blob;
 };
 
+type CommitStatus = {
+    step: 'inactive' | 'preparing' | 'uploading' | 'finalizing';
+    progress: number;
+};
 type ModalStatus = 'inactive' | 'processing' | 'committing' | 'done';
 
 export function FileUploader() {
   const [files, setFiles] = useState<FileOrFolder[]>([]);
   const [selectedFilePaths, setSelectedFilePaths] = useState<Set<string>>(new Set());
-  const [uploadProgress, setUploadProgress] = useState(0);
+  const [zipExtractProgress, setZipExtractProgress] = useState(0);
   
   const [repos, setRepos] = useState<Repo[]>([]);
   const [isFetchingRepos, setIsFetchingRepos] = useState(false);
@@ -53,6 +57,7 @@ export function FileUploader() {
 
   const [commitMessage, setCommitMessage] = useState('');
   const [modalStatus, setModalStatus] = useState<ModalStatus>('inactive');
+  const [commitStatus, setCommitStatus] = useState<CommitStatus>({ step: 'inactive', progress: 0 });
   const [isGenerating, setIsGenerating] = useState(false);
   const [commitUrl, setCommitUrl] = useState('');
   const { toast } = useToast();
@@ -114,7 +119,7 @@ export function FileUploader() {
 
   const handleZipExtraction = useCallback(async (zipFile: File, append = false) => {
     setModalStatus('processing');
-    setUploadProgress(0);
+    setZipExtractProgress(0);
     try {
       const zip = await JSZip.loadAsync(zipFile);
       const extracted: FileOrFolder[] = [];
@@ -131,7 +136,7 @@ export function FileUploader() {
         extracted.push({ name: fileName, path: zipEntry.name, type: 'file', content: blob });
 
         processedFiles++;
-        setUploadProgress((processedFiles / totalFiles) * 100);
+        setZipExtractProgress((processedFiles / totalFiles) * 100);
       }
       
       if (extracted.length === 0) {
@@ -326,8 +331,10 @@ export function FileUploader() {
     }
     
     setModalStatus('committing');
+    setCommitStatus({ step: 'preparing', progress: 0 });
 
     try {
+      setCommitStatus({ step: 'preparing', progress: 10 });
       const filesToCommitContent = await Promise.all(
         filesToCommitPaths
           .filter((f) => f.type === 'file' && f.content)
@@ -341,6 +348,8 @@ export function FileUploader() {
           })
       );
       
+      setCommitStatus({ step: 'uploading', progress: 40 });
+
       const result = await commitToRepo({
           repoUrl: selectedRepo,
           commitMessage,
@@ -350,8 +359,11 @@ export function FileUploader() {
           branchName: selectedBranch
       });
 
+      setCommitStatus({ step: 'finalizing', progress: 90 });
+
       if (result.success && result.commitUrl) {
         setCommitUrl(result.commitUrl);
+        setCommitStatus({ step: 'finalizing', progress: 100 });
         setModalStatus('done');
         toast({ title: 'Berhasil!', description: 'File telah di-commit ke repositori.' });
       } else {
@@ -361,13 +373,14 @@ export function FileUploader() {
         console.error(error);
         toast({ title: 'Commit Gagal', description: error.message || 'Tidak dapat melakukan commit file. Periksa URL dan izin.', variant: 'destructive' });
         setModalStatus('inactive');
+        setCommitStatus({ step: 'inactive', progress: 0 });
     }
   };
   
   const resetState = (fullReset = true) => {
     setFiles([]);
     setSelectedFilePaths(new Set());
-    setUploadProgress(0);
+    setZipExtractProgress(0);
     setSelectedRepo('');
     setDestinationPath('');
     setCommitMessage('');
@@ -375,6 +388,7 @@ export function FileUploader() {
     setCommitUrl('');
     setBranches([]);
     setSelectedBranch('');
+    setCommitStatus({ step: 'inactive', progress: 0 });
     if (fullReset) {
       setRepos([]);
     }
@@ -546,7 +560,8 @@ export function FileUploader() {
     <>
       <UploadStatusModal 
         status={modalStatus}
-        progress={uploadProgress}
+        zipExtractProgress={zipExtractProgress}
+        commitStatus={commitStatus}
         commitUrl={commitUrl}
         onRestart={() => resetState(true)}
         repoName={selectedRepo.split('/').pop() || ''}
