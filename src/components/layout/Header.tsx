@@ -92,7 +92,8 @@ const Header = () => {
                 <div className="hidden md:block">
                     <AuthButton />
                 </div>
-                <div className="md:hidden">
+                <div className="md:hidden flex items-center gap-2">
+                  <AuthButton />
                   <Button variant="ghost" size="icon" onClick={() => setMobileMenuOpen(true)}>
                       <Menu />
                       <span className="sr-only">Buka menu</span>
@@ -137,9 +138,7 @@ const Header = () => {
                       {item.label}
                     </Link>
                   ))}
-                  <div onClick={() => setMobileMenuOpen(false)}>
-                    <AuthButton />
-                  </div>
+                  {/* AuthButton is already outside, no need to show it here again */}
               </nav>
             </div>
           </motion.div>
