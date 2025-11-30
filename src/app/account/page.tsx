@@ -13,7 +13,6 @@ import { Button } from '@/components/ui/button';
 import { Star, GitFork, Code, ArrowLeft, ArrowRight, Eye, BookText, Globe } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { id } from 'date-fns/locale';
-import RepoDetailModal from '@/components/account/RepoDetailModal';
 import { motion } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -25,8 +24,6 @@ export default function AccountPage() {
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
-  const [selectedRepo, setSelectedRepo] = useState<Repo | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
   const [githubToken, setGithubToken] = useState<string | null>(null);
 
   const getInitials = (name: string | null | undefined): string => {
@@ -73,11 +70,6 @@ export default function AccountPage() {
       });
 
   }, [user, userLoading, page, githubToken]);
-
-  const handleViewRepo = (repo: Repo) => {
-    setSelectedRepo(repo);
-    setIsModalOpen(true);
-  };
 
   const formatDate = (dateString: string) => {
     try {
@@ -218,9 +210,11 @@ export default function AccountPage() {
                             </p>
                              <Tooltip>
                               <TooltipTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleViewRepo(repo)}>
-                                    <Eye className="h-4 w-4" />
-                                    <span className="sr-only">Lihat Isi Repositori</span>
+                                <Button variant="ghost" size="icon" asChild className="h-8 w-8">
+                                    <Link href={`/account/repo/${repo.full_name}`}>
+                                        <Eye className="h-4 w-4" />
+                                        <span className="sr-only">Lihat Isi Repositori</span>
+                                    </Link>
                                 </Button>
                               </TooltipTrigger>
                               <TooltipContent>
@@ -250,15 +244,6 @@ export default function AccountPage() {
           )}
         </div>
       </motion.div>
-      
-      {selectedRepo && githubToken && (
-        <RepoDetailModal 
-          isOpen={isModalOpen}
-          onClose={() => setIsModalOpen(false)}
-          repo={selectedRepo}
-          githubToken={githubToken}
-        />
-      )}
       
       <style jsx>{`
         .text-ellipsis-2-lines {

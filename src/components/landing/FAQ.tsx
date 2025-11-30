@@ -9,8 +9,8 @@ import { FAQ_ITEMS } from "@/lib/constants";
 
 export function FAQ() {
   return (
-    <section id="faq" className="container py-24 sm:py-32">
-      <div className="text-center">
+    <section id="faq" className="py-24 sm:py-32">
+      <div className="text-center mb-12">
         <h2 className="text-3xl md:text-5xl font-bold">Pertanyaan yang Sering Diajukan</h2>
         <p className="mt-4 max-w-2xl mx-auto text-lg text-muted-foreground">
           Punya pertanyaan? Kami punya jawabannya. Jika Anda memiliki pertanyaan lain, jangan ragu untuk menghubungi kami.
@@ -20,7 +20,7 @@ export function FAQ() {
       <Accordion
         type="single"
         collapsible
-        className="w-full max-w-3xl mx-auto mt-12"
+        className="w-full max-w-3xl mx-auto"
       >
         {FAQ_ITEMS.map((item, index) => (
           <AccordionItem key={index} value={`item-${index}`}>

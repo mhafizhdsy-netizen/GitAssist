@@ -44,8 +44,8 @@ export function HowItWorks() {
   };
 
   return (
-    <section id="how-it-works" className="container py-24 sm:py-32">
-      <div className="text-center">
+    <section id="how-it-works" className="py-24 sm:py-32">
+      <div className="text-center mb-16">
         <h2 className="text-3xl md:text-5xl font-bold">Empat Langkah Sederhana</h2>
         <p className="mt-4 max-w-2xl mx-auto text-lg text-muted-foreground">
           Dari login hingga commit dalam waktu kurang dari satu menit. Begini cara kerjanya.
@@ -53,7 +53,7 @@ export function HowItWorks() {
       </div>
 
       <motion.div
-        className="mt-16 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8"
+        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8"
         variants={containerVariants}
         initial="hidden"
         whileInView="visible"
@@ -61,9 +61,9 @@ export function HowItWorks() {
       >
         {steps.map((step, index) => (
           <motion.div key={index} variants={itemVariants}>
-            <Card className="p-8 text-center h-full glass-card">
+            <Card className="p-8 text-center h-full bg-background/50 hover:border-primary/30 transition-colors duration-300">
               <div className="relative inline-block mb-6">
-                <div className="w-16 h-16 rounded-xl bg-primary/10 flex items-center justify-center">
+                <div className="w-16 h-16 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20">
                     <step.icon className="w-8 h-8 text-primary" />
                 </div>
                 <div className="absolute -top-3 -right-3 flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground font-bold text-sm">

@@ -90,4 +90,4 @@ export const FOOTER_LINKS = {
         { label: "FAQ", href: "/faq" },
         { label: "Hubungi Kami", href: "mailto:mhafizhdsy@gmail.com" },
     ],
-}
+};

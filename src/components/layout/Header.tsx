@@ -4,7 +4,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
-import { Menu, X } from "lucide-react";
+import { Menu, X, LayoutDashboard } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 import { cn } from "@/lib/utils";
@@ -64,6 +64,40 @@ const Header = () => {
   // Hide the AuthButton (specifically the "Mulai" button when not logged in) on the home page.
   const showAuthButton = !isHomePage || user || loading;
 
+  const NavLinks = ({ inMobileMenu = false }: { inMobileMenu?: boolean }) => (
+    <>
+      {user && (
+        <Link
+            href="/dashboard"
+            onClick={() => inMobileMenu && setMobileMenuOpen(false)}
+            className={cn(
+                "transition-colors hover:text-foreground",
+                inMobileMenu 
+                    ? "text-2xl font-medium text-foreground/80" 
+                    : "text-sm text-muted-foreground"
+            )}
+        >
+            Dasbor
+        </Link>
+      )}
+      {NAV_ITEMS.map((item) => (
+        <Link
+          key={item.label}
+          href={item.href}
+          onClick={() => inMobileMenu && setMobileMenuOpen(false)}
+          className={cn(
+            "transition-colors hover:text-foreground",
+            inMobileMenu 
+                ? "text-2xl font-medium text-foreground/80" 
+                : "text-sm text-muted-foreground"
+          )}
+        >
+          {item.label}
+        </Link>
+      ))}
+    </>
+  );
+
   return (
     <>
       <header
@@ -81,18 +115,7 @@ const Header = () => {
           {!isLoginPage && (
             <>
             <nav className="hidden md:flex items-center gap-6">
-                <ul className="flex items-center gap-6">
-                {NAV_ITEMS.map((item) => (
-                    <li key={item.label}>
-                    <Link
-                        href={item.href}
-                        className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-                    >
-                        {item.label}
-                    </Link>
-                    </li>
-                ))}
-                </ul>
+                <NavLinks />
             </nav>
             <div className="flex items-center gap-2">
                 <div className="hidden md:block">
@@ -134,17 +157,7 @@ const Header = () => {
                 </div>
               </div>
               <nav className="flex flex-col items-center justify-center flex-1 gap-8">
-                 {NAV_ITEMS.map((item) => (
-                    <Link
-                      key={item.label}
-                      href={item.href}
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="text-2xl font-medium text-foreground/80 transition-colors hover:text-foreground"
-                    >
-                      {item.label}
-                    </Link>
-                  ))}
-                  {/* AuthButton is handled outside the modal for mobile */}
+                 <NavLinks inMobileMenu />
               </nav>
             </div>
           </motion.div>

@@ -64,12 +64,6 @@ export default function AuthButton() {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
-          <Link href="/dashboard">
-            <LayoutDashboard className="mr-2 h-4 w-4" />
-            <span>Dasbor</span>
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild>
           <Link href="/account">
             <UserIcon className="mr-2 h-4 w-4" />
             <span>Akun Saya</span>
