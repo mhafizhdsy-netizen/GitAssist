@@ -26,7 +26,7 @@ type FileOrFolder = {
   name: string;
   path: string;
   type: 'file' | 'folder';
-  content?: File;
+  content?: File | Blob;
 };
 
 type UploadStep = 'upload' | 'select-repo' | 'committing' | 'done';
@@ -96,10 +96,8 @@ export function FileUploader() {
       for (const zipEntry of allFiles) {
         const blob = await zipEntry.async('blob');
         const fileName = zipEntry.name.split('/').pop() || zipEntry.name;
-        // CORRECTED: Use the full zipEntry.name as the path
-        const newFile = new File([blob], fileName, { type: blob.type });
-
-        extracted.push({ name: fileName, path: zipEntry.name, type: 'file', content: newFile });
+        
+        extracted.push({ name: fileName, path: zipEntry.name, type: 'file', content: blob });
 
         processedFiles++;
         setUploadProgress((processedFiles / totalFiles) * 100);
@@ -226,7 +224,7 @@ export function FileUploader() {
         files
           .filter((f) => f.type === 'file' && f.content)
           .map(async (file) => {
-            const fileContent = file.content as File;
+            const fileContent = file.content as (File | Blob);
             const content = await fileContent.arrayBuffer();
             return {
               path: file.path,
@@ -441,4 +439,3 @@ export function FileUploader() {
   );
 }
 
-    
