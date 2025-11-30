@@ -1,8 +1,5 @@
-
-import { signInWithGithub } from "@/app/actions";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Github } from "lucide-react";
+import { LoginForm } from "./LoginForm";
 
 export default function LoginPage() {
   return (
@@ -13,12 +10,7 @@ export default function LoginPage() {
           <CardDescription>Sign in with GitHub to access your dashboard.</CardDescription>
         </CardHeader>
         <CardContent>
-          <form className="mt-4">
-            <Button formAction={signInWithGithub} className="w-full" size="lg">
-              <Github className="mr-2 h-5 w-5" />
-              Continue with GitHub
-            </Button>
-          </form>
+          <LoginForm />
         </CardContent>
       </Card>
     </div>
