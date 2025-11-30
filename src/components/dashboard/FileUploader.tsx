@@ -17,11 +17,16 @@ import { commitToRepo, fetchUserRepos } from '@/app/actions';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '../ui/skeleton';
 
+// Make Buffer available globally for JSZip to use
+if (typeof window !== 'undefined' && typeof (window as any).Buffer === 'undefined') {
+  (window as any).Buffer = Buffer;
+}
+
 type FileOrFolder = {
   name: string;
   path: string;
   type: 'file' | 'folder';
-  content?: File | string;
+  content?: File;
 };
 
 type UploadStep = 'upload' | 'select-repo' | 'committing' | 'done';
@@ -86,11 +91,11 @@ export function FileUploader() {
       let processedFiles = 0;
 
       for (const path in zip.files) {
-        if (!zip.files[path].dir) {
-          const file = zip.files[path];
-          const blob = await file.async('blob');
-          const newFile = new File([blob], file.name, { type: blob.type });
-          extracted.push({ name: file.name, path, type: 'file', content: newFile });
+        const zipEntry = zip.files[path];
+        if (!zipEntry.dir) {
+          const blob = await zipEntry.async('blob');
+          const newFile = new File([blob], zipEntry.name.split('/').pop() || zipEntry.name, { type: blob.type });
+          extracted.push({ name: newFile.name, path: zipEntry.name, type: 'file', content: newFile });
         }
         processedFiles++;
         setUploadProgress((processedFiles / totalFiles) * 100);
@@ -145,7 +150,7 @@ export function FileUploader() {
     onDrop,
     getFilesFromEvent: async (event: any) => {
         const files = event.dataTransfer ? event.dataTransfer.files : event.target.files;
-        const fileList = [];
+        const fileList: File[] = [];
         for (const file of files) {
             fileList.push(file);
         }
@@ -212,7 +217,8 @@ export function FileUploader() {
         files
           .filter((f) => f.type === 'file' && f.content)
           .map(async (file) => {
-            const content = await (file.content as File).arrayBuffer();
+            const fileContent = file.content as File;
+            const content = await fileContent.arrayBuffer();
             return {
               path: file.path,
               content: Buffer.from(content).toString('base64'),
@@ -390,13 +396,14 @@ export function FileUploader() {
     </div>
   );
 
-  const stepContent = {
-    'upload': renderUploadStep(),
-    'select-repo': renderSelectRepoStep(),
-    'processing': renderProcessing(),
-    'committing': renderCommittingStep(),
-    'done': renderDoneStep(),
-  }[isProcessing ? 'processing' : step];
+  const currentStepContent = isProcessing
+  ? renderProcessing()
+  : {
+      'upload': renderUploadStep(),
+      'select-repo': renderSelectRepoStep(),
+      'committing': renderCommittingStep(),
+      'done': renderDoneStep(),
+    }[step];
 
   return (
     <Card className="glass-card flex flex-col h-full">
@@ -411,7 +418,7 @@ export function FileUploader() {
           </div>
         </div>
       </CardHeader>
-      <CardContent className="p-6 flex-grow">{stepContent}</CardContent>
+      <CardContent className="p-6 flex-grow">{currentStepContent}</CardContent>
       {step === 'select-repo' && (
         <CardFooter className="border-t pt-6 flex justify-between items-center">
           <Button variant="ghost" onClick={resetState}>Mulai Ulang</Button>
@@ -424,3 +431,5 @@ export function FileUploader() {
     </Card>
   );
 }
+
+    
