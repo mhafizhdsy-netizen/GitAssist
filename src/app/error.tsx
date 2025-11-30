@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Button } from "@/components/ui/button";
@@ -24,14 +25,14 @@ export default function Error({
           <div className="mx-auto w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center mb-4 border border-destructive/20">
               <AlertTriangle className="h-8 w-8 text-destructive" />
           </div>
-          <CardTitle className="text-3xl font-headline text-destructive-foreground">Application Error</CardTitle>
+          <CardTitle className="text-3xl font-headline text-destructive-foreground">Kesalahan Aplikasi</CardTitle>
           <CardDescription className="text-destructive-foreground/80">
-            Oops! Something went wrong on our end.
+            Ups! Terjadi kesalahan di pihak kami.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
             <p className="text-muted-foreground">
-                A client-side exception has occurred. You can try refreshing the page or clicking the button below.
+                Telah terjadi pengecualian di sisi klien. Anda dapat mencoba menyegarkan halaman atau mengklik tombol di bawah.
             </p>
             <Button
                 onClick={
@@ -40,7 +41,7 @@ export default function Error({
                 }
                 size="lg"
             >
-                Try Again
+                Coba Lagi
             </Button>
         </CardContent>
       </Card>

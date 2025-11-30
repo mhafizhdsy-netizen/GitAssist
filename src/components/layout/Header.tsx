@@ -52,47 +52,35 @@ const Header = () => {
             <span className="font-bold text-lg hidden sm:inline-block">GitAssist</span>
           </Link>
 
-          {!isLoginPage && (
-             <nav className="hidden md:flex items-center gap-6">
-                <ul className="flex items-center gap-6">
-                  {NAV_ITEMS.map((item) => (
-                    <li key={item.label}>
-                      <Link
-                        href={item.href}
-                        className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-                      >
-                        {item.label}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-                <div className="ml-6">
-                  <AuthButton />
-                </div>
-              </nav>
-          )}
-
-          <div className="flex items-center gap-4">
-            {isLoginPage && (
-              <div className="flex-1 flex justify-end">
-                <AuthButton />
-              </div>
-            )}
-            
-            {!isLoginPage && (
-              <div className="md:hidden">
-                <Button variant="ghost" size="icon" onClick={() => setMobileMenuOpen(true)}>
-                  <Menu />
-                  <span className="sr-only">Open menu</span>
-                </Button>
-              </div>
-            )}
+          <nav className="hidden md:flex items-center gap-6">
+            <ul className="flex items-center gap-6">
+              {NAV_ITEMS.map((item) => (
+                <li key={item.label}>
+                  <Link
+                    href={item.href}
+                    className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    {item.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+            <div className="ml-4">
+              <AuthButton />
+            </div>
+          </nav>
+          
+          <div className="md:hidden">
+            <Button variant="ghost" size="icon" onClick={() => setMobileMenuOpen(true)}>
+              <Menu />
+              <span className="sr-only">Buka menu</span>
+            </Button>
           </div>
         </div>
       </header>
 
       <AnimatePresence>
-        {mobileMenuOpen && !isLoginPage && (
+        {mobileMenuOpen && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -108,7 +96,7 @@ const Header = () => {
                 </Link>
                 <Button variant="ghost" size="icon" onClick={() => setMobileMenuOpen(false)}>
                   <X />
-                  <span className="sr-only">Close menu</span>
+                  <span className="sr-only">Tutup menu</span>
                 </Button>
               </div>
               <nav className="flex flex-col items-center justify-center flex-1 gap-8">

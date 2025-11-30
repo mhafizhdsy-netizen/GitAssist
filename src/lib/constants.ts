@@ -1,48 +1,49 @@
+
 import { type LucideIcon, Sparkles, UploadCloud, GitBranch, Zap, FileArchive, ShieldCheck } from "lucide-react";
 import type { NavItem, FAQItem, FeatureCard } from "@/lib/types";
 
 export const NAV_ITEMS: NavItem[] = [
-  { label: "Features", href: "/#features" },
-  { label: "How It Works", href: "/#how-it-works" },
+  { label: "Fitur", href: "/#features" },
+  { label: "Cara Kerja", href: "/#how-it-works" },
   { label: "FAQ", href: "/#faq" },
-  { label: "Donate", href: "/donate" },
+  { label: "Donasi", href: "/donate" },
 ];
 
 export const FEATURES: FeatureCard[] = [
   {
     icon: Zap,
-    title: "Batch Upload",
-    description: "Upload multiple files at once, improving upload efficiency.",
+    title: "Unggahan Massal",
+    description: "Unggah banyak file sekaligus, meningkatkan efisiensi unggahan.",
     color: "purple",
   },
   {
     icon: FileArchive,
-    title: "ZIP Extraction",
-    description: "Automatically extract ZIP files and upload their contents to the repository.",
+    title: "Ekstraksi ZIP",
+    description: "Ekstrak file ZIP secara otomatis dan unggah isinya ke repositori.",
     color: "blue",
   },
   {
     icon: Sparkles,
-    title: "AI Commit Messages",
-    description: "Let our AI generate smart and conventional commit messages from your diffs.",
+    title: "Pesan Commit AI",
+    description: "Biarkan AI kami membuat pesan commit yang cerdas dan konvensional dari diff Anda.",
     color: "green",
   },
   {
     icon: GitBranch,
-    title: "Post-Upload Repo Selection",
-    description: "Select a repository after uploading a file or after successful ZIP extraction.",
+    title: "Pilih Repo Setelah Unggah",
+    description: "Pilih repositori setelah mengunggah file atau setelah ekstraksi ZIP berhasil.",
     color: "pink",
   },
   {
     icon: ShieldCheck,
-    title: "Secure Authentication",
-    description: "Your data is safe with us. We use secure GitHub OAuth for authentication.",
+    title: "Autentikasi Aman",
+    description: "Data Anda aman bersama kami. Kami menggunakan GitHub OAuth yang aman untuk autentikasi.",
     color: "yellow",
   },
   {
     icon: UploadCloud,
-    title: "Seamless Uploads",
-    description: "A clear and intuitive user interface for a smooth upload process.",
+    title: "Unggahan Mulus",
+    description: "Antarmuka pengguna yang jelas dan intuitif untuk proses unggahan yang lancar.",
     color: "indigo",
   },
 ];
@@ -50,44 +51,44 @@ export const FEATURES: FeatureCard[] = [
 
 export const FAQ_ITEMS: FAQItem[] = [
   {
-    question: "Is GitAssist free to use?",
+    question: "Apakah GitAssist gratis untuk digunakan?",
     answer:
-      "Yes, GitAssist offers a generous free plan that includes all core features for public repositories. We believe in providing powerful tools to the developer community.",
+      "Ya, GitAssist menawarkan paket gratis yang mencakup semua fitur inti untuk repositori publik. Kami percaya dalam menyediakan alat yang kuat untuk komunitas pengembang.",
   },
   {
-    question: "How does the AI commit message generation work?",
+    question: "Bagaimana cara kerja pembuatan pesan commit AI?",
     answer:
-      "Our AI assistant analyzes the diff (the changes in your files) and generates a conventional commit message that summarizes the changes, helping you maintain a clean and understandable project history.",
+      "Asisten AI kami menganalisis diff (perubahan dalam file Anda) dan menghasilkan pesan commit konvensional yang merangkum perubahan, membantu Anda menjaga riwayat proyek yang bersih dan mudah dipahami.",
   },
   {
-    question: "Is my GitHub account and data secure?",
+    question: "Apakah akun dan data GitHub saya aman?",
     answer:
-      "Absolutely. We use secure GitHub OAuth, and we only request the permissions necessary to manage your repositories. Your credentials are never stored on our servers.",
+      "Tentu saja. Kami menggunakan GitHub OAuth yang aman, dan kami hanya meminta izin yang diperlukan untuk mengelola repositori Anda. Kredensial Anda tidak pernah disimpan di server kami.",
   },
   {
-    question: "Can I use GitAssist with private repositories?",
+    question: "Bisakah saya menggunakan GitAssist dengan repositori pribadi?",
     answer:
-      "Support for private repositories is a planned feature for a future premium offering. For now, the service is focused on public repositories.",
+      "Dukungan untuk repositori pribadi adalah fitur yang direncanakan untuk penawaran premium di masa mendatang. Untuk saat ini, layanan ini difokuskan pada repositori publik.",
   },
   {
-    question: "What happens when I upload a ZIP file?",
+    question: "Apa yang terjadi ketika saya mengunggah file ZIP?",
     answer:
-      "GitAssist automatically extracts the contents of your ZIP file, preserving the directory structure, and prepares them for committing to your selected GitHub repository. It's a seamless way to upload entire projects.",
+      "GitAssist secara otomatis mengekstrak konten file ZIP Anda, mempertahankan struktur direktori, dan menyiapkannya untuk di-commit ke repositori GitHub pilihan Anda. Ini adalah cara yang mulus untuk mengunggah seluruh proyek.",
   },
 ];
 
 export const FOOTER_LINKS = {
-    "Product": [
-        { label: "Features", href: "/#features" },
-        { label: "How It Works", href: "/#how-it-works" },
-        { label: "Donate", href: "/donate" },
+    "Produk": [
+        { label: "Fitur", href: "/#features" },
+        { label: "Cara Kerja", href: "/#how-it-works" },
+        { label: "Donasi", href: "/donate" },
     ],
-    "Company": [
-        { label: "Privacy Policy", href: "/privacy" },
-        { label: "Terms of Service", href: "/terms" },
+    "Perusahaan": [
+        { label: "Kebijakan Privasi", href: "/privacy" },
+        { label: "Ketentuan Layanan", href: "/terms" },
     ],
-    "Support": [
+    "Dukungan": [
         { label: "FAQ", href: "/#faq" },
-        { label: "Contact Us", href: "mailto:support@gitassist.com" },
+        { label: "Hubungi Kami", href: "mailto:support@gitassist.com" },
     ],
 }

@@ -19,8 +19,8 @@ export function AiCommitHelper() {
   const handleGenerate = async () => {
     if (!diff.trim()) {
       toast({
-        title: "Input required",
-        description: "Please paste a code diff to generate a commit message.",
+        title: "Input diperlukan",
+        description: "Silakan tempelkan diff kode untuk membuat pesan commit.",
         variant: "destructive",
       });
       return;
@@ -34,7 +34,7 @@ export function AiCommitHelper() {
       console.error(error);
       toast({
         title: "Error",
-        description: "Failed to generate commit message. Please try again.",
+        description: "Gagal membuat pesan commit. Silakan coba lagi.",
         variant: "destructive",
       });
     } finally {
@@ -46,8 +46,8 @@ export function AiCommitHelper() {
     if (!commitMessage) return;
     navigator.clipboard.writeText(commitMessage);
     toast({
-      title: "Copied!",
-      description: "Commit message copied to clipboard.",
+      title: "Disalin!",
+      description: "Pesan commit disalin ke clipboard.",
     });
   };
 
@@ -59,17 +59,17 @@ export function AiCommitHelper() {
                 <Sparkles className="h-6 w-6 text-primary" />
             </div>
             <div>
-                <CardTitle className="font-headline text-2xl">AI Commit Helper</CardTitle>
-                <CardDescription>Generate conventional commit messages.</CardDescription>
+                <CardTitle className="font-headline text-2xl">Asisten Commit AI</CardTitle>
+                <CardDescription>Buat pesan commit konvensional.</CardDescription>
             </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-4 flex-grow flex flex-col">
         <div className="flex-grow flex flex-col">
-          <label htmlFor="diff-input" className="block text-sm font-medium mb-2">Code Diff</label>
+          <label htmlFor="diff-input" className="block text-sm font-medium mb-2">Kode Diff</label>
           <Textarea
             id="diff-input"
-            placeholder="Paste your git diff here..."
+            placeholder="Tempelkan git diff Anda di sini..."
             value={diff}
             onChange={(e) => setDiff(e.target.value)}
             className="font-code h-48 flex-grow"
@@ -95,7 +95,7 @@ export function AiCommitHelper() {
       <CardFooter>
         <Button onClick={handleGenerate} disabled={isLoading} className="w-full">
             {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-            {isLoading ? "Generating..." : "Generate Message"}
+            {isLoading ? "Membuat..." : "Buat Pesan"}
         </Button>
       </CardFooter>
     </Card>

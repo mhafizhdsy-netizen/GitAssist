@@ -1,3 +1,4 @@
+
 import Link from "next/link";
 import { Code, Github, Twitter, Linkedin } from "lucide-react";
 import { FOOTER_LINKS } from "@/lib/constants";
@@ -13,7 +14,7 @@ const Footer = () => {
               <span className="text-2xl font-bold">GitAssist</span>
             </Link>
             <p className="text-muted-foreground text-sm max-w-xs">
-              AI-Powered tools to streamline your GitHub workflow and enhance productivity.
+              Alat berbasis AI untuk menyederhanakan alur kerja GitHub Anda dan meningkatkan produktivitas.
             </p>
             <div className="flex items-center gap-4 mt-6">
               <Link href="https://github.com" target="_blank" rel="noopener noreferrer" aria-label="GitHub">
@@ -46,7 +47,7 @@ const Footer = () => {
         </div>
         <div className="mt-12 pt-8 border-t">
           <p className="text-center text-sm text-muted-foreground">
-            © {new Date().getFullYear()} GitAssist. All rights reserved.
+            © {new Date().getFullYear()} GitAssist. Semua hak dilindungi.
           </p>
         </div>
       </div>

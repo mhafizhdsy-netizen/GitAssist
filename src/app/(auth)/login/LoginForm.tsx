@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -19,7 +20,7 @@ export function LoginForm() {
       console.error('Firebase Auth is not initialized.');
       toast({
         title: 'Error',
-        description: 'Authentication service is not ready. Please try again later.',
+        description: 'Layanan autentikasi belum siap. Silakan coba lagi nanti.',
         variant: 'destructive',
       });
       return;
@@ -43,19 +44,19 @@ export function LoginForm() {
         sessionStorage.setItem('github-token', githubToken);
 
         toast({
-          title: 'Login Successful',
-          description: `Welcome back, ${user.displayName || user.email}!`,
+          title: 'Login Berhasil',
+          description: `Selamat datang kembali, ${user.displayName || user.email}!`,
         });
         router.push('/dashboard');
       } else {
-        throw new Error("Could not retrieve GitHub access token.");
+        throw new Error("Tidak dapat mengambil token akses GitHub.");
       }
     } catch (error: any) {
-      console.error('Error signing in with GitHub:', error);
+      console.error('Error saat masuk dengan GitHub:', error);
       sessionStorage.removeItem('github-token');
       toast({
-        title: 'Authentication Failed',
-        description: error.message || 'Could not authenticate with GitHub. Please try again.',
+        title: 'Autentikasi Gagal',
+        description: error.message || 'Tidak dapat melakukan autentikasi dengan GitHub. Silakan coba lagi.',
         variant: 'destructive',
       });
     } finally {
@@ -71,7 +72,7 @@ export function LoginForm() {
         ) : (
           <Github className="mr-2 h-5 w-5" />
         )}
-        {isLoading ? 'Redirecting...' : 'Continue with GitHub'}
+        {isLoading ? 'Mengalihkan...' : 'Lanjutkan dengan GitHub'}
       </Button>
     </div>
   );

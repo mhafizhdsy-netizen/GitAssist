@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -53,7 +54,7 @@ export default function AuthButton() {
           <DropdownMenuItem asChild>
             <Link href="/dashboard">
               <UserIcon className="mr-2 h-4 w-4" />
-              <span>Dashboard</span>
+              <span>Dasbor</span>
             </Link>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
@@ -61,7 +62,7 @@ export default function AuthButton() {
             <DropdownMenuItem asChild>
               <button type="submit" className="w-full text-left">
                 <LogOut className="mr-2 h-4 w-4" />
-                <span>Log out</span>
+                <span>Keluar</span>
               </button>
             </DropdownMenuItem>
           </form>
@@ -73,7 +74,7 @@ export default function AuthButton() {
   return (
     <Button asChild size="sm">
       <Link href="/login">
-        Get Started <ArrowRight className="ml-2 h-4 w-4" />
+        Mulai <ArrowRight className="ml-2 h-4 w-4" />
       </Link>
     </Button>
   );

@@ -14,10 +14,10 @@ export default function DashboardClient({ user }: DashboardClientProps) {
     <div className="container py-24 sm:py-32">
       <div className="text-center mb-16">
         <h1 className="text-4xl md:text-5xl font-headline font-bold">
-          Welcome, {user.displayName || user.email}
+          Selamat Datang, {user.displayName || user.email}
         </h1>
         <p className="text-muted-foreground mt-2 text-lg">
-          Let's get started. What would you like to do today?
+          Mari kita mulai. Apa yang ingin Anda lakukan hari ini?
         </p>
       </div>
 

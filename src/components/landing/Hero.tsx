@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -30,27 +31,27 @@ export function Hero() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3, duration: 0.5 }}
         >
-          <p className="text-sm text-primary-foreground">Now with AI-powered commit messages</p>
+          <p className="text-sm text-primary-foreground">Sekarang dengan pesan commit berbasis AI</p>
         </motion.div>
         <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tighter bg-clip-text text-transparent bg-gradient-to-b from-neutral-50 to-neutral-400">
-          Supercharge Your
+          Percepat Alur Kerja
           <br />
           <span className="bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent-foreground">
-            GitHub Workflow
+            GitHub Anda
           </span>
         </h1>
         <p className="mt-6 max-w-2xl text-lg md:text-xl text-muted-foreground">
-          GitAssist uses AI to automate your commit messages, handles batch uploads seamlessly, and simplifies repository management.
+          GitAssist menggunakan AI untuk mengotomatiskan pesan commit Anda, menangani unggahan massal dengan mulus, dan menyederhanakan manajemen repositori.
         </p>
         <div className="mt-8 flex flex-col sm:flex-row gap-4">
           <Button asChild size="lg" className="group">
             <Link href="/dashboard">
-              Get Started <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
+              Mulai <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
             </Link>
           </Button>
           <Button asChild variant="outline" size="lg" className="bg-transparent text-neutral-200 border-neutral-700 hover:bg-neutral-800 hover:text-white">
             <a href="https://github.com" target="_blank" rel="noopener noreferrer">
-              <Github className="mr-2 h-5 w-5" /> View on GitHub
+              <Github className="mr-2 h-5 w-5" /> Lihat di GitHub
             </a>
           </Button>
         </div>

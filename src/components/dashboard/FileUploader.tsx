@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
@@ -64,10 +65,10 @@ export function FileUploader() {
       fetchUserRepos(githubToken)
         .then(setRepos)
         .catch(err => {
-          console.error("Failed to fetch repos", err);
+          console.error("Gagal mengambil repositori", err);
           toast({
-            title: "Could not fetch repositories",
-            description: err.message || "Please ensure you are logged in and have granted repository access.",
+            title: "Tidak dapat mengambil repositori",
+            description: err.message || "Pastikan Anda sudah masuk dan memberikan akses ke repositori.",
             variant: "destructive"
           });
         })
@@ -96,12 +97,12 @@ export function FileUploader() {
       }
       setFiles(extracted);
       setStep('select-repo');
-      toast({ title: 'Success', description: `${extracted.length} files extracted from ZIP.` });
+      toast({ title: 'Berhasil', description: `${extracted.length} file diekstrak dari ZIP.` });
     } catch (error) {
       console.error(error);
       toast({
-        title: 'ZIP Extraction Error',
-        description: 'Failed to extract the ZIP file. It might be corrupted.',
+        title: 'Kesalahan Ekstraksi ZIP',
+        description: 'Gagal mengekstrak file ZIP. Mungkin file tersebut rusak.',
         variant: 'destructive',
       });
       resetState();
@@ -119,8 +120,8 @@ export function FileUploader() {
       if (zipFile) {
         if (acceptedFiles.length > 1) {
           toast({
-            title: 'Upload Error',
-            description: 'Please upload the ZIP file by itself.',
+            title: 'Kesalahan Unggah',
+            description: 'Silakan unggah file ZIP secara terpisah.',
             variant: 'destructive',
           });
           return;
@@ -161,14 +162,14 @@ export function FileUploader() {
       return updatedFiles;
     });
     toast({
-        title: "File removed",
-        description: `Removed ${pathToRemove} from the list.`,
+        title: "File dihapus",
+        description: `Menghapus ${pathToRemove} dari daftar.`,
     });
   };
 
   const handleGenerateCommitMessage = async () => {
     if (files.length === 0) {
-      toast({ title: 'No files', description: 'No files to generate a commit message from.', variant: 'destructive' });
+      toast({ title: 'Tidak ada file', description: 'Tidak ada file untuk membuat pesan commit.', variant: 'destructive' });
       return;
     }
     setIsGenerating(true);
@@ -178,27 +179,28 @@ export function FileUploader() {
       setCommitMessage(result.commitMessage);
     } catch (error) {
       console.error(error);
-      toast({ title: 'AI Error', description: 'Failed to generate commit message.', variant: 'destructive' });
+      toast({ title: 'Kesalahan AI', description: 'Gagal membuat pesan commit.', variant: 'destructive' });
     } finally {
       setIsGenerating(false);
     }
   };
 
   const handleCommit = async () => {
-    if (!githubToken) {
+    const token = githubToken || sessionStorage.getItem('github-token');
+    if (!token) {
       toast({
-        title: 'Authentication Error',
-        description: 'GitHub token not found. Please log in again.',
+        title: 'Kesalahan Autentikasi',
+        description: 'Token GitHub tidak ditemukan. Silakan masuk kembali.',
         variant: 'destructive',
       });
       return;
     }
     if (!selectedRepo) {
-      toast({ title: 'Repository selection required', description: 'Please select a destination repository.', variant: 'destructive' });
+      toast({ title: 'Pemilihan repositori diperlukan', description: 'Silakan pilih repositori tujuan.', variant: 'destructive' });
       return;
     }
     if (!commitMessage) {
-      toast({ title: 'Commit message required', variant: 'destructive' });
+      toast({ title: 'Pesan commit diperlukan', variant: 'destructive' });
       return;
     }
     
@@ -222,20 +224,20 @@ export function FileUploader() {
           repoUrl: selectedRepo,
           commitMessage,
           files: filesToCommit,
-          githubToken,
+          githubToken: token,
           destinationPath
       });
 
       if (result.success && result.commitUrl) {
         setCommitUrl(result.commitUrl);
         setStep('done');
-        toast({ title: 'Success!', description: 'Files committed to the repository.' });
+        toast({ title: 'Berhasil!', description: 'File telah di-commit ke repositori.' });
       } else {
-        throw new Error('Commit failed for an unknown reason.');
+        throw new Error('Commit gagal karena alasan yang tidak diketahui.');
       }
     } catch (error: any) {
         console.error(error);
-        toast({ title: 'Commit Failed', description: error.message || 'Could not commit files. Please check URL and permissions.', variant: 'destructive' });
+        toast({ title: 'Commit Gagal', description: error.message || 'Tidak dapat melakukan commit file. Periksa URL dan izin.', variant: 'destructive' });
         setStep('select-repo');
     } finally {
         setIsCommitting(false);
@@ -260,15 +262,15 @@ export function FileUploader() {
         <input {...getInputProps()} />
         <div className="text-center">
             <UploadCloud className="mx-auto h-16 w-16 text-muted-foreground" />
-            <p className="mt-4 font-semibold text-lg">Drag & drop files, folders, or a ZIP archive</p>
-            <p className="mt-1 text-sm text-muted-foreground">or click to browse your files</p>
+            <p className="mt-4 font-semibold text-lg">Seret & lepas file, folder, atau arsip ZIP</p>
+            <p className="mt-1 text-sm text-muted-foreground">atau klik untuk menelusuri file Anda</p>
         </div>
     </div>
   );
 
   const renderFileTree = () => (
     <div className="mt-4 max-h-48 overflow-y-auto rounded-lg border bg-background/50 p-3">
-      <h4 className="font-semibold mb-2 text-sm">Files to be committed ({files.length}):</h4>
+      <h4 className="font-semibold mb-2 text-sm">File yang akan di-commit ({files.length}):</h4>
       <ul className="space-y-1">
         {files.map((file) => (
           <li key={file.path} className="flex items-center text-sm text-muted-foreground group">
@@ -279,7 +281,7 @@ export function FileUploader() {
               size="icon"
               className="h-6 w-6 ml-2 opacity-0 group-hover:opacity-100 transition-opacity"
               onClick={() => handleRemoveFile(file.path)}
-              aria-label={`Remove ${file.path}`}
+              aria-label={`Hapus ${file.path}`}
             >
               <X className="h-4 w-4" />
             </Button>
@@ -296,7 +298,7 @@ export function FileUploader() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
             <label htmlFor="repo-select" className="block text-sm font-medium mb-2">
-            1. Select Repository
+            1. Pilih Repositori
             </label>
             {isFetchingRepos ? (
                 <Skeleton className="h-11 w-full" />
@@ -304,13 +306,13 @@ export function FileUploader() {
                 <Select value={selectedRepo} onValueChange={setSelectedRepo} disabled={!githubToken}>
                     <SelectTrigger id="repo-select" className="h-11">
                         <Github className="h-5 w-5 text-muted-foreground mr-2" />
-                        <SelectValue placeholder="Choose a repository..." />
+                        <SelectValue placeholder="Pilih repositori..." />
                     </SelectTrigger>
                     <SelectContent>
                         {repos.length > 0 ? repos.map(repo => (
                             <SelectItem key={repo.id} value={repo.html_url}>{repo.full_name}</SelectItem>
                         )) : (
-                            <SelectItem value="none" disabled>No repositories found or token missing.</SelectItem>
+                            <SelectItem value="none" disabled>Tidak ada repositori ditemukan atau token hilang.</SelectItem>
                         )}
                     </SelectContent>
                 </Select>
@@ -318,13 +320,13 @@ export function FileUploader() {
         </div>
         <div>
             <label htmlFor="dest-path" className="block text-sm font-medium mb-2">
-            2. Destination Folder (Optional)
+            2. Folder Tujuan (Opsional)
             </label>
             <div className="relative">
             <Folder className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
             <Input
                 id="dest-path"
-                placeholder="e.g., src/assets"
+                placeholder="cth., src/assets"
                 value={destinationPath}
                 onChange={(e) => setDestinationPath(e.target.value)}
                 className="pl-10 h-11"
@@ -335,11 +337,11 @@ export function FileUploader() {
       
       <div>
         <label htmlFor="commit-msg" className="block text-sm font-medium mb-2">
-          3. Commit Message
+          3. Pesan Commit
         </label>
         <Textarea
           id="commit-msg"
-          placeholder="feat: Add new feature"
+          placeholder="feat: Menambahkan fitur baru"
           value={commitMessage}
           onChange={(e) => setCommitMessage(e.target.value)}
           className="font-code"
@@ -347,7 +349,7 @@ export function FileUploader() {
         />
         <Button variant="outline" size="sm" onClick={handleGenerateCommitMessage} disabled={isGenerating} className="mt-2">
           {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-          Generate with AI
+          Buat dengan AI
         </Button>
       </div>
     </div>
@@ -356,7 +358,7 @@ export function FileUploader() {
   const renderProcessing = () => (
     <div className="text-center space-y-4 py-10 h-full flex flex-col items-center justify-center">
       <Loader2 className="mx-auto h-12 w-12 animate-spin text-primary" />
-      <p className="font-semibold text-lg">Processing ZIP file...</p>
+      <p className="font-semibold text-lg">Memproses file ZIP...</p>
       <Progress value={uploadProgress} className="w-full max-w-sm mx-auto" />
       <p className="text-sm text-muted-foreground">{Math.round(uploadProgress)}%</p>
     </div>
@@ -365,7 +367,7 @@ export function FileUploader() {
   const renderCommittingStep = () => (
     <div className="text-center space-y-4 py-10 h-full flex flex-col items-center justify-center">
       <Loader2 className="mx-auto h-12 w-12 animate-spin text-primary" />
-      <p className="font-semibold text-lg">Committing to Repository</p>
+      <p className="font-semibold text-lg">Melakukan Commit ke Repositori</p>
       <p className="text-sm text-muted-foreground truncate max-w-sm">{selectedRepo}</p>
     </div>
   );
@@ -374,14 +376,14 @@ export function FileUploader() {
     <div className="text-center space-y-6 py-10 h-full flex flex-col items-center justify-center">
       <CheckCircle className="mx-auto h-16 w-16 text-green-500" />
       <div>
-        <p className="font-semibold text-xl">Commit Successful!</p>
-        <p className="text-muted-foreground mt-1">Your files have been uploaded.</p>
+        <p className="font-semibold text-xl">Commit Berhasil!</p>
+        <p className="text-muted-foreground mt-1">File Anda telah diunggah.</p>
       </div>
       <div className="flex flex-col sm:flex-row gap-4 justify-center">
-        <Button onClick={resetState} size="lg">Upload More Files</Button>
+        <Button onClick={resetState} size="lg">Unggah File Lagi</Button>
         <Button variant="outline" size="lg" asChild>
           <a href={commitUrl} target="_blank" rel="noopener noreferrer">
-            View Commit on GitHub <Github className="ml-2 h-4 w-4" />
+            Lihat Commit di GitHub <Github className="ml-2 h-4 w-4" />
           </a>
         </Button>
       </div>
@@ -404,17 +406,17 @@ export function FileUploader() {
             <UploadCloud className="h-6 w-6 text-primary" />
           </div>
           <div>
-            <CardTitle className="font-headline text-2xl">Upload to GitHub</CardTitle>
-            <CardDescription>Drag & drop files, folders, or a ZIP to get started.</CardDescription>
+            <CardTitle className="font-headline text-2xl">Unggah ke GitHub</CardTitle>
+            <CardDescription>Seret & lepas file, folder, atau ZIP untuk memulai.</CardDescription>
           </div>
         </div>
       </CardHeader>
       <CardContent className="p-6 flex-grow">{stepContent}</CardContent>
       {step === 'select-repo' && (
         <CardFooter className="border-t pt-6 flex justify-between items-center">
-          <Button variant="ghost" onClick={resetState}>Start Over</Button>
+          <Button variant="ghost" onClick={resetState}>Mulai Ulang</Button>
           <Button size="lg" onClick={handleCommit} disabled={isCommitting || isFetchingRepos || !githubToken}>
-            {isCommitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Commit Files'}
+            {isCommitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Commit File'}
             {!isCommitting && <ArrowRight className="ml-2 h-4 w-4" />}
           </Button>
         </CardFooter>

@@ -3,46 +3,46 @@ export default function TermsPage() {
     return (
       <div className="container py-24 sm:py-32">
         <article className="prose prose-invert mx-auto max-w-3xl">
-          <h1 className="font-headline text-4xl">Terms of Service</h1>
+          <h1 className="font-headline text-4xl">Ketentuan Layanan</h1>
           <p className="lead">
-            Welcome to GitAssist. By using our service, you agree to these terms. Please read them carefully.
+            Selamat datang di GitAssist. Dengan menggunakan layanan kami, Anda menyetujui ketentuan ini. Harap baca dengan seksama.
           </p>
   
-          <h2>1. Use of Our Service</h2>
+          <h2>1. Penggunaan Layanan Kami</h2>
           <p>
-            You must follow any policies made available to you within the Service. You may use our Service only as permitted by law. We may suspend or stop providing our Service to you if you do not comply with our terms or policies or if we are investigating suspected misconduct.
+            Anda harus mengikuti kebijakan apa pun yang tersedia untuk Anda dalam Layanan. Anda hanya dapat menggunakan Layanan kami sebagaimana diizinkan oleh hukum. Kami dapat menangguhkan atau menghentikan penyediaan Layanan kami kepada Anda jika Anda tidak mematuhi ketentuan atau kebijakan kami atau jika kami sedang menyelidiki dugaan pelanggaran.
           </p>
   
-          <h2>2. Your GitAssist Account</h2>
+          <h2>2. Akun GitAssist Anda</h2>
           <p>
-            You need a GitHub account to use our Service. You are responsible for safeguarding your account, so use a strong password and limit its use to this account. We cannot and will not be liable for any loss or damage arising from your failure to comply with the above.
+            Anda memerlukan akun GitHub untuk menggunakan Layanan kami. Anda bertanggung jawab untuk menjaga keamanan akun Anda, jadi gunakan kata sandi yang kuat dan batasi penggunaannya untuk akun ini. Kami tidak dapat dan tidak akan bertanggung jawab atas kehilangan atau kerusakan apa pun yang timbul dari kegagalan Anda untuk mematuhi hal di atas.
           </p>
   
-          <h2>3. Content and Conduct</h2>
+          <h2>3. Konten dan Perilaku</h2>
           <p>
-            You are responsible for your conduct and the content you upload to GitHub via our Service. We are not responsible for the content posted on the Service. You agree not to misuse the Service or help anyone else to do so.
+            Anda bertanggung jawab atas perilaku Anda dan konten yang Anda unggah ke GitHub melalui Layanan kami. Kami tidak bertanggung jawab atas konten yang diposting di Layanan. Anda setuju untuk tidak menyalahgunakan Layanan atau membantu orang lain melakukannya.
           </p>
   
-          <h2>4. AI Features</h2>
+          <h2>4. Fitur AI</h2>
           <p>
-            The AI-generated content (e.g., commit messages) is provided on an "as-is" basis without warranties of any kind. You are responsible for reviewing and validating the AI-generated content before use.
+            Konten yang dihasilkan AI (misalnya, pesan commit) disediakan "sebagaimana adanya" tanpa jaminan apa pun. Anda bertanggung jawab untuk meninjau dan memvalidasi konten yang dihasilkan AI sebelum digunakan.
           </p>
   
-          <h2>5. Disclaimers and Limitation of Liability</h2>
+          <h2>5. Penafian dan Batasan Tanggung Jawab</h2>
           <p>
-            The Service is provided "as is." To the fullest extent permitted by law, we disclaim all warranties, express or implied, in connection with the Service and your use thereof. We will not be liable for any indirect, incidental, special, consequential or punitive damages, or any loss of profits or revenues.
+            Layanan ini disediakan "sebagaimana adanya." Sejauh diizinkan oleh hukum, kami menafikan semua jaminan, tersurat maupun tersirat, sehubungan dengan Layanan dan penggunaan Anda atasnya. Kami tidak akan bertanggung jawab atas kerugian tidak langsung, insidental, khusus, konsekuensial, atau hukuman, atau kehilangan keuntungan atau pendapatan apa pun.
           </p>
   
-          <h2>6. Changes to These Terms</h2>
+          <h2>6. Perubahan pada Ketentuan Ini</h2>
           <p>
-            We may modify these terms or any additional terms that apply to a Service to, for example, reflect changes to the law or changes to our Services. You should look at the terms regularly.
+            Kami dapat mengubah ketentuan ini atau ketentuan tambahan apa pun yang berlaku untuk Layanan untuk, misalnya, mencerminkan perubahan hukum atau perubahan pada Layanan kami. Anda harus melihat ketentuan secara teratur.
           </p>
   
-          <h2>7. Contact Us</h2>
+          <h2>7. Hubungi Kami</h2>
           <p>
-            If you have any questions about these Terms, please contact us at <a href="mailto:legal@gitassist.com">legal@gitassist.com</a>.
+            Jika Anda memiliki pertanyaan tentang Ketentuan ini, silakan hubungi kami di <a href="mailto:legal@gitassist.com">legal@gitassist.com</a>.
           </p>
-          <p><small>Last updated: {new Date().toLocaleDateString()}</small></p>
+          <p><small>Terakhir diperbarui: {new Date().toLocaleDateString('id-ID')}</small></p>
         </article>
       </div>
     );

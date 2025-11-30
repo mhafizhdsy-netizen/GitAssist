@@ -3,53 +3,53 @@ export default function PrivacyPage() {
     return (
       <div className="container py-24 sm:py-32">
         <article className="prose prose-invert mx-auto max-w-3xl">
-          <h1 className="font-headline text-4xl">Privacy Policy</h1>
+          <h1 className="font-headline text-4xl">Kebijakan Privasi</h1>
           <p className="lead">
-            Your privacy is important to us. This Privacy Policy explains how we collect, use, and protect your information.
+            Privasi Anda penting bagi kami. Kebijakan Privasi ini menjelaskan bagaimana kami mengumpulkan, menggunakan, dan melindungi informasi Anda.
           </p>
           
-          <h2>1. Information We Collect</h2>
+          <h2>1. Informasi yang Kami Kumpulkan</h2>
           <p>
-            When you use GitAssist, we may collect the following information:
+            Saat Anda menggunakan GitAssist, kami dapat mengumpulkan informasi berikut:
             <ul>
-              <li><strong>Account Information:</strong> We use Supabase for GitHub authentication. We receive your GitHub username, email address, and avatar URL. We do not store your GitHub password.</li>
-              <li><strong>Repository Data:</strong> We temporarily access file content and repository structure to perform uploads and generate commit messages. This data is not stored long-term on our servers.</li>
-              <li><strong>Usage Data:</strong> We may collect anonymous data about how you interact with our application to help us improve our services.</li>
+              <li><strong>Informasi Akun:</strong> Kami menggunakan autentikasi GitHub. Kami menerima nama pengguna, alamat email, dan URL avatar GitHub Anda. Kami tidak menyimpan kata sandi GitHub Anda.</li>
+              <li><strong>Data Repositori:</strong> Kami mengakses sementara konten file dan struktur repositori untuk melakukan unggahan dan menghasilkan pesan commit. Data ini tidak disimpan dalam jangka panjang di server kami.</li>
+              <li><strong>Data Penggunaan:</strong> Kami dapat mengumpulkan data anonim tentang cara Anda berinteraksi dengan aplikasi kami untuk membantu kami meningkatkan layanan kami.</li>
             </ul>
           </p>
   
-          <h2>2. How We Use Your Information</h2>
+          <h2>2. Bagaimana Kami Menggunakan Informasi Anda</h2>
           <p>
-            We use the information we collect to:
+            Kami menggunakan informasi yang kami kumpulkan untuk:
             <ul>
-              <li>Provide, operate, and maintain GitAssist.</li>
-              <li>Authenticate your GitHub account.</li>
-              <li>Process file uploads to your selected repositories.</li>
-              <li>Generate AI-powered commit messages.</li>
-              <li>Communicate with you, including for customer service and support.</li>
+              <li>Menyediakan, mengoperasikan, dan memelihara GitAssist.</li>
+              <li>Mengautentikasi akun GitHub Anda.</li>
+              <li>Memproses unggahan file ke repositori pilihan Anda.</li>
+              <li>Menghasilkan pesan commit yang didukung AI.</li>
+              <li>Berkomunikasi dengan Anda, termasuk untuk layanan pelanggan dan dukungan.</li>
             </ul>
           </p>
   
-          <h2>3. Data Security</h2>
+          <h2>3. Keamanan Data</h2>
           <p>
-            We implement a variety of security measures to maintain the safety of your personal information. All communications are encrypted using SSL technology, and access to your data is strictly limited.
+            Kami menerapkan berbagai langkah keamanan untuk menjaga keamanan informasi pribadi Anda. Semua komunikasi dienkripsi menggunakan teknologi SSL, dan akses ke data Anda sangat dibatasi.
           </p>
   
-          <h2>4. Third-Party Services</h2>
+          <h2>4. Layanan Pihak Ketiga</h2>
           <p>
-            We use third-party services like Supabase for authentication and database management, and Google's Gemini for AI features. These services have their own privacy policies, which we encourage you to review.
+            Kami menggunakan layanan pihak ketiga seperti Firebase untuk autentikasi dan manajemen database, serta Gemini dari Google untuk fitur AI. Layanan ini memiliki kebijakan privasi mereka sendiri, yang kami sarankan untuk Anda tinjau.
           </p>
   
-          <h2>5. Changes to This Policy</h2>
+          <h2>5. Perubahan pada Kebijakan Ini</h2>
           <p>
-            We may update this Privacy Policy from time to time. We will notify you of any changes by posting the new Privacy Policy on this page.
+            Kami dapat memperbarui Kebijakan Privasi ini dari waktu ke waktu. Kami akan memberitahu Anda tentang perubahan apa pun dengan memposting Kebijakan Privasi baru di halaman ini.
           </p>
   
-          <h2>6. Contact Us</h2>
+          <h2>6. Hubungi Kami</h2>
           <p>
-            If you have any questions about this Privacy Policy, please contact us at <a href="mailto:privacy@gitassist.com">privacy@gitassist.com</a>.
+            Jika Anda memiliki pertanyaan tentang Kebijakan Privasi ini, silakan hubungi kami di <a href="mailto:privacy@gitassist.com">privacy@gitassist.com</a>.
           </p>
-          <p><small>Last updated: {new Date().toLocaleDateString()}</small></p>
+          <p><small>Terakhir diperbarui: {new Date().toLocaleDateString('id-ID')}</small></p>
         </article>
       </div>
     );

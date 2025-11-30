@@ -1,3 +1,4 @@
+
 "use client";
 
 import { motion } from "framer-motion";
@@ -7,23 +8,23 @@ import { Card } from "../ui/card";
 const steps = [
   {
     icon: LogIn,
-    title: "Authenticate",
-    description: "Securely connect your GitHub account in one click.",
+    title: "Autentikasi",
+    description: "Hubungkan akun GitHub Anda dengan aman dalam satu klik.",
   },
   {
     icon: Upload,
-    title: "Upload Files",
-    description: "Drag and drop your files or ZIP archives into the app.",
+    title: "Unggah File",
+    description: "Seret dan lepas file atau arsip ZIP Anda ke dalam aplikasi.",
   },
   {
     icon: Sparkles,
-    title: "Generate Message",
-    description: "Use our AI assistant to generate the perfect commit message.",
+    title: "Buat Pesan",
+    description: "Gunakan asisten AI kami untuk membuat pesan commit yang sempurna.",
   },
   {
     icon: GitBranch,
-    title: "Commit to Repo",
-    description: "Select your repository and commit your files directly.",
+    title: "Commit ke Repo",
+    description: "Pilih repositori Anda dan commit file Anda secara langsung.",
   },
 ];
 
@@ -45,9 +46,9 @@ export function HowItWorks() {
   return (
     <section id="how-it-works" className="container py-24 sm:py-32">
       <div className="text-center">
-        <h2 className="text-3xl md:text-5xl font-bold">Four Simple Steps</h2>
+        <h2 className="text-3xl md:text-5xl font-bold">Empat Langkah Sederhana</h2>
         <p className="mt-4 max-w-2xl mx-auto text-lg text-muted-foreground">
-          From login to commit in under a minute. Here’s how it works.
+          Dari login hingga commit dalam waktu kurang dari satu menit. Begini cara kerjanya.
         </p>
       </div>
 

@@ -1,3 +1,4 @@
+
 'use server';
 
 import { getAuth } from 'firebase/auth';
@@ -55,14 +56,14 @@ async function api(url: string, token: string, options: RequestInit = {}) {
   if (!response.ok) {
     const error = await response.json();
     console.error('GitHub API Error:', error);
-    throw new Error(error.message || `GitHub API request to ${url} failed`);
+    throw new Error(error.message || `Permintaan GitHub API ke ${url} gagal`);
   }
   return response.json();
 }
 
 export async function fetchUserRepos(githubToken: string): Promise<Repo[]> {
     if (!githubToken) {
-        throw new Error('GitHub token is required.');
+        throw new Error('Token GitHub diperlukan.');
     }
     // Fetch repos user has access to, including private ones
     const repos = await api('/user/repos?type=owner&sort=updated&per_page=100', githubToken);
@@ -77,12 +78,12 @@ export async function fetchUserRepos(githubToken: string): Promise<Repo[]> {
 
 export async function commitToRepo({ repoUrl, commitMessage, files, githubToken, destinationPath }: CommitParams) {
   if (!githubToken) {
-    throw new Error('GitHub token is required.');
+    throw new Error('Token GitHub diperlukan.');
   }
 
   const urlParts = repoUrl.replace('https://github.com/', '').split('/');
   if (urlParts.length < 2) {
-    throw new Error('Invalid repository URL format. Expected "owner/repo".');
+    throw new Error('Format URL repositori tidak valid. Diharapkan "owner/repo".');
   }
   const [owner, repo] = urlParts;
 
@@ -141,7 +142,7 @@ export async function commitToRepo({ repoUrl, commitMessage, files, githubToken,
 
     return { success: true, commitUrl: newCommit.html_url };
   } catch (error: any) {
-    console.error('Failed to commit to GitHub:', error);
-    throw new Error(error.message || 'Failed to commit files to the repository.');
+    console.error('Gagal melakukan commit ke GitHub:', error);
+    throw new Error(error.message || 'Gagal melakukan commit file ke repositori.');
   }
 }

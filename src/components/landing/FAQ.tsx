@@ -11,9 +11,9 @@ export function FAQ() {
   return (
     <section id="faq" className="container py-24 sm:py-32">
       <div className="text-center">
-        <h2 className="text-3xl md:text-5xl font-bold">Frequently Asked Questions</h2>
+        <h2 className="text-3xl md:text-5xl font-bold">Pertanyaan yang Sering Diajukan</h2>
         <p className="mt-4 max-w-2xl mx-auto text-lg text-muted-foreground">
-          Have questions? We've got answers. If you have other questions, feel free to reach out.
+          Punya pertanyaan? Kami punya jawabannya. Jika Anda memiliki pertanyaan lain, jangan ragu untuk menghubungi kami.
         </p>
       </div>
 

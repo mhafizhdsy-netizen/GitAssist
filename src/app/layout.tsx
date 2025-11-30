@@ -19,9 +19,9 @@ const fontMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'GitAssist - Your AI-Powered GitHub Companion',
+  title: 'GitAssist - Asisten GitHub Berbasis AI Anda',
   description:
-    'Effortlessly manage your GitHub repositories with AI-powered commit messages, batch uploads, and more. GitAssist simplifies your workflow.',
+    'Kelola repositori GitHub Anda dengan mudah menggunakan pesan commit berbasis AI, unggahan massal, dan banyak lagi. GitAssist menyederhanakan alur kerja Anda.',
 };
 
 export default function RootLayout({
@@ -30,7 +30,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark">
+    <html lang="id" className="dark">
       <body className={cn("font-sans antialiased", fontSans.variable, fontMono.variable)}>
         <FirebaseClientProvider>
           <div className="relative min-h-screen w-full">
