@@ -163,12 +163,12 @@ export async function commitToRepo({ repoUrl, commitMessage, files, githubToken,
   const [owner, repo] = urlParts;
 
   try {
-    // 1. Get the default branch name
     const repoData = await api(`/repos/${owner}/${repo}`, githubToken);
     const defaultBranch = repoData.default_branch;
-    const ref = `heads/${defaultBranch}`;
+    const refPath = `heads/${defaultBranch}`;
 
-    // 2. Create blobs for each new file
+    const latestRef = await api(`/repos/${owner}/${repo}/git/ref/${refPath}`, githubToken);
+
     const fileBlobs = await Promise.all(
       files.map(async (file) => {
         const blob = await api(`/repos/${owner}/${repo}/git/blobs`, githubToken, {
@@ -184,64 +184,70 @@ export async function commitToRepo({ repoUrl, commitMessage, files, githubToken,
         return {
           path: finalPath,
           sha: blob.sha,
-          mode: '100644', // file mode
+          mode: '100644',
           type: 'blob',
         };
       })
     );
 
-    // 3. Check if the repo is empty by trying to get the ref
-    const latestRef = await api(`/repos/${owner}/${repo}/git/ref/${ref}`, githubToken);
-
-    let latestCommitSha;
-    let baseTreeSha;
+    let newCommit;
 
     if (latestRef) {
-        // Repo is not empty
-        latestCommitSha = latestRef.object.sha;
-        const latestCommitData = await api(`/repos/${owner}/${repo}/git/commits/${latestCommitSha}`, githubToken);
-        baseTreeSha = latestCommitData.tree.sha;
-    }
+      // Repositori sudah ada isinya
+      const latestCommitSha = latestRef.object.sha;
+      const latestCommitData = await api(`/repos/${owner}/${repo}/git/commits/${latestCommitSha}`, githubToken);
+      const baseTreeSha = latestCommitData.tree.sha;
 
-    // 4. Create a new tree
-    const newTree = await api(`/repos/${owner}/${repo}/git/trees`, githubToken, {
+      const newTree = await api(`/repos/${owner}/${repo}/git/trees`, githubToken, {
         method: 'POST',
         body: JSON.stringify({
-          base_tree: baseTreeSha, // Will be undefined for empty repo, which is correct
+          base_tree: baseTreeSha,
           tree: fileBlobs,
         }),
       });
 
-    // 5. Create a new commit
-    const newCommit = await api(`/repos/${owner}/${repo}/git/commits`, githubToken, {
-      method: 'POST',
-      body: JSON.stringify({
-        message: commitMessage,
-        tree: newTree.sha,
-        parents: latestCommitSha ? [latestCommitSha] : [], // Empty array for initial commit
-      }),
-    });
+      newCommit = await api(`/repos/${owner}/${repo}/git/commits`, githubToken, {
+        method: 'POST',
+        body: JSON.stringify({
+          message: commitMessage,
+          tree: newTree.sha,
+          parents: [latestCommitSha],
+        }),
+      });
 
-    // 6. Update the branch reference or create it if it doesn't exist
-    if (latestRef) {
-        // Update existing ref
-        await api(`/repos/${owner}/${repo}/git/refs/${ref}`, githubToken, {
-          method: 'PATCH',
-          body: JSON.stringify({
-            sha: newCommit.sha,
-          }),
-        });
+      await api(`/repos/${owner}/${repo}/git/refs/${refPath}`, githubToken, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          sha: newCommit.sha,
+        }),
+      });
+
     } else {
-        // Create new ref for initial commit
-        await api(`/repos/${owner}/${repo}/git/refs`, githubToken, {
-          method: 'POST',
-          body: JSON.stringify({
-            ref: `refs/${ref}`,
-            sha: newCommit.sha,
-          }),
-        });
-    }
+      // Repositori kosong (initial commit)
+      const newTree = await api(`/repos/${owner}/${repo}/git/trees`, githubToken, {
+        method: 'POST',
+        body: JSON.stringify({
+          tree: fileBlobs,
+        }),
+      });
 
+      newCommit = await api(`/repos/${owner}/${repo}/git/commits`, githubToken, {
+        method: 'POST',
+        body: JSON.stringify({
+          message: commitMessage,
+          tree: newTree.sha,
+          parents: [],
+        }),
+      });
+
+      await api(`/repos/${owner}/${repo}/git/refs`, githubToken, {
+        method: 'POST',
+        body: JSON.stringify({
+          ref: `refs/${refPath}`,
+          sha: newCommit.sha,
+        }),
+      });
+    }
 
     return { success: true, commitUrl: newCommit.html_url };
   } catch (error: any) {
