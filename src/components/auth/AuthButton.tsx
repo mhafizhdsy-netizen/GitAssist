@@ -13,13 +13,15 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { signOut as firebaseSignOut } from '@/app/actions';
+import { signOut as serverSignOut } from '@/app/actions';
+import { signOut } from 'firebase/auth';
 import { ArrowRight, LayoutDashboard, LogOut, User as UserIcon } from 'lucide-react';
-import { useUser } from '@/firebase';
+import { useUser, useAuth } from '@/firebase';
 import { Skeleton } from '../ui/skeleton';
 
 export default function AuthButton() {
   const { user, loading } = useUser();
+  const auth = useAuth();
   const router = useRouter();
 
   const getInitials = (name: string | null | undefined): string => {
@@ -34,10 +36,16 @@ export default function AuthButton() {
   const handleSignOut = async () => {
     // Clear the session storage on the client
     sessionStorage.removeItem('github-token');
-    // Call the server action to sign out from Firebase
-    await firebaseSignOut();
-    // Redirect to the landing page
-    router.push('/');
+    
+    if (auth) {
+        // Sign out on the client
+        await signOut(auth);
+    }
+    
+    // Call the server action to redirect
+    await serverSignOut();
+    
+    // Refresh the router to clear client-side cache
     router.refresh();
   };
 

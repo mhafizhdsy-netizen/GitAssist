@@ -1,25 +1,12 @@
 
 'use server';
 
-import { getAuth } from 'firebase/auth';
-import { initializeApp, getApps, getApp } from 'firebase/app';
 import { redirect } from 'next/navigation';
-import { firebaseConfig } from '@/firebase/config';
 import { Buffer } from 'buffer';
 
-function getFirebaseAuth() {
-  let app;
-  if (!getApps().length) {
-    app = initializeApp(firebaseConfig);
-  } else {
-    app = getApp();
-  }
-  return getAuth(app);
-}
-
 export async function signOut() {
-  const auth = getFirebaseAuth();
-  await auth.signOut();
+  // This server action is now only responsible for redirection.
+  // The client will handle the actual Firebase sign-out.
   return redirect('/');
 }
 
@@ -201,7 +188,7 @@ export async function commitToRepo({ repoUrl, commitMessage, files, githubToken,
     // Get the latest ref for the branch. This will return null (404) if the branch doesn't exist.
     const latestRef = await api(`/repos/${owner}/${repo}/git/ref/${refPath}`, githubToken).catch(err => {
         // If the error is "Not Found", it means the repo or branch is new.
-        if (err.message === "Not Found") return null;
+        if (err.message === "Not Found" || err.message.includes("Git Repository is empty")) return null;
         throw err;
     });
 
