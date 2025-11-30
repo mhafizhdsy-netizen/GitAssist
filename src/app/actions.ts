@@ -114,32 +114,41 @@ async function initializeEmptyRepository(
 ): Promise<{ success: boolean; commitUrl: string }> {
     console.log(`Memulai inisialisasi repositori kosong untuk ${owner}/${repo}`);
 
-    const treeItems = files.map((file) => {
-        return {
-            path: file.path,
-            mode: '100644' as const,
-            type: 'blob' as const,
-            content: file.content
-        };
-    });
+    const repoInfo = await api(`/repos/${owner}/${repo}`, token);
+    const branchToCreate = repoInfo.default_branch || 'main';
 
+    // Step 1: Buat blobs untuk semua file
+    const blobs = await Promise.all(
+        files.map(async (file) => {
+            const base64Content = Buffer.from(file.content, 'utf-8').toString('base64');
+            const blob = await api(`/repos/${owner}/${repo}/git/blobs`, token, {
+                method: 'POST',
+                body: JSON.stringify({ content: base64Content, encoding: 'base64' }),
+            });
+            return { path: file.path, sha: blob.sha, mode: '100644', type: 'blob' as const };
+        })
+    );
+
+    // Step 2: Buat tree dari blobs
     const tree = await api(`/repos/${owner}/${repo}/git/trees`, token, {
         method: 'POST',
-        body: JSON.stringify({ tree: treeItems }),
+        body: JSON.stringify({ 
+            // base_tree: '4b825dc642cb6eb9a060e54bf8d69288fbee4904', // Empty tree SHA
+            tree: blobs 
+        }),
     });
 
+    // Step 3: Buat commit dengan tree yang baru dibuat
     const commit = await api(`/repos/${owner}/${repo}/git/commits`, token, {
         method: 'POST',
         body: JSON.stringify({
             message: commitMessage,
             tree: tree.sha,
-            parents: [],
+            parents: [], // No parent = initial commit
         }),
     });
 
-    const repoInfo = await api(`/repos/${owner}/${repo}`, token);
-    const branchToCreate = repoInfo.default_branch || 'main';
-
+    // Step 4: Buat reference (branch) yang menunjuk ke commit
     await api(`/repos/${owner}/${repo}/git/refs`, token, {
         method: 'POST',
         body: JSON.stringify({
@@ -312,5 +321,7 @@ export async function fetchRepoContents(githubToken: string, owner: string, repo
       throw error;
     }
 }
+
+    
 
     
