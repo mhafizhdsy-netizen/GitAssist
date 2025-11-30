@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Github, Twitter, Linkedin } from "lucide-react";
+import { Github, Instagram } from "lucide-react";
 import { FOOTER_LINKS } from "@/lib/constants";
 
 const CustomGitIcon = (props: React.SVGProps<SVGSVGElement>) => (
@@ -38,14 +38,11 @@ const LargeFooter = () => (
             Alat berbasis AI untuk menyederhanakan alur kerja GitHub Anda dan meningkatkan produktivitas.
           </p>
           <div className="flex items-center gap-4 mt-6">
-            <Link href="https://github.com/mhafizhdsy-netizen/GitAssist" target="_blank" rel="noopener noreferrer" aria-label="GitHub">
+            <Link href="https://github.com/mhafizhdsy-netizen/" target="_blank" rel="noopener noreferrer" aria-label="GitHub">
               <Github className="h-6 w-6 text-muted-foreground transition-colors hover:text-primary" />
             </Link>
-            <Link href="#" aria-label="Twitter">
-              <Twitter className="h-6 w-6 text-muted-foreground transition-colors hover:text-primary" />
-            </Link>
-            <Link href="#" aria-label="LinkedIn">
-              <Linkedin className="h-6 w-6 text-muted-foreground transition-colors hover:text-primary" />
+            <Link href="https://www.instagram.com/elchampionee?igsh=MmVpbjNmdmNmaTJt" target="_blank" rel="noopener noreferrer" aria-label="Instagram">
+              <Instagram className="h-6 w-6 text-muted-foreground transition-colors hover:text-primary" />
             </Link>
           </div>
         </div>
