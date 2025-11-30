@@ -87,19 +87,22 @@ export function FileUploader() {
     try {
       const zip = await JSZip.loadAsync(zipFile);
       const extracted: FileOrFolder[] = [];
-      const totalFiles = Object.keys(zip.files).length;
+      const allFiles = Object.values(zip.files).filter(file => !file.dir);
+      const totalFiles = allFiles.length;
       let processedFiles = 0;
 
-      for (const path in zip.files) {
-        const zipEntry = zip.files[path];
-        if (!zipEntry.dir) {
-          const blob = await zipEntry.async('blob');
-          const newFile = new File([blob], zipEntry.name.split('/').pop() || zipEntry.name, { type: blob.type });
-          extracted.push({ name: newFile.name, path: zipEntry.name, type: 'file', content: newFile });
-        }
+      for (const zipEntry of allFiles) {
+        const blob = await zipEntry.async('blob');
+        const fileName = zipEntry.name.split('/').pop() || zipEntry.name;
+        const newFile = new File([blob], fileName, { type: blob.type });
+
+        // Use zipEntry.name as the full relative path
+        extracted.push({ name: fileName, path: zipEntry.name, type: 'file', content: newFile });
+
         processedFiles++;
         setUploadProgress((processedFiles / totalFiles) * 100);
       }
+      
       setFiles(extracted);
       setStep('select-repo');
       toast({ title: 'Berhasil', description: `${extracted.length} file diekstrak dari ZIP.` });
@@ -107,7 +110,7 @@ export function FileUploader() {
       console.error(error);
       toast({
         title: 'Kesalahan Ekstraksi ZIP',
-        description: 'Gagal mengekstrak file ZIP. Mungkin file tersebut rusak.',
+        description: 'Gagal mengekstrak file ZIP. Mungkin file tersebut rusak atau formatnya tidak didukung.',
         variant: 'destructive',
       });
       resetState();
@@ -431,5 +434,7 @@ export function FileUploader() {
     </Card>
   );
 }
+
+    
 
     
