@@ -44,7 +44,10 @@ const Header = () => {
         )}
       >
         <motion.div
-          className="relative container flex items-center justify-between bg-background/50 px-4 py-2 backdrop-blur-lg border"
+          className={cn(
+            "relative container flex items-center justify-between px-4 py-2 transition-all",
+            isScrolled && "bg-background/50 backdrop-blur-lg border"
+          )}
           layout
           transition={{ duration: 0.4, ease: [0.32, 0.72, 0, 1] }}
           style={{ 
