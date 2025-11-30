@@ -16,6 +16,7 @@ import { id } from 'date-fns/locale';
 import RepoDetailModal from '@/components/account/RepoDetailModal';
 import { motion } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 export default function AccountPage() {
   const { user, loading: userLoading } = useUser();
@@ -176,15 +177,16 @@ export default function AccountPage() {
                   initial="hidden"
                   animate="visible"
                 >
+                  <TooltipProvider>
                   {repos.map(repo => (
                     <motion.div key={repo.id} variants={itemVariants}>
                       <Card className="glass-card flex flex-col h-full hover:border-primary/50 transition-colors duration-300">
                         <CardHeader>
-                          <div className="flex items-start gap-3">
-                            <BookText className="h-5 w-5 text-primary flex-shrink-0 mt-1" />
+                          <div className="flex items-start justify-between gap-3">
                             <div className="flex-grow">
-                              <CardTitle className="leading-snug">
-                                <Link href={repo.html_url} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                                <CardTitle className="leading-snug flex items-center gap-2">
+                                <BookText className="h-5 w-5 text-primary flex-shrink-0" />
+                                <Link href={repo.html_url} target="_blank" rel="noopener noreferrer" className="hover:underline truncate">
                                   {repo.name}
                                 </Link>
                               </CardTitle>
@@ -192,6 +194,17 @@ export default function AccountPage() {
                                 {repo.description || "Tidak ada deskripsi"}
                               </CardDescription>
                             </div>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button variant="ghost" size="icon" className="flex-shrink-0 h-8 w-8" onClick={() => handleViewRepo(repo)}>
+                                    <Eye className="h-4 w-4" />
+                                    <span className="sr-only">Lihat Isi Repositori</span>
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Lihat Isi</p>
+                              </TooltipContent>
+                            </Tooltip>
                           </div>
                         </CardHeader>
                         <CardContent className="flex-grow space-y-4">
@@ -219,18 +232,15 @@ export default function AccountPage() {
                             </span>
                           </div>
                         </CardContent>
-                        <CardFooter className="flex-col items-stretch gap-2 pt-4">
-                            <Button variant="outline" className="w-full" onClick={() => handleViewRepo(repo)}>
-                                <Eye className="mr-2 h-4 w-4" />
-                                Lihat Isi
-                            </Button>
-                            <p className="text-xs text-muted-foreground text-center">
+                        <CardFooter className="pt-4 mt-auto">
+                           <p className="text-xs text-muted-foreground text-center w-full">
                                 Diperbarui {formatDate(repo.updated_at)}
                             </p>
                         </CardFooter>
                       </Card>
                     </motion.div>
                   ))}
+                  </TooltipProvider>
                 </motion.div>
               ) : (
                 <p className="text-center py-10 text-muted-foreground">Anda tidak memiliki repositori.</p>
@@ -271,3 +281,5 @@ export default function AccountPage() {
     </>
   );
 }
+
+    
