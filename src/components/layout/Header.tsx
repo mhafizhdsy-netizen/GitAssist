@@ -90,14 +90,12 @@ const Header = () => {
             </div>
           </nav>
           
-          <div className="md:hidden">
-             <div className="flex items-center gap-2">
-                <AuthButton />
-                <Button variant="ghost" size="icon" onClick={() => setMobileMenuOpen(true)}>
-                  <Menu />
-                  <span className="sr-only">Buka menu</span>
-                </Button>
-            </div>
+          <div className="md:hidden flex items-center gap-2">
+            <AuthButton />
+            <Button variant="ghost" size="icon" onClick={() => setMobileMenuOpen(true)}>
+              <Menu />
+              <span className="sr-only">Buka menu</span>
+            </Button>
           </div>
         </div>
       </header>
