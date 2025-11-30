@@ -97,14 +97,11 @@ export async function fetchUserRepos(githubToken: string, page: number = 1, perP
     if (!githubToken) {
         throw new Error('Token GitHub diperlukan.');
     }
-    // Fetch all repos user has owner access to
-    const repos = await api(`/user/repos?type=owner&sort=updated&per_page=100`, githubToken);
+    const repos = await api(`/user/repos?type=owner&sort=updated&page=${page}&per_page=${perPage}`, githubToken);
     
     if (!repos) return [];
 
-    const paginatedRepos = repos.slice((page - 1) * perPage, page * perPage);
-
-    return paginatedRepos.map((repo: any) => ({
+    return repos.map((repo: any) => ({
         id: repo.id,
         name: repo.name,
         full_name: repo.full_name,
