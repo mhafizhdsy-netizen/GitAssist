@@ -87,7 +87,9 @@ export function FileUploader() {
     try {
       const zip = await JSZip.loadAsync(zipFile);
       const extracted: FileOrFolder[] = [];
-      const allFiles = Object.values(zip.files).filter(file => !file.dir);
+      const allFiles = Object.values(zip.files).filter(file => 
+        !file.dir && !file.name.startsWith('__MACOSX/')
+      );
       const totalFiles = allFiles.length;
       let processedFiles = 0;
 
@@ -96,21 +98,24 @@ export function FileUploader() {
         const fileName = zipEntry.name.split('/').pop() || zipEntry.name;
         const newFile = new File([blob], fileName, { type: blob.type });
 
-        // Use zipEntry.name as the full relative path
         extracted.push({ name: fileName, path: zipEntry.name, type: 'file', content: newFile });
 
         processedFiles++;
         setUploadProgress((processedFiles / totalFiles) * 100);
       }
       
+      if (extracted.length === 0) {
+          throw new Error("File ZIP tidak berisi file yang dapat diekstrak.");
+      }
+
       setFiles(extracted);
       setStep('select-repo');
       toast({ title: 'Berhasil', description: `${extracted.length} file diekstrak dari ZIP.` });
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
       toast({
         title: 'Kesalahan Ekstraksi ZIP',
-        description: 'Gagal mengekstrak file ZIP. Mungkin file tersebut rusak atau formatnya tidak didukung.',
+        description: error.message || 'Gagal mengekstrak file ZIP. Mungkin file tersebut rusak atau formatnya tidak didukung.',
         variant: 'destructive',
       });
       resetState();
@@ -434,7 +439,3 @@ export function FileUploader() {
     </Card>
   );
 }
-
-    
-
-    
