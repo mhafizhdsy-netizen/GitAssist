@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import JSZip from 'jszip';
 import { Buffer } from 'buffer';
-import { UploadCloud, File, Github, Sparkles, Loader2, CheckCircle, ArrowRight, Folder, X, PlusCircle } from 'lucide-react';
+import { UploadCloud, File, Github, Sparkles, Loader2, CheckCircle, ArrowRight, Folder, X, PlusCircle, Trash2 } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -16,6 +16,7 @@ import { generateCommitMessage } from '@/ai/flows/generate-commit-message';
 import { commitToRepo, fetchUserRepos } from '@/app/actions';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '../ui/skeleton';
+import { Checkbox } from '../ui/checkbox';
 
 // Make Buffer available globally for JSZip to use
 if (typeof window !== 'undefined' && typeof (window as any).Buffer === 'undefined') {
@@ -40,6 +41,7 @@ type Repo = {
 
 export function FileUploader() {
   const [files, setFiles] = useState<FileOrFolder[]>([]);
+  const [selectedFilePaths, setSelectedFilePaths] = useState<Set<string>>(new Set());
   const [uploadProgress, setUploadProgress] = useState(0);
   const [step, setStep] = useState<UploadStep>('upload');
   
@@ -151,7 +153,7 @@ export function FileUploader() {
         if (step !== 'select-repo') setStep('select-repo');
       }
     },
-    [toast, files.length, step]
+    [toast, files.length, step, handleZipExtraction]
   );
 
   const { getRootProps, getInputProps, isDragActive, open: openFilePicker } = useDropzone({
@@ -168,18 +170,37 @@ export function FileUploader() {
     }
   });
 
-  const handleRemoveFile = (pathToRemove: string) => {
-    setFiles(prevFiles => {
-      const updatedFiles = prevFiles.filter(file => file.path !== pathToRemove);
-      if (updatedFiles.length === 0) {
-        resetState();
+  const handleFileSelectionChange = (path: string, checked: boolean | 'indeterminate') => {
+    setSelectedFilePaths(prev => {
+      const newSelection = new Set(prev);
+      if (checked) {
+        newSelection.add(path);
+      } else {
+        newSelection.delete(path);
       }
-      return updatedFiles;
+      return newSelection;
     });
+  };
+
+  const handleSelectAll = (checked: boolean | 'indeterminate') => {
+    if (checked) {
+      setSelectedFilePaths(new Set(files.map(f => f.path)));
+    } else {
+      setSelectedFilePaths(new Set());
+    }
+  };
+
+  const handleDeleteSelected = () => {
+    const newFiles = files.filter(f => !selectedFilePaths.has(f.path));
+    setFiles(newFiles);
     toast({
         title: "File dihapus",
-        description: `Menghapus ${pathToRemove} dari daftar.`,
+        description: `${selectedFilePaths.size} file telah dihapus.`,
     });
+    setSelectedFilePaths(new Set());
+    if (newFiles.length === 0) {
+      resetState();
+    }
   };
 
   const handleGenerateCommitMessage = async () => {
@@ -263,6 +284,7 @@ export function FileUploader() {
 
   const resetState = () => {
     setFiles([]);
+    setSelectedFilePaths(new Set());
     setUploadProgress(0);
     setStep('upload');
     setSelectedRepo('');
@@ -286,30 +308,48 @@ export function FileUploader() {
     </div>
   );
 
+  const isAllSelected = files.length > 0 && selectedFilePaths.size === files.length;
+  const isIndeterminate = selectedFilePaths.size > 0 && selectedFilePaths.size < files.length;
+
   const renderFileTree = () => (
     <div className="mt-4 rounded-lg border bg-background/50">
       <div className="flex justify-between items-center p-3 border-b">
-        <h4 className="font-semibold text-sm">File yang akan di-commit ({files.length}):</h4>
-        <Button variant="outline" size="sm" onClick={openFilePicker}>
-          <PlusCircle className="mr-2 h-4 w-4" />
-          Tambah File
-        </Button>
+        <div className='flex items-center gap-3'>
+          <Checkbox 
+            id="select-all"
+            checked={isAllSelected}
+            onCheckedChange={handleSelectAll}
+            aria-label="Pilih semua file"
+          />
+          <label htmlFor="select-all" className="font-semibold text-sm cursor-pointer">
+            File yang akan di-commit ({files.length})
+          </label>
+        </div>
+        <div className="flex items-center gap-2">
+            {selectedFilePaths.size > 0 && (
+                <Button variant="destructive" size="sm" onClick={handleDeleteSelected}>
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Hapus ({selectedFilePaths.size})
+                </Button>
+            )}
+            <Button variant="outline" size="sm" onClick={openFilePicker}>
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Tambah
+            </Button>
+        </div>
       </div>
       <div className="max-h-48 overflow-y-auto p-3">
-        <ul className="space-y-1">
+        <ul className="space-y-2">
           {files.map((file) => (
             <li key={file.path} className="flex items-center text-sm text-muted-foreground group">
+              <Checkbox
+                id={`select-${file.path}`}
+                className='mr-3'
+                checked={selectedFilePaths.has(file.path)}
+                onCheckedChange={(checked) => handleFileSelectionChange(file.path, checked)}
+              />
               <File className="mr-2 h-4 w-4 flex-shrink-0" />
-              <span className="truncate flex-grow">{file.path}</span>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6 ml-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                onClick={() => handleRemoveFile(file.path)}
-                aria-label={`Hapus ${file.path}`}
-              >
-                <X className="h-4 w-4" />
-              </Button>
+              <label htmlFor={`select-${file.path}`} className="truncate flex-grow cursor-pointer">{file.path}</label>
             </li>
           ))}
         </ul>
