@@ -10,7 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Star, GitFork, Code, ArrowLeft, ArrowRight, Eye, BookText } from 'lucide-react';
+import { Star, GitFork, Code, ArrowLeft, ArrowRight, Eye, BookText, Globe } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { id } from 'date-fns/locale';
 import RepoDetailModal from '@/components/account/RepoDetailModal';
@@ -118,7 +118,7 @@ export default function AccountPage() {
           <Skeleton className="h-8 w-48 mx-auto mb-8" />
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {Array.from({ length: 9 }).map((_, i) => (
-              <Card key={i} className="glass-card h-64"><CardContent className="p-6"><Skeleton className="h-full w-full" /></CardContent></Card>
+              <Card key={i} className="bg-card h-64"><CardContent className="p-6"><Skeleton className="h-full w-full" /></CardContent></Card>
             ))}
           </div>
         </div>
@@ -166,7 +166,7 @@ export default function AccountPage() {
           {reposLoading ? (
              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {Array.from({ length: 9 }).map((_, i) => (
-                <Card key={i} className="glass-card h-64"><CardContent className="p-6"><Skeleton className="h-full w-full" /></CardContent></Card>
+                <Card key={i} className="bg-card h-[280px]"><CardContent className="p-6"><Skeleton className="h-full w-full" /></CardContent></Card>
               ))}
             </div>
           ) : (
@@ -181,48 +181,27 @@ export default function AccountPage() {
                   <TooltipProvider>
                   {repos.map(repo => (
                     <motion.div key={repo.id} variants={itemVariants}>
-                      <Card className="glass-card flex flex-col h-full hover:border-primary/50 transition-colors duration-300">
-                        <CardHeader>
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="flex-grow">
-                                <CardTitle className="leading-snug flex items-center gap-2">
-                                <BookText className="h-5 w-5 text-primary flex-shrink-0" />
-                                <Link href={repo.html_url} target="_blank" rel="noopener noreferrer" className="hover:underline truncate">
-                                  {repo.name}
-                                </Link>
-                              </CardTitle>
-                              <CardDescription className="mt-2 h-10 text-ellipsis-2-lines">
-                                {repo.description || "Tidak ada deskripsi"}
-                              </CardDescription>
-                            </div>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button variant="ghost" size="icon" className="flex-shrink-0 h-8 w-8" onClick={() => handleViewRepo(repo)}>
-                                    <Eye className="h-4 w-4" />
-                                    <span className="sr-only">Lihat Isi Repositori</span>
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p>Lihat Isi</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </div>
+                      <Card className="bg-card/70 backdrop-blur-sm flex flex-col h-full group relative overflow-hidden transition-all duration-300 hover:border-primary/50 hover:bg-card">
+                         <div className="absolute top-0 right-0 h-16 w-16 bg-gradient-to-br from-primary/20 to-transparent group-hover:h-24 group-hover:w-24 transition-all duration-300 rounded-bl-full"></div>
+                        <CardHeader className="relative z-10">
+                            <CardTitle className="leading-snug flex items-center gap-2 text-lg">
+                              <BookText className="h-5 w-5 text-primary flex-shrink-0" />
+                              <Link href={repo.html_url} target="_blank" rel="noopener noreferrer" className="hover:underline truncate">
+                                {repo.name}
+                              </Link>
+                            </CardTitle>
+                            <CardDescription className="mt-1 h-10 text-ellipsis-2-lines text-muted-foreground">
+                              {repo.description || "Tidak ada deskripsi"}
+                            </CardDescription>
                         </CardHeader>
-                        <CardContent className="flex-grow space-y-4">
-                          {repo.topics.length > 0 && (
-                            <div className="flex flex-wrap gap-2">
-                                {repo.topics.slice(0, 3).map(topic => (
-                                    <Badge key={topic} variant="secondary" className="font-normal">{topic}</Badge>
-                                ))}
-                            </div>
+                        <CardContent className="flex-grow space-y-4 z-10">
+                          {repo.language && (
+                              <Badge variant="secondary" className="font-normal text-xs">
+                                <Code className="h-3 w-3 mr-1.5" />
+                                {repo.language}
+                              </Badge>
                           )}
                           <div className="flex items-center flex-wrap gap-x-4 gap-y-2 text-sm text-muted-foreground">
-                            {repo.language && (
-                              <span className="flex items-center gap-1.5">
-                                <Code className="h-4 w-4 text-primary" />
-                                {repo.language}
-                              </span>
-                            )}
                             <span className="flex items-center gap-1.5">
                               <Star className="h-4 w-4 text-yellow-400" />
                               {repo.stargazers_count}
@@ -233,10 +212,21 @@ export default function AccountPage() {
                             </span>
                           </div>
                         </CardContent>
-                        <CardFooter className="pt-4 mt-auto">
-                           <p className="text-xs text-muted-foreground text-center w-full">
+                        <CardFooter className="pt-4 mt-auto flex justify-between items-center z-10">
+                           <p className="text-xs text-muted-foreground">
                                 Diperbarui {formatDate(repo.updated_at)}
                             </p>
+                             <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleViewRepo(repo)}>
+                                    <Eye className="h-4 w-4" />
+                                    <span className="sr-only">Lihat Isi Repositori</span>
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Lihat Isi</p>
+                              </TooltipContent>
+                            </Tooltip>
                         </CardFooter>
                       </Card>
                     </motion.div>
