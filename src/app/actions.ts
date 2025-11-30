@@ -62,7 +62,7 @@ export type RepoContent = {
 };
 
 
-async function api(url: string, token: string, options: RequestInit = {}, raw: boolean = false) {
+async function api(url: string, token: string, options: RequestInit = {}) {
   const response = await fetch(`https://api.github.com${url}`, {
     ...options,
     headers: {
@@ -72,22 +72,24 @@ async function api(url: string, token: string, options: RequestInit = {}, raw: b
       'X-GitHub-Api-Version': '2022-11-28',
     },
   });
-  if (!response.ok) {
-    const error = await response.json();
-    console.error('GitHub API Error:', error);
-    // Khusus untuk kasus get ref, error 404 berarti repo kosong
-    if (response.status === 404 && url.includes('/git/ref/')) {
-        return null;
-    }
-    throw new Error(error.message || `Permintaan GitHub API ke ${url} gagal`);
+
+  // Specifically for get ref, a 404 means the branch/repo is empty or doesn't exist.
+  // This is a valid scenario for an initial commit.
+  if (response.status === 404 && url.includes('/git/ref/')) {
+      return null;
   }
-  // Check if the response is empty
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ message: response.statusText }));
+    console.error('GitHub API Error:', error);
+    throw new Error(error.message || `Permintaan GitHub API ke ${url} gagal dengan status ${response.status}`);
+  }
+
+  // Check if the response is empty (e.g., 204 No Content)
   if (response.headers.get('Content-Length') === '0' || response.status === 204) {
     return null;
   }
-  if (raw) {
-    return response.text();
-  }
+  
   return response.json();
 }
 
@@ -126,11 +128,12 @@ export async function fetchRepoBranches(githubToken: string, owner: string, repo
     }
     try {
         const branches = await api(`/repos/${owner}/${repo}/branches`, githubToken);
+        // An empty repo will return an empty array for branches, which is fine.
         return branches || [];
     } catch (error: any) {
-        // If the repo is empty, it will throw a 404, which api() will throw
-        // We catch it and return an empty array.
-        if (error.message.includes('Git Repository is empty')) {
+        // If the repo is completely empty, the API might throw a "Git Repository is empty" error.
+        // We catch this and return an empty array as there are no branches.
+        if (error.message && error.message.includes('Git Repository is empty')) {
             return [];
         }
         console.error("Gagal mengambil branches:", error);
@@ -183,16 +186,11 @@ export async function commitToRepo({ repoUrl, commitMessage, files, githubToken,
   const [owner, repo] = urlParts;
 
   try {
-    // Branch name defaults to 'main' for initial commits or if not provided.
     const targetBranch = branchName || 'main';
     const refPath = `heads/${targetBranch}`;
 
-    // Get the latest ref for the branch. This will return null (404) if the branch doesn't exist.
-    const latestRef = await api(`/repos/${owner}/${repo}/git/ref/${refPath}`, githubToken).catch(err => {
-        // If the error is "Not Found" or related to empty repo, it means the repo or branch is new.
-        if (err.message === "Not Found" || err.message.includes("Git Repository is empty")) return null;
-        throw err;
-    });
+    // Get the latest ref for the branch. This will return null if the branch/repo doesn't exist.
+    const latestRef = await api(`/repos/${owner}/${repo}/git/ref/${refPath}`, githubToken);
 
     const fileBlobs = await Promise.all(
       files.map(async (file) => {
@@ -209,7 +207,7 @@ export async function commitToRepo({ repoUrl, commitMessage, files, githubToken,
         return {
           path: finalPath,
           sha: blob.sha,
-          mode: '100644',
+          mode: '100644', // file mode
           type: 'blob',
         };
       })
@@ -250,6 +248,7 @@ export async function commitToRepo({ repoUrl, commitMessage, files, githubToken,
 
     } else {
       // ===== EMPTY REPO/NEW BRANCH LOGIC (INITIAL COMMIT) =====
+      // 1. Create a tree with no base_tree
       const newTree = await api(`/repos/${owner}/${repo}/git/trees`, githubToken, {
         method: 'POST',
         body: JSON.stringify({
@@ -257,6 +256,7 @@ export async function commitToRepo({ repoUrl, commitMessage, files, githubToken,
         }),
       });
 
+      // 2. Create a commit with no parents
       newCommit = await api(`/repos/${owner}/${repo}/git/commits`, githubToken, {
         method: 'POST',
         body: JSON.stringify({
@@ -266,7 +266,7 @@ export async function commitToRepo({ repoUrl, commitMessage, files, githubToken,
         }),
       });
 
-      // Create new branch ref
+      // 3. Create a new branch ref pointing to the new commit
       await api(`/repos/${owner}/${repo}/git/refs`, githubToken, {
         method: 'POST',
         body: JSON.stringify({
