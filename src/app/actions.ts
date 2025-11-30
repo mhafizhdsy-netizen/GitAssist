@@ -46,9 +46,23 @@ export type Repo = {
     stargazers_count: number;
     forks_count: number;
     updated_at: string;
+    owner: {
+        login: string;
+    };
 };
 
-async function api(url: string, token: string, options: RequestInit = {}) {
+export type RepoContent = {
+    name: string;
+    path: string;
+    sha: string;
+    size: number;
+    type: 'file' | 'dir';
+    html_url: string;
+    download_url: string | null;
+};
+
+
+async function api(url: string, token: string, options: RequestInit = {}, raw: boolean = false) {
   const response = await fetch(`https://api.github.com${url}`, {
     ...options,
     headers: {
@@ -66,6 +80,9 @@ async function api(url: string, token: string, options: RequestInit = {}) {
   // Check if the response is empty
   if (response.headers.get('Content-Length') === '0' || response.status === 204) {
     return null;
+  }
+  if (raw) {
+    return response.text();
   }
   return response.json();
 }
@@ -88,8 +105,43 @@ export async function fetchUserRepos(githubToken: string, page: number = 1, perP
         stargazers_count: repo.stargazers_count,
         forks_count: repo.forks_count,
         updated_at: repo.updated_at,
+        owner: {
+            login: repo.owner.login,
+        }
     }));
 }
+
+
+export async function fetchRepoContents(githubToken: string, owner: string, repo: string, path: string = ''): Promise<RepoContent[] | string> {
+    if (!githubToken) {
+        throw new Error('Token GitHub diperlukan.');
+    }
+    const contents = await api(`/repos/${owner}/${repo}/contents/${path}`, githubToken);
+    
+    if (typeof contents.content === 'string' && contents.encoding === 'base64') {
+        return Buffer.from(contents.content, 'base64').toString('utf-8');
+    }
+
+    if (!Array.isArray(contents)) return [];
+    
+    // Sort contents so directories come first
+    contents.sort((a, b) => {
+        if (a.type === 'dir' && b.type !== 'dir') return -1;
+        if (a.type !== 'dir' && b.type === 'dir') return 1;
+        return a.name.localeCompare(b.name);
+    });
+
+    return contents.map((item: any) => ({
+        name: item.name,
+        path: item.path,
+        sha: item.sha,
+        size: item.size,
+        type: item.type,
+        html_url: item.html_url,
+        download_url: item.download_url
+    }));
+}
+
 
 
 export async function commitToRepo({ repoUrl, commitMessage, files, githubToken, destinationPath }: CommitParams) {

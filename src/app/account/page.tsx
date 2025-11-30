@@ -10,9 +10,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Star, GitFork, Code, ArrowLeft, ArrowRight } from 'lucide-react';
+import { Star, GitFork, Code, ArrowLeft, ArrowRight, Eye } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { id } from 'date-fns/locale';
+import RepoDetailModal from '@/components/account/RepoDetailModal';
 
 export default function AccountPage() {
   const { user, loading: userLoading } = useUser();
@@ -21,6 +22,10 @@ export default function AccountPage() {
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
+
+  const [selectedRepo, setSelectedRepo] = useState<Repo | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [githubToken, setGithubToken] = useState<string | null>(null);
 
   const getInitials = (name: string | null | undefined): string => {
     if (!name) return 'U';
@@ -32,21 +37,29 @@ export default function AccountPage() {
   };
   
   useEffect(() => {
+    // Moved token retrieval to its own effect to run once on mount
+    const token = sessionStorage.getItem('github-token');
+    if (!token) {
+      setError("Token GitHub tidak ditemukan. Silakan masuk kembali.");
+    } else {
+      setGithubToken(token);
+    }
+  }, []);
+
+  useEffect(() => {
     if (userLoading) return;
     if (!user) {
       redirect('/login');
       return;
     }
 
-    const token = sessionStorage.getItem('github-token');
-    if (!token) {
-      setError("Token GitHub tidak ditemukan. Silakan masuk kembali.");
+    if (!githubToken) {
       setReposLoading(false);
       return;
     }
 
     setReposLoading(true);
-    fetchUserRepos(token, page, 9)
+    fetchUserRepos(githubToken, page, 9)
       .then(newRepos => {
         setRepos(newRepos);
         setHasMore(newRepos.length === 9);
@@ -59,8 +72,12 @@ export default function AccountPage() {
         setReposLoading(false);
       });
 
-  }, [user, userLoading, page]);
+  }, [user, userLoading, page, githubToken]);
 
+  const handleViewRepo = (repo: Repo) => {
+    setSelectedRepo(repo);
+    setIsModalOpen(true);
+  };
 
   if (userLoading) {
     return (
@@ -68,7 +85,7 @@ export default function AccountPage() {
         <Skeleton className="h-32 w-full max-w-4xl mx-auto" />
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8 max-w-7xl mx-auto">
           {Array.from({ length: 9 }).map((_, i) => (
-            <Skeleton key={i} className="h-48 w-full" />
+            <Skeleton key={i} className="h-52 w-full" />
           ))}
         </div>
       </div>
@@ -88,6 +105,7 @@ export default function AccountPage() {
   };
 
   return (
+    <>
     <div className="container py-12 sm:py-16">
       <Card className="max-w-4xl mx-auto glass-card mb-12 shadow-2xl shadow-primary/10">
         <CardContent className="p-6 flex flex-col sm:flex-row items-center gap-6">
@@ -104,11 +122,11 @@ export default function AccountPage() {
       
       <div className="max-w-7xl mx-auto">
         <h2 className="text-3xl font-bold font-headline mb-8 text-center">Repositori Saya</h2>
-        {error && <p className="text-center text-destructive">{error}</p>}
+        {error && !reposLoading && <p className="text-center text-destructive">{error}</p>}
         {reposLoading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {Array.from({ length: 9 }).map((_, i) => (
-                    <Card key={i} className="glass-card"><CardContent className="p-6"><Skeleton className="h-36 w-full" /></CardContent></Card>
+                    <Card key={i} className="glass-card"><CardContent className="p-6"><Skeleton className="h-48 w-full" /></CardContent></Card>
                 ))}
             </div>
         ) : (
@@ -126,7 +144,7 @@ export default function AccountPage() {
                                 {repo.description || "Tidak ada deskripsi"}
                             </CardDescription>
                         </CardHeader>
-                        <CardContent className="flex-grow">
+                        <CardContent className="flex-grow space-y-4">
                              <div className="flex items-center gap-4 text-sm text-muted-foreground">
                                 {repo.language && (
                                     <span className="flex items-center gap-1.5">
@@ -143,11 +161,15 @@ export default function AccountPage() {
                                     {repo.forks_count}
                                 </span>
                             </div>
-                        </CardContent>
-                        <CardFooter>
-                            <p className="text-xs text-muted-foreground">
+                             <p className="text-xs text-muted-foreground">
                                 Diperbarui {formatDate(repo.updated_at)}
                             </p>
+                        </CardContent>
+                        <CardFooter>
+                           <Button variant="outline" className="w-full" onClick={() => handleViewRepo(repo)}>
+                                <Eye className="mr-2 h-4 w-4" />
+                                Lihat Isi
+                            </Button>
                         </CardFooter>
                     </Card>
                 ))}
@@ -173,5 +195,14 @@ export default function AccountPage() {
         )}
       </div>
     </div>
+    {selectedRepo && githubToken && (
+        <RepoDetailModal 
+            isOpen={isModalOpen}
+            onClose={() => setIsModalOpen(false)}
+            repo={selectedRepo}
+            githubToken={githubToken}
+        />
+    )}
+    </>
   );
 }
