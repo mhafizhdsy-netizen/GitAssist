@@ -22,7 +22,7 @@ export default function AuthButton() {
   const { user, loading } = useUser();
   const router = useRouter();
 
-  const getInitials = (name: string) => {
+  const getInitials = (name: string | null | undefined): string => {
     if (!name) return 'U';
     const names = name.split(' ');
     if (names.length > 1) {
@@ -36,7 +36,7 @@ export default function AuthButton() {
     sessionStorage.removeItem('github-token');
     // Call the server action to sign out from Firebase
     await firebaseSignOut();
-    // Force a reload or redirect to ensure state is cleared
+    // Redirect to the landing page
     router.push('/');
     router.refresh();
   };
@@ -53,7 +53,7 @@ export default function AuthButton() {
             <Button variant="ghost" className="relative h-10 w-10 rounded-full">
               <Avatar className="h-10 w-10 border-2 border-primary/50">
                 <AvatarImage src={user.photoURL || ''} alt={user.displayName || ''} />
-                <AvatarFallback>{getInitials(user.displayName || user.email || 'U')}</AvatarFallback>
+                <AvatarFallback>{getInitials(user.displayName || user.email)}</AvatarFallback>
               </Avatar>
             </Button>
           </DropdownMenuTrigger>
@@ -72,11 +72,9 @@ export default function AuthButton() {
               </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem asChild>
-              <button onClick={handleSignOut} className="w-full text-left">
+            <DropdownMenuItem onClick={handleSignOut}>
                 <LogOut className="mr-2 h-4 w-4" />
                 <span>Keluar</span>
-              </button>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
