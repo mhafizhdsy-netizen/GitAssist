@@ -71,9 +71,10 @@ async function api(url: string, token: string, options: RequestInit = {}) {
       },
     });
   
-    // Handle 404 for 'get ref' specifically to detect empty repos
-    if (response.status === 404 && url.includes('/git/refs/heads/')) {
-      return null;
+    if (response.status === 404 || response.status === 409) {
+      // 404: Not Found (e.g., ref doesn't exist)
+      // 409: Conflict (e.g., repo is empty)
+      return null; 
     }
   
     if (!response.ok) {
@@ -92,16 +93,15 @@ async function api(url: string, token: string, options: RequestInit = {}) {
 async function isRepositoryEmpty(owner: string, repo: string, token: string): Promise<boolean> {
     try {
         const repoData = await api(`/repos/${owner}/${repo}`, token);
-        if (!repoData) return true; // Should not happen if repo exists
+        if (!repoData) return true;
 
-        // A truly empty repository (just created) will have size 0 and no default branch findable
         const branchName = repoData.default_branch || 'main';
         const refData = await api(`/repos/${owner}/${repo}/git/refs/heads/${branchName}`, token);
         
         return refData === null;
     } catch (error) {
         console.error("Error saat mendeteksi repositori kosong:", error);
-        return true; // Fail-safe: assume empty on error
+        return true; 
     }
 }
 
@@ -127,7 +127,7 @@ async function initializeEmptyRepository(
 
     const tree = await api(`/repos/${owner}/${repo}/git/trees`, token, {
         method: 'POST',
-        body: JSON.stringify({ tree: blobs }), // No base_tree for initial commit
+        body: JSON.stringify({ tree: blobs }),
     });
 
     const commit = await api(`/repos/${owner}/${repo}/git/commits`, token, {
@@ -135,11 +135,10 @@ async function initializeEmptyRepository(
         body: JSON.stringify({
             message: commitMessage,
             tree: tree.sha,
-            parents: [], // No parents for initial commit
+            parents: [],
         }),
     });
 
-    // CRITICAL: Create the new branch reference
     await api(`/repos/${owner}/${repo}/git/refs`, token, {
         method: 'POST',
         body: JSON.stringify({
