@@ -1,10 +1,8 @@
 import { Github, Zap, ShieldCheck, UploadCloud, FileArchive, Code } from "lucide-react";
-import type { NavItem, FeatureCard, PricingPlan, FAQItem, TeamMember } from "@/lib/types";
+import type { NavItem, FeatureCard, FAQItem } from "@/lib/types";
 
 export const NAV_ITEMS: NavItem[] = [
   { label: "Features", href: "#features" },
-  { label: "Pricing", href: "#pricing" },
-  { label: "About", href: "#about" },
   { label: "FAQ", href: "#faq" },
 ];
 
@@ -47,39 +45,6 @@ export const FEATURES: FeatureCard[] = [
   },
 ];
 
-export const PRICING_PLANS: PricingPlan[] = [
-  {
-    name: "Free Forever",
-    price: "$0",
-    description: "For individuals and small teams getting started.",
-    features: [
-      "GitHub Authentication",
-      "Unlimited Public Repositories",
-      "AI Commit Suggestions (10/day)",
-      "Batch Uploads up to 25 files",
-      "Community Support",
-    ],
-    cta: "Get Started for Free",
-    isPrimary: true,
-  },
-  {
-    name: "Enterprise",
-    price: "Custom",
-    description: "For large organizations with specific needs.",
-    features: [
-      "Everything in Free, plus:",
-      "Unlimited Private Repositories",
-      "Unlimited AI Commit Suggestions",
-      "Unlimited Batch Uploads",
-      "Priority Support & SLA",
-      "On-premise Deployment Options",
-      "Custom Integrations",
-    ],
-    cta: "Contact Sales",
-    isPrimary: false,
-  },
-];
-
 export const FAQ_ITEMS: FAQItem[] = [
   {
     question: "Is GitAssist free to use?",
@@ -108,34 +73,12 @@ export const FAQ_ITEMS: FAQItem[] = [
   },
 ];
 
-
-export const TEAM_MEMBERS: TeamMember[] = [
-    {
-      name: "Alex Devson",
-      role: "Lead Developer",
-      avatar: "team-member-1",
-    },
-    {
-      name: "Jane Coder",
-      role: "UX/UI Designer",
-      avatar: "team-member-2",
-    },
-    {
-      name: "Sam Opsfield",
-      role: "DevOps Engineer",
-      avatar: "team-member-3",
-    },
-  ];
-
 export const FOOTER_LINKS = {
     "Product": [
         { label: "Features", href: "#features" },
-        { label: "Pricing", href: "#pricing" },
-        { label: "Demo", href: "#demo" },
         { label: "Donate", href: "/donate" },
     ],
     "Company": [
-        { label: "About Us", href: "#about" },
         { label: "Privacy Policy", href: "/privacy" },
         { label: "Terms of Service", href: "/terms" },
     ],

@@ -13,18 +13,11 @@ import AuthButton from "@/components/auth/AuthButton";
 
 const Header = () => {
   const { scrollY } = useScroll();
-  const [hidden, setHidden] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const pathname = usePathname();
 
   useMotionValueEvent(scrollY, "change", (latest) => {
-    const previous = scrollY.getPrevious() || 0;
-    if (latest > previous && latest > 150) {
-      setHidden(true);
-    } else {
-      setHidden(false);
-    }
     setIsScrolled(latest > 50);
   });
   
@@ -45,24 +38,30 @@ const Header = () => {
   return (
     <>
       <motion.header
-        variants={{
-          visible: { y: 0 },
-          hidden: { y: "-110%" },
-        }}
-        animate={hidden && !isDashboard ? "hidden" : "visible"}
-        transition={{ duration: 0.35, ease: "easeInOut" }}
         className={cn(
           "fixed inset-x-0 top-0 z-50 transition-all",
           isScrolled ? "p-2" : "p-4"
         )}
       >
         <motion.div
-          className="relative container flex items-center justify-between bg-background/50 px-4 py-2 backdrop-blur-lg border rounded-full"
+          className="relative container flex items-center justify-between bg-background/50 px-4 py-2 backdrop-blur-lg border"
           layout
+          transition={{ duration: 0.4, ease: [0.32, 0.72, 0, 1] }}
+          style={{ 
+            borderRadius: isScrolled ? 9999 : 12,
+            width: isScrolled ? 'fit-content' : '100%',
+            margin: isScrolled ? '0 auto' : undefined
+          }}
         >
           <Link href="/" className="flex items-center gap-2">
             <Code className="h-6 w-6 text-primary" />
-            <span className="font-bold text-lg">GitAssist</span>
+            <motion.span 
+              className="font-bold text-lg"
+              animate={{ opacity: isScrolled ? 0 : 1, width: isScrolled ? 0 : 'auto' }}
+              transition={{ duration: 0.2 }}
+            >
+             {!isScrolled && "GitAssist"}
+            </motion.span>
           </Link>
 
           <nav className="hidden md:flex">

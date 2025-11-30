@@ -12,22 +12,7 @@ export type FeatureCard = {
   color: string;
 };
 
-export type PricingPlan = {
-  name: string;
-  price: string;
-  description: string;
-  features: string[];
-  cta: string;
-  isPrimary: boolean;
-};
-
 export type FAQItem = {
   question: string;
   answer: string;
-};
-
-export type TeamMember = {
-  name: string;
-  role: string;
-  avatar: string;
 };
