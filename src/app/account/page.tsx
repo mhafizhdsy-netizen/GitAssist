@@ -15,6 +15,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { id } from 'date-fns/locale';
 import RepoDetailModal from '@/components/account/RepoDetailModal';
 import { motion } from 'framer-motion';
+import { Badge } from '@/components/ui/badge';
 
 export default function AccountPage() {
   const { user, loading: userLoading } = useUser();
@@ -115,7 +116,7 @@ export default function AccountPage() {
           <Skeleton className="h-8 w-48 mx-auto mb-8" />
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {Array.from({ length: 9 }).map((_, i) => (
-              <Card key={i} className="glass-card h-56"><CardContent className="p-6"><Skeleton className="h-full w-full" /></CardContent></Card>
+              <Card key={i} className="glass-card h-64"><CardContent className="p-6"><Skeleton className="h-full w-full" /></CardContent></Card>
             ))}
           </div>
         </div>
@@ -161,9 +162,9 @@ export default function AccountPage() {
           )}
 
           {reposLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {Array.from({ length: 9 }).map((_, i) => (
-                <Card key={i} className="glass-card h-56"><CardContent className="p-6"><Skeleton className="h-full w-full" /></CardContent></Card>
+                <Card key={i} className="glass-card h-64"><CardContent className="p-6"><Skeleton className="h-full w-full" /></CardContent></Card>
               ))}
             </div>
           ) : (
@@ -179,17 +180,28 @@ export default function AccountPage() {
                     <motion.div key={repo.id} variants={itemVariants}>
                       <Card className="glass-card flex flex-col h-full hover:border-primary/50 transition-colors duration-300">
                         <CardHeader>
-                          <CardTitle className="flex items-start gap-2">
+                          <div className="flex items-start gap-3">
                             <BookText className="h-5 w-5 text-primary flex-shrink-0 mt-1" />
-                            <Link href={repo.html_url} target="_blank" rel="noopener noreferrer" className="hover:underline flex-grow truncate">
-                              {repo.name}
-                            </Link>
-                          </CardTitle>
-                          <CardDescription className="h-10 text-ellipsis-2-lines">
-                            {repo.description || "Tidak ada deskripsi"}
-                          </CardDescription>
+                            <div className="flex-grow">
+                              <CardTitle className="leading-snug">
+                                <Link href={repo.html_url} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                                  {repo.name}
+                                </Link>
+                              </CardTitle>
+                              <CardDescription className="mt-2 h-10 text-ellipsis-2-lines">
+                                {repo.description || "Tidak ada deskripsi"}
+                              </CardDescription>
+                            </div>
+                          </div>
                         </CardHeader>
                         <CardContent className="flex-grow space-y-4">
+                          {repo.topics.length > 0 && (
+                            <div className="flex flex-wrap gap-2">
+                                {repo.topics.slice(0, 3).map(topic => (
+                                    <Badge key={topic} variant="secondary" className="font-normal">{topic}</Badge>
+                                ))}
+                            </div>
+                          )}
                           <div className="flex items-center flex-wrap gap-x-4 gap-y-2 text-sm text-muted-foreground">
                             {repo.language && (
                               <span className="flex items-center gap-1.5">
@@ -206,15 +218,15 @@ export default function AccountPage() {
                               {repo.forks_count}
                             </span>
                           </div>
-                          <p className="text-xs text-muted-foreground pt-2">
-                            Diperbarui {formatDate(repo.updated_at)}
-                          </p>
                         </CardContent>
-                        <CardFooter>
-                          <Button variant="outline" className="w-full" onClick={() => handleViewRepo(repo)}>
-                            <Eye className="mr-2 h-4 w-4" />
-                            Lihat Isi
-                          </Button>
+                        <CardFooter className="flex-col items-stretch gap-2 pt-4">
+                            <Button variant="outline" className="w-full" onClick={() => handleViewRepo(repo)}>
+                                <Eye className="mr-2 h-4 w-4" />
+                                Lihat Isi
+                            </Button>
+                            <p className="text-xs text-muted-foreground text-center">
+                                Diperbarui {formatDate(repo.updated_at)}
+                            </p>
                         </CardFooter>
                       </Card>
                     </motion.div>

@@ -38,6 +38,7 @@ export type Repo = {
         login: string;
     };
     default_branch: string;
+    topics: string[];
 };
 
 export type Branch = {
@@ -115,6 +116,7 @@ export async function fetchUserRepos(githubToken: string, page: number = 1, perP
             login: repo.owner.login,
         },
         default_branch: repo.default_branch,
+        topics: repo.topics || [],
     }));
 }
 
