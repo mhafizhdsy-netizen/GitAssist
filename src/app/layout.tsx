@@ -7,6 +7,7 @@ import Footer from '@/components/layout/Footer';
 import { Inter, JetBrains_Mono } from 'next/font/google';
 import { cn } from '@/lib/utils';
 import FirebaseClientProvider from '@/firebase/client-provider';
+import { BackButton } from '@/components/layout/BackButton';
 
 const fontSans = Inter({
   subsets: ['latin'],
@@ -39,6 +40,7 @@ export default function RootLayout({
           <div className="relative min-h-screen w-full">
             <div className="absolute top-0 left-0 w-full h-[50vh] bg-gradient-to-b from-background to-transparent animated-gradient-bg opacity-30 z-0"></div>
             <Header />
+            <BackButton />
             <main className="relative z-10">{children}</main>
             <Footer />
             <Toaster />

@@ -4,7 +4,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
-import { Menu, X, LayoutDashboard } from "lucide-react";
+import { Menu, X, LayoutDashboard, ArrowLeft } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 import { cn } from "@/lib/utils";
@@ -60,6 +60,7 @@ const Header = () => {
 
   const isHomePage = pathname === '/';
   const isLoginPage = pathname === '/login';
+  const isDashboardPage = pathname === '/dashboard';
 
   // Hide the AuthButton (specifically the "Mulai" button when not logged in) on the home page.
   const showAuthButton = !isHomePage || user || loading;
