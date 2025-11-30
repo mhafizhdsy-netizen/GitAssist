@@ -47,10 +47,11 @@ export default function PrivacyPage() {
   
           <h2>6. Hubungi Kami</h2>
           <p>
-            Jika Anda memiliki pertanyaan tentang Kebijakan Privasi ini, silakan hubungi kami di <a href="mailto:privacy@gitassist.com">privacy@gitassist.com</a>.
+            Jika Anda memiliki pertanyaan tentang Kebijakan Privasi ini, silakan hubungi kami di <a href="mailto:mhafizhdsy@gmail.com">mhafizhdsy@gmail.com</a>.
           </p>
           <p><small>Terakhir diperbarui: {new Date().toLocaleDateString('id-ID')}</small></p>
         </article>
       </div>
     );
   }
+

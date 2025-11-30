@@ -88,6 +88,6 @@ export const FOOTER_LINKS = {
     ],
     "Dukungan": [
         { label: "FAQ", href: "/#faq" },
-        { label: "Hubungi Kami", href: "mailto:support@gitassist.com" },
+        { label: "Hubungi Kami", href: "mailto:mhafizhdsy@gmail.com" },
     ],
 }

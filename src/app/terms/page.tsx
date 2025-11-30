@@ -40,10 +40,11 @@ export default function TermsPage() {
   
           <h2>7. Hubungi Kami</h2>
           <p>
-            Jika Anda memiliki pertanyaan tentang Ketentuan ini, silakan hubungi kami di <a href="mailto:legal@gitassist.com">legal@gitassist.com</a>.
+            Jika Anda memiliki pertanyaan tentang Ketentuan ini, silakan hubungi kami di <a href="mailto:mhafizhdsy@gmail.com">mhafizhdsy@gmail.com</a>.
           </p>
           <p><small>Terakhir diperbarui: {new Date().toLocaleDateString('id-ID')}</small></p>
         </article>
       </div>
     );
   }
+
