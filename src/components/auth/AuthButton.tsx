@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { signOut } from "@/app/actions";
-import { ChevronRight, LogOut, User as UserIcon } from "lucide-radix-ui";
+import { ChevronRight, LogOut, User as UserIcon } from "lucide-react";
 
 export default function AuthButton() {
   const [user, setUser] = useState<User | null>(null);

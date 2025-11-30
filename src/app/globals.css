@@ -84,7 +84,7 @@
 }
 
 @layer utilities {
-  .bg-dot-purple/[mask-image:radial-gradient(ellipse_at_center,black,transparent_50%)] {
+  .bg-dot-purple\/\[mask-image\:radial-gradient\(ellipse_at_center\,black\,transparent_50\%\)\] {
     background-image: linear-gradient(
         45deg,
         hsl(var(--primary) / 0.5) 25%,

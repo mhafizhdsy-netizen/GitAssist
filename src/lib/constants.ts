@@ -1,4 +1,4 @@
-import { Github, Zap, ShieldCheck, UploadCloud, FileZip, Code, Users } from "lucide-react";
+import { Github, Zap, ShieldCheck, UploadCloud, FileArchive, Code, Users } from "lucide-react";
 import type { NavItem, FeatureCard, PricingPlan, FAQItem, TeamMember } from "@/lib/types";
 
 export const NAV_ITEMS: NavItem[] = [
@@ -22,7 +22,7 @@ export const FEATURES: FeatureCard[] = [
     color: "blue",
   },
   {
-    icon: FileZip,
+    icon: FileArchive,
     title: "Automatic ZIP Extraction",
     description: "Upload ZIP archives and have them automatically extracted into your repository.",
     color: "green",
