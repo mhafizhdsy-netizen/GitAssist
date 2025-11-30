@@ -133,7 +133,7 @@ async function initializeEmptyRepository(
     const tree = await api(`/repos/${owner}/${repo}/git/trees`, token, {
         method: 'POST',
         body: JSON.stringify({ 
-            // base_tree: '4b825dc642cb6eb9a060e54bf8d69288fbee4904', // Empty tree SHA (This seems to cause issues, create without base_tree)
+            base_tree: '4b825dc642cb6eb9a060e54bf8d69288fbee4904', // Empty tree SHA
             tree: blobs 
         }),
     });
@@ -321,7 +321,5 @@ export async function fetchRepoContents(githubToken: string, owner: string, repo
       throw error;
     }
 }
-
-    
 
     
