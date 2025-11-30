@@ -75,7 +75,7 @@ async function api(url: string, token: string, options: RequestInit = {}) {
 
   // Specifically for get ref, a 404 means the branch/repo is empty or doesn't exist.
   // This is a valid scenario for an initial commit.
-  if (response.status === 404 && url.includes('/git/ref/')) {
+  if (response.status === 404 && url.includes('/git/ref')) {
       return null;
   }
 
@@ -86,7 +86,7 @@ async function api(url: string, token: string, options: RequestInit = {}) {
   }
 
   // Check if the response is empty (e.g., 204 No Content)
-  if (response.headers.get('Content-Length') === '0' || response.status === 204) {
+  if (response.status === 204) {
     return null;
   }
   
@@ -143,30 +143,37 @@ export async function fetchRepoContents(githubToken: string, owner: string, repo
     if (!githubToken) {
         throw new Error('Token GitHub diperlukan.');
     }
-    const contents = await api(`/repos/${owner}/${repo}/contents/${path}`, githubToken);
+    try {
+      const contents = await api(`/repos/${owner}/${repo}/contents/${path}`, githubToken);
     
-    if (typeof contents?.content === 'string' && contents.encoding === 'base64') {
-        return Buffer.from(contents.content, 'base64').toString('utf-8');
+      if (typeof contents?.content === 'string' && contents.encoding === 'base64') {
+          return Buffer.from(contents.content, 'base64').toString('utf-8');
+      }
+
+      if (!Array.isArray(contents)) return [];
+      
+      // Sort contents so directories come first
+      contents.sort((a, b) => {
+          if (a.type === 'dir' && b.type !== 'dir') return -1;
+          if (a.type !== 'dir' && b.type === 'dir') return 1;
+          return a.name.localeCompare(b.name);
+      });
+
+      return contents.map((item: any) => ({
+          name: item.name,
+          path: item.path,
+          sha: item.sha,
+          size: item.size,
+          type: item.type,
+          html_url: item.html_url,
+          download_url: item.download_url
+      }));
+    } catch (error: any) {
+      if (error.message && error.message.includes("This repository is empty")) {
+        return [];
+      }
+      throw error;
     }
-
-    if (!Array.isArray(contents)) return [];
-    
-    // Sort contents so directories come first
-    contents.sort((a, b) => {
-        if (a.type === 'dir' && b.type !== 'dir') return -1;
-        if (a.type !== 'dir' && b.type === 'dir') return 1;
-        return a.name.localeCompare(b.name);
-    });
-
-    return contents.map((item: any) => ({
-        name: item.name,
-        path: item.path,
-        sha: item.sha,
-        size: item.size,
-        type: item.type,
-        html_url: item.html_url,
-        download_url: item.download_url
-    }));
 }
 
 
@@ -187,7 +194,7 @@ export async function commitToRepo({ repoUrl, commitMessage, files, githubToken,
     const refPath = `heads/${targetBranch}`;
 
     // 1. Get the latest ref for the branch. A 404 (returns null) means the branch/repo is empty.
-    const latestRef = await api(`/repos/${owner}/${repo}/git/ref/${refPath}`, githubToken);
+    const latestRef = await api(`/repos/${owner}/${repo}/git/refs/${refPath}`, githubToken);
 
     const fileBlobs = await Promise.all(
       files.map(async (file) => {
@@ -280,3 +287,4 @@ export async function commitToRepo({ repoUrl, commitMessage, files, githubToken,
   }
 }
 
+    
