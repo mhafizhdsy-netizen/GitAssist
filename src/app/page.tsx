@@ -1,7 +1,5 @@
-
 'use client';
 
-import { useEffect } from 'react';
 import { redirect } from 'next/navigation';
 import { useUser } from '@/firebase';
 import { Hero } from "@/components/landing/Hero";
@@ -14,18 +12,16 @@ import { Skeleton } from '@/components/ui/skeleton';
 export default function Home() {
   const { user, loading } = useUser();
 
-  useEffect(() => {
-    if (!loading && user) {
-      redirect('/dashboard');
-    }
-  }, [user, loading]);
-
-  if (loading || user) {
+  if (loading) {
     return (
        <div className="flex items-center justify-center min-h-screen w-full">
         <Skeleton className="h-screen w-full" />
       </div>
     );
+  }
+
+  if (user) {
+    redirect('/dashboard');
   }
 
   return (
