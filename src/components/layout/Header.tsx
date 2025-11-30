@@ -5,15 +5,16 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
 import { Code, Menu, X } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 import { cn } from "@/lib/utils";
 import { NAV_ITEMS } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import AuthButton from "@/components/auth/AuthButton";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
 const Header = () => {
   const [isScrolled, setIsScrolled] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const pathname = usePathname();
 
   useEffect(() => {
@@ -23,80 +24,104 @@ const Header = () => {
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+  
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    }
+  }, [mobileMenuOpen]);
 
   const isDashboard = pathname.startsWith('/dashboard');
 
   return (
-    <header
-      className={cn(
-        "fixed inset-x-0 top-0 z-50 transition-all duration-300",
-        isScrolled ? "bg-background/80 backdrop-blur-lg border-b" : "bg-transparent border-b border-transparent"
-      )}
-    >
-      <div className="container flex h-16 items-center justify-between">
-        <Link href="/" className="flex items-center gap-2">
-          <Code className="h-6 w-6 text-primary" />
-          <span className="font-bold text-lg hidden sm:inline-block">GitAssist</span>
-        </Link>
+    <>
+      <header
+        className={cn(
+          "fixed inset-x-0 top-0 z-50 transition-all duration-300",
+          isScrolled ? "bg-background/80 backdrop-blur-lg border-b" : "bg-transparent border-b border-transparent"
+        )}
+      >
+        <div className="container flex h-16 items-center justify-between">
+          <Link href="/" className="flex items-center gap-2">
+            <Code className="h-6 w-6 text-primary" />
+            <span className="font-bold text-lg hidden sm:inline-block">GitAssist</span>
+          </Link>
 
-        <nav className="hidden md:flex">
-          <ul className="flex items-center gap-6">
-            {!isDashboard && NAV_ITEMS.map((item) => (
-              <li key={item.label}>
-                <Link
-                  href={item.href}
-                  className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-                >
-                  {item.label}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </nav>
+          <nav className="hidden md:flex">
+            <ul className="flex items-center gap-6">
+              {!isDashboard && NAV_ITEMS.map((item) => (
+                <li key={item.label}>
+                  <Link
+                    href={item.href}
+                    className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    {item.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
 
-        <div className="flex items-center gap-4">
-          <div className="hidden md:block">
-            <AuthButton />
-          </div>
-          
-          <div className="md:hidden">
-            <Sheet>
-              <SheetTrigger asChild>
-                <Button variant="ghost" size="icon">
-                  <Menu />
-                  <span className="sr-only">Open menu</span>
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="right" className="w-[300px] sm:w-[400px]">
-                <nav className="flex flex-col h-full">
-                  <div className="flex items-center justify-between border-b pb-4">
-                    <Link href="/" className="flex items-center gap-2">
-                      <Code className="h-6 w-6 text-primary" />
-                      <span className="font-bold text-lg">GitAssist</span>
-                    </Link>
-                  </div>
-                  <ul className="flex-1 flex flex-col gap-6 pt-8">
-                    {!isDashboard && NAV_ITEMS.map((item) => (
-                      <li key={item.label}>
-                        <Link
-                          href={item.href}
-                          className="text-lg font-medium text-foreground/80 transition-colors hover:text-foreground"
-                        >
-                          {item.label}
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                  <div className="pt-8 border-t">
-                    <AuthButton />
-                  </div>
-                </nav>
-              </SheetContent>
-            </Sheet>
+          <div className="flex items-center gap-4">
+            <div className="hidden md:block">
+              <AuthButton />
+            </div>
+            
+            <div className="md:hidden">
+              <Button variant="ghost" size="icon" onClick={() => setMobileMenuOpen(true)}>
+                <Menu />
+                <span className="sr-only">Open menu</span>
+              </Button>
+            </div>
           </div>
         </div>
-      </div>
-    </header>
+      </header>
+
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            className="fixed inset-0 z-[100] bg-background/80 backdrop-blur-lg"
+          >
+            <div className="container flex flex-col h-full">
+              <div className="flex h-16 items-center justify-between">
+                 <Link href="/" className="flex items-center gap-2" onClick={() => setMobileMenuOpen(false)}>
+                  <Code className="h-6 w-6 text-primary" />
+                  <span className="font-bold text-lg">GitAssist</span>
+                </Link>
+                <Button variant="ghost" size="icon" onClick={() => setMobileMenuOpen(false)}>
+                  <X />
+                  <span className="sr-only">Close menu</span>
+                </Button>
+              </div>
+              <nav className="flex flex-col items-center justify-center flex-1 gap-8">
+                 {!isDashboard && NAV_ITEMS.map((item) => (
+                    <Link
+                      key={item.label}
+                      href={item.href}
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="text-2xl font-medium text-foreground/80 transition-colors hover:text-foreground"
+                    >
+                      {item.label}
+                    </Link>
+                  ))}
+                  <div className="mt-8">
+                    <AuthButton />
+                  </div>
+              </nav>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
   );
 };
 
