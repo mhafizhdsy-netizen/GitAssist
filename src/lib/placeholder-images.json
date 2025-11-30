@@ -1,3 +1,46 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "demo-app-screenshot",
+      "description": "A screenshot of the GitAssist application dashboard interface, showing the file uploader and repository selection.",
+      "imageUrl": "https://images.unsplash.com/photo-1758411898471-fa144c487c85?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxhcHAlMjBkYXNoYm9hcmR8ZW58MHx8fHwxNzY0NDI4MzY3fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "app dashboard"
+    },
+    {
+      "id": "team-member-1",
+      "description": "Avatar for the first team member.",
+      "imageUrl": "https://images.unsplash.com/photo-1590086782792-42dd2350140d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxwZXJzb24lMjBwb3J0cmFpdHxlbnwwfHx8fDE3NjQ0NTkzNjF8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "person portrait"
+    },
+    {
+      "id": "team-member-2",
+      "description": "Avatar for the second team member.",
+      "imageUrl": "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHxwZXJzb24lMjBwb3J0cmFpdHxlbnwwfHx8fDE3NjQ0NTkzNjF8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "person portrait"
+    },
+    {
+      "id": "team-member-3",
+      "description": "Avatar for the third team member.",
+      "imageUrl": "https://images.unsplash.com/photo-1531123414780-f74242c2b052?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8cGVyc29uJTIwcG9ydHJhaXR8ZW58MHx8fHwxNzY0NDU5MzYxfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "person portrait"
+    },
+    {
+      "id": "feature-secure-storage",
+      "description": "Abstract image representing secure cloud storage.",
+      "imageUrl": "https://images.unsplash.com/photo-1494341456040-d99c5a52317d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8c2VjdXJlJTIwY2xvdWR8ZW58MHx8fHwxNzY0NDQ4MTgzfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "secure cloud"
+    },
+    {
+      "id": "feature-batch-upload",
+      "description": "Image representing uploading multiple files at once.",
+      "imageUrl": "https://images.unsplash.com/photo-1611890798517-07b0fcb4a811?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHxmaWxlJTIwdXBsb2FkfGVufDB8fHx8MTc2NDQ2MzU2Mnww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "file upload"
+    },
+    {
+      "id": "feature-ai-assistant",
+      "description": "Abstract image representing artificial intelligence.",
+      "imageUrl": "https://images.unsplash.com/photo-1534723328310-e82dad3ee43f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8YXJ0aWZpY2lhbCUyMGludGVsbGlnZW5jZXxlbnwwfHx8fDE3NjQzOTAwOTZ8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "artificial intelligence"
+    }
+  ]
 }
