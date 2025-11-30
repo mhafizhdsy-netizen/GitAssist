@@ -3,7 +3,12 @@
 
 import { motion } from "framer-motion";
 import { FAQ_ITEMS } from "@/lib/constants";
-import { Card } from "../ui/card";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
 export function FAQ() {
   const containerVariants = {
@@ -36,22 +41,28 @@ export function FAQ() {
       </div>
 
       <motion.div
-        className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-6"
+        className="max-w-3xl mx-auto"
         variants={containerVariants}
         initial="hidden"
         whileInView="visible"
         viewport={{ once: true, amount: 0.2 }}
       >
-        {FAQ_ITEMS.map((item, index) => (
-          <motion.div key={index} variants={itemVariants}>
-            <Card className="glass-card p-6 h-full transition-all duration-300 hover:border-primary/50 hover:bg-card">
-              <h3 className="font-bold text-lg text-primary">{item.question}</h3>
-              <p className="mt-2 text-muted-foreground text-sm">
-                {item.answer}
-              </p>
-            </Card>
-          </motion.div>
-        ))}
+        <Accordion type="single" collapsible className="w-full space-y-4">
+            {FAQ_ITEMS.map((item, index) => (
+            <motion.div key={index} variants={itemVariants}>
+                <AccordionItem value={`item-${index}`} className="glass-card border-white/10 rounded-xl transition-all duration-300 hover:border-primary/50 overflow-hidden">
+                    <AccordionTrigger className="p-6 text-left font-bold text-lg hover:no-underline">
+                        {item.question}
+                    </AccordionTrigger>
+                    <AccordionContent>
+                        <div className="px-6 pb-6 pt-0 text-muted-foreground">
+                            {item.answer}
+                        </div>
+                    </AccordionContent>
+                </AccordionItem>
+            </motion.div>
+            ))}
+        </Accordion>
       </motion.div>
     </section>
   );
