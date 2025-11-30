@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import JSZip from 'jszip';
 import { Buffer } from 'buffer';
-import { UploadCloud, File, Github, Sparkles, Loader2, CheckCircle, ArrowRight, Folder, X } from 'lucide-react';
+import { UploadCloud, File, Github, Sparkles, Loader2, CheckCircle, ArrowRight, Folder, X, PlusCircle } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -81,7 +81,7 @@ export function FileUploader() {
     }
   }, [step, repos.length, toast, githubToken]);
 
-  const handleZipExtraction = async (zipFile: File) => {
+  const handleZipExtraction = async (zipFile: File, append = false) => {
     setIsProcessing(true);
     setUploadProgress(0);
     try {
@@ -107,9 +107,9 @@ export function FileUploader() {
           throw new Error("File ZIP tidak berisi file yang dapat diekstrak.");
       }
 
-      setFiles(extracted);
-      setStep('select-repo');
-      toast({ title: 'Berhasil', description: `${extracted.length} file diekstrak dari ZIP.` });
+      setFiles(prev => append ? [...prev, ...extracted] : extracted);
+      if (step !== 'select-repo') setStep('select-repo');
+      toast({ title: 'Berhasil', description: `${extracted.length} file diekstrak dan ditambahkan.` });
     } catch (error: any) {
       console.error(error);
       toast({
@@ -117,7 +117,7 @@ export function FileUploader() {
         description: error.message || 'Gagal mengekstrak file ZIP. Mungkin file tersebut rusak atau formatnya tidak didukung.',
         variant: 'destructive',
       });
-      resetState();
+      if (!append) resetState();
     } finally {
       setIsProcessing(false);
     }
@@ -127,6 +127,7 @@ export function FileUploader() {
     (acceptedFiles: File[]) => {
       if (acceptedFiles.length === 0) return;
 
+      const isAppending = files.length > 0;
       const zipFile = acceptedFiles.find((f) => f.type === 'application/zip' || f.name.endsWith('.zip'));
 
       if (zipFile) {
@@ -138,7 +139,7 @@ export function FileUploader() {
           });
           return;
         }
-        handleZipExtraction(zipFile);
+        handleZipExtraction(zipFile, isAppending);
       } else {
         const fileList: FileOrFolder[] = acceptedFiles.map((file) => ({
           name: file.name,
@@ -146,15 +147,17 @@ export function FileUploader() {
           type: 'file',
           content: file,
         }));
-        setFiles(fileList);
-        setStep('select-repo');
+        setFiles(prev => [...prev, ...fileList]);
+        if (step !== 'select-repo') setStep('select-repo');
       }
     },
-    [toast]
+    [toast, files.length, step]
   );
 
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+  const { getRootProps, getInputProps, isDragActive, open: openFilePicker } = useDropzone({
     onDrop,
+    noClick: true,
+    noKeyboard: true,
     getFilesFromEvent: async (event: any) => {
         const files = event.dataTransfer ? event.dataTransfer.files : event.target.files;
         const fileList: File[] = [];
@@ -186,7 +189,8 @@ export function FileUploader() {
     }
     setIsGenerating(true);
     try {
-      const diff = files.map((f) => `+++ ${f.path}`).join('\n');
+      // Create a simplified diff for AI context
+      const diff = files.map((f) => `A ${f.path}`).join('\n');
       const result = await generateCommitMessage({ diff });
       setCommitMessage(result.commitMessage);
     } catch (error) {
@@ -271,36 +275,45 @@ export function FileUploader() {
   };
   
   const renderUploadStep = () => (
-    <div {...getRootProps()} className={`w-full h-full flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${isDragActive ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50'}`}>
+    <div {...getRootProps({onClick: (e) => e.preventDefault()})} className={`w-full h-full flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${isDragActive ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50'}`}>
         <input {...getInputProps()} />
         <div className="text-center">
             <UploadCloud className="mx-auto h-16 w-16 text-muted-foreground" />
             <p className="mt-4 font-semibold text-lg">Seret & lepas file, folder, atau arsip ZIP</p>
-            <p className="mt-1 text-sm text-muted-foreground">atau klik untuk menelusuri file Anda</p>
+            <p className="mt-1 text-sm text-muted-foreground">atau</p>
+            <Button onClick={openFilePicker} variant="link" className="text-base">klik untuk menelusuri</Button>
         </div>
     </div>
   );
 
   const renderFileTree = () => (
-    <div className="mt-4 max-h-48 overflow-y-auto rounded-lg border bg-background/50 p-3">
-      <h4 className="font-semibold mb-2 text-sm">File yang akan di-commit ({files.length}):</h4>
-      <ul className="space-y-1">
-        {files.map((file) => (
-          <li key={file.path} className="flex items-center text-sm text-muted-foreground group">
-            <File className="mr-2 h-4 w-4 flex-shrink-0" />
-            <span className="truncate flex-grow">{file.path}</span>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6 ml-2 opacity-0 group-hover:opacity-100 transition-opacity"
-              onClick={() => handleRemoveFile(file.path)}
-              aria-label={`Hapus ${file.path}`}
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </li>
-        ))}
-      </ul>
+    <div className="mt-4 rounded-lg border bg-background/50">
+      <div className="flex justify-between items-center p-3 border-b">
+        <h4 className="font-semibold text-sm">File yang akan di-commit ({files.length}):</h4>
+        <Button variant="outline" size="sm" onClick={openFilePicker}>
+          <PlusCircle className="mr-2 h-4 w-4" />
+          Tambah File
+        </Button>
+      </div>
+      <div className="max-h-48 overflow-y-auto p-3">
+        <ul className="space-y-1">
+          {files.map((file) => (
+            <li key={file.path} className="flex items-center text-sm text-muted-foreground group">
+              <File className="mr-2 h-4 w-4 flex-shrink-0" />
+              <span className="truncate flex-grow">{file.path}</span>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 ml-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                onClick={() => handleRemoveFile(file.path)}
+                aria-label={`Hapus ${file.path}`}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </li>
+          ))}
+        </ul>
+      </div>
     </div>
   );
 
@@ -425,7 +438,10 @@ export function FileUploader() {
           </div>
         </div>
       </CardHeader>
-      <CardContent className="p-6 flex-grow">{currentStepContent}</CardContent>
+      <CardContent {...getRootProps({onClick: (e) => e.preventDefault()})} className="p-6 flex-grow">
+        <input {...getInputProps()} />
+        {currentStepContent}
+      </CardContent>
       {step === 'select-repo' && (
         <CardFooter className="border-t pt-6 flex justify-between items-center">
           <Button variant="ghost" onClick={resetState}>Mulai Ulang</Button>
@@ -439,3 +455,4 @@ export function FileUploader() {
   );
 }
 
+  
