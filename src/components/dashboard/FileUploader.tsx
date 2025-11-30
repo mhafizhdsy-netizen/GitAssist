@@ -68,7 +68,7 @@ export function FileUploader() {
   }, []);
 
   useEffect(() => {
-    if (step === 'select-repo' && repos.length === 0 && githubToken) {
+    if (step === 'select-repo' && githubToken) {
       setIsFetchingRepos(true);
       fetchUserRepos(githubToken, 1, 100) // Fetch up to 100 repos
         .then(setRepos)
@@ -82,7 +82,7 @@ export function FileUploader() {
         })
         .finally(() => setIsFetchingRepos(false));
     }
-  }, [step, repos.length, toast, githubToken]);
+  }, [step, toast, githubToken]);
 
   const handleRepoChange = (repoFullName: string) => {
     const repo = repos.find(r => r.full_name === repoFullName);
@@ -593,5 +593,7 @@ export function FileUploader() {
     </>
   );
 }
+
+    
 
     
