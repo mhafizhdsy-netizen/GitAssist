@@ -1,8 +1,8 @@
-
 'use server';
 
 import { redirect } from 'next/navigation';
 import { Buffer } from 'buffer';
+import crypto from 'crypto';
 
 export async function signOut() {
   // This server action is now only responsible for redirection.
@@ -60,6 +60,53 @@ type CommitParams = {
   branchName?: string;
 };
 
+/**
+ * Generate SHA-1 hash for Git empty tree
+ * This creates the universal empty tree hash that Git uses
+ * Formula: sha1("tree 0\0")
+ */
+function generateEmptyTreeSHA(): string {
+    // Git object format: "tree <size>\0<content>"
+    // For empty tree: "tree 0\0" (no content)
+    const header = 'tree 0\0';
+    const hash = crypto.createHash('sha1');
+    hash.update(header);
+    const sha = hash.digest('hex');
+    
+    console.log(`✓ Generated empty tree SHA: ${sha}`);
+    return sha;
+}
+
+/**
+ * Fallback: hardcoded SHA-1 empty tree hash
+ * This is the universal Git empty tree hash for SHA-1
+ * Only used if dynamic generation fails
+ */
+const FALLBACK_EMPTY_TREE_SHA = '4b825dc642cb6eb9a060e54bf8d69288fbee4904';
+
+/**
+ * Get empty tree SHA with fallback
+ */
+function getEmptyTreeSHA(): string {
+    try {
+        const dynamicSHA = generateEmptyTreeSHA();
+        
+        // Verify it matches the expected value
+        if (dynamicSHA === FALLBACK_EMPTY_TREE_SHA) {
+            console.log('✓ Dynamic SHA matches expected value');
+            return dynamicSHA;
+        } else {
+            console.warn(`⚠️ Dynamic SHA (${dynamicSHA}) doesn't match expected (${FALLBACK_EMPTY_TREE_SHA})`);
+            console.warn('Using fallback SHA');
+            return FALLBACK_EMPTY_TREE_SHA;
+        }
+    } catch (error) {
+        console.error('Failed to generate empty tree SHA dynamically:', error);
+        console.log('Using fallback SHA');
+        return FALLBACK_EMPTY_TREE_SHA;
+    }
+}
+
 async function api(url: string, token: string, options: RequestInit = {}) {
     const response = await fetch(`https://api.github.com${url}`, {
       ...options,
@@ -93,17 +140,26 @@ async function api(url: string, token: string, options: RequestInit = {}) {
 
 async function isRepositoryEmpty(owner: string, repo: string, token: string): Promise<boolean> {
     try {
-        await api(`/repos/${owner}/${repo}/contents/`, token);
-        return false;
+        const repoData = await api(`/repos/${owner}/${repo}`, token);
+        if (!repoData) return true;
+
+        // An empty repo created on GitHub now comes with a size of 0
+        if (repoData.size === 0) {
+            return true;
+        }
+        
+        // As a fallback, check for branches
+        const branches = await api(`/repos/${owner}/${repo}/branches`, token);
+        return branches.length === 0;
+
     } catch (error: any) {
-        if (error.message && (error.message.includes('This repository is empty') || error.message.includes('Not Found'))) {
+        if (error.message && (error.message.includes('Not Found') || error.message.includes('Git Repository is empty'))) {
             return true;
         }
         console.error("Error saat mendeteksi repositori kosong:", error);
         throw error;
     }
 }
-
 
 async function initializeEmptyRepository(
     owner: string,
@@ -117,7 +173,7 @@ async function initializeEmptyRepository(
     const repoInfo = await api(`/repos/${owner}/${repo}`, token);
     const branchToCreate = repoInfo.default_branch || 'main';
 
-    // Step 1: Buat blobs untuk semua file
+    // Step 1: Create blobs for all files
     const blobs = await Promise.all(
         files.map(async (file) => {
             const base64Content = Buffer.from(file.content, 'utf-8').toString('base64');
@@ -129,26 +185,23 @@ async function initializeEmptyRepository(
         })
     );
 
-    // Step 2: Buat tree dari blobs
+    // Step 2: Create a tree from the blobs. Since it's the first commit, there's no base tree.
     const tree = await api(`/repos/${owner}/${repo}/git/trees`, token, {
         method: 'POST',
-        body: JSON.stringify({ 
-            base_tree: '4b825dc642cb6eb9a060e54bf8d69288fbee4904', // Empty tree SHA
-            tree: blobs 
-        }),
+        body: JSON.stringify({ tree: blobs }),
     });
 
-    // Step 3: Buat commit dengan tree yang baru dibuat
+    // Step 3: Create the commit with the new tree
     const commit = await api(`/repos/${owner}/${repo}/git/commits`, token, {
         method: 'POST',
         body: JSON.stringify({
             message: commitMessage,
             tree: tree.sha,
-            parents: [], // No parent = initial commit
+            parents: [], // No parent for the initial commit
         }),
     });
 
-    // Step 4: Buat reference (branch) yang menunjuk ke commit
+    // Step 4: Create the branch (ref) to point to the new commit
     await api(`/repos/${owner}/${repo}/git/refs`, token, {
         method: 'POST',
         body: JSON.stringify({
@@ -157,8 +210,12 @@ async function initializeEmptyRepository(
         }),
     });
 
-    return { success: true, commitUrl: commit.html_url };
+    return { 
+        success: true, 
+        commitUrl: commit.html_url || `https://github.com/${owner}/${repo}/commit/${commit.sha}`
+    };
 }
+
 
 async function commitToExistingRepo(
     owner: string,
@@ -321,5 +378,3 @@ export async function fetchRepoContents(githubToken: string, owner: string, repo
       throw error;
     }
 }
-
-    
