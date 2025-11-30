@@ -1,10 +1,10 @@
-import { type LucideIcon, Sparkles, UploadCloud, GitBranch, LogIn, Zap, FileArchive, ShieldCheck } from "lucide-react";
+import { type LucideIcon, Sparkles, UploadCloud, GitBranch, Zap, FileArchive, ShieldCheck } from "lucide-react";
 import type { NavItem, FAQItem, FeatureCard } from "@/lib/types";
 
 export const NAV_ITEMS: NavItem[] = [
-  { label: "Features", href: "#features" },
-  { label: "How It Works", href: "#how-it-works" },
-  { label: "FAQ", href: "#faq" },
+  { label: "Features", href: "/#features" },
+  { label: "How It Works", href: "/#how-it-works" },
+  { label: "FAQ", href: "/#faq" },
   { label: "Donate", href: "/donate" },
 ];
 
@@ -48,29 +48,6 @@ export const FEATURES: FeatureCard[] = [
 ];
 
 
-export const HOW_IT_WORKS_STEPS = [
-    {
-      icon: LogIn,
-      title: "Authenticate",
-      description: "Securely connect your GitHub account in one click.",
-    },
-    {
-      icon: UploadCloud,
-      title: "Upload Files",
-      description: "Drag and drop your files or ZIP archives into the app.",
-    },
-    {
-      icon: Sparkles,
-      title: "Generate Message",
-      description: "Use our AI assistant to generate the perfect commit message.",
-    },
-    {
-      icon: GitBranch,
-      title: "Commit to Repo",
-      description: "Select your repository and commit your files directly.",
-    },
-  ];
-
 export const FAQ_ITEMS: FAQItem[] = [
   {
     question: "Is GitAssist free to use?",
@@ -101,8 +78,8 @@ export const FAQ_ITEMS: FAQItem[] = [
 
 export const FOOTER_LINKS = {
     "Product": [
-        { label: "Features", href: "#features" },
-        { label: "How It Works", href: "#how-it-works" },
+        { label: "Features", href: "/#features" },
+        { label: "How It Works", href: "/#how-it-works" },
         { label: "Donate", href: "/donate" },
     ],
     "Company": [
@@ -110,7 +87,7 @@ export const FOOTER_LINKS = {
         { label: "Terms of Service", href: "/terms" },
     ],
     "Support": [
-        { label: "FAQ", href: "#faq" },
+        { label: "FAQ", href: "/#faq" },
         { label: "Contact Us", href: "mailto:support@gitassist.com" },
     ],
 }
