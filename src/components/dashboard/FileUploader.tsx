@@ -41,6 +41,7 @@ export function FileUploader() {
   const [isFetchingRepos, setIsFetchingRepos] = useState(false);
   const [selectedRepo, setSelectedRepo] = useState<string>('');
   const [destinationPath, setDestinationPath] = useState('');
+  const [githubToken, setGithubToken] = useState<string | null>(null);
 
   const [commitMessage, setCommitMessage] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -50,24 +51,26 @@ export function FileUploader() {
   const { toast } = useToast();
 
   useEffect(() => {
-    if (step === 'select-repo' && repos.length === 0) {
-      const githubToken = sessionStorage.getItem('github-token');
-      if (githubToken) {
-        setIsFetchingRepos(true);
-        fetchUserRepos(githubToken)
-          .then(setRepos)
-          .catch(err => {
-            console.error("Failed to fetch repos", err);
-            toast({
-              title: "Could not fetch repositories",
-              description: err.message || "Please ensure you are logged in and have granted repository access.",
-              variant: "destructive"
-            });
-          })
-          .finally(() => setIsFetchingRepos(false));
-      }
+    // Safely access sessionStorage only on the client side after mount
+    setGithubToken(sessionStorage.getItem('github-token'));
+  }, []);
+
+  useEffect(() => {
+    if (step === 'select-repo' && repos.length === 0 && githubToken) {
+      setIsFetchingRepos(true);
+      fetchUserRepos(githubToken)
+        .then(setRepos)
+        .catch(err => {
+          console.error("Failed to fetch repos", err);
+          toast({
+            title: "Could not fetch repositories",
+            description: err.message || "Please ensure you are logged in and have granted repository access.",
+            variant: "destructive"
+          });
+        })
+        .finally(() => setIsFetchingRepos(false));
     }
-  }, [step, repos.length, toast]);
+  }, [step, repos.length, toast, githubToken]);
 
   const handleZipExtraction = async (zipFile: File) => {
     setIsProcessing(true);
@@ -166,7 +169,6 @@ export function FileUploader() {
   };
 
   const handleCommit = async () => {
-    const githubToken = sessionStorage.getItem('github-token');
     if (!githubToken) {
       toast({
         title: 'Authentication Error',
@@ -234,7 +236,19 @@ export function FileUploader() {
     setIsProcessing(false);
     setCommitUrl('');
     setRepos([]);
+    // Token state is preserved
   };
+  
+  const renderUploadStep = () => (
+    <div {...getRootProps()} className={`w-full h-full flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${isDragActive ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50'}`}>
+        <input {...getInputProps()} />
+        <div className="text-center">
+            <UploadCloud className="mx-auto h-16 w-16 text-muted-foreground" />
+            <p className="mt-4 font-semibold text-lg">Drag & drop files, folders, or a ZIP archive</p>
+            <p className="mt-1 text-sm text-muted-foreground">or click to browse your files</p>
+        </div>
+    </div>
+  );
 
   const renderFileTree = () => (
     <div className="mt-4 max-h-48 overflow-y-auto rounded-lg border bg-background/50 p-3">
@@ -262,7 +276,7 @@ export function FileUploader() {
             {isFetchingRepos ? (
                 <Skeleton className="h-11 w-full" />
             ) : (
-                <Select value={selectedRepo} onValueChange={setSelectedRepo}>
+                <Select value={selectedRepo} onValueChange={setSelectedRepo} disabled={!githubToken}>
                     <SelectTrigger id="repo-select" className="h-11">
                         <Github className="h-5 w-5 text-muted-foreground mr-2" />
                         <SelectValue placeholder="Choose a repository..." />
@@ -271,7 +285,7 @@ export function FileUploader() {
                         {repos.length > 0 ? repos.map(repo => (
                             <SelectItem key={repo.id} value={repo.html_url}>{repo.full_name}</SelectItem>
                         )) : (
-                            <SelectItem value="none" disabled>No repositories found.</SelectItem>
+                            <SelectItem value="none" disabled>No repositories found or token missing.</SelectItem>
                         )}
                     </SelectContent>
                 </Select>
@@ -350,12 +364,12 @@ export function FileUploader() {
   );
 
   const stepContent = {
-    'upload': renderUploadStep,
-    'select-repo': renderSelectRepoStep,
-    'processing': renderProcessing,
-    'committing': renderCommittingStep,
-    'done': renderDoneStep,
-  }[isProcessing ? 'processing' : step]();
+    'upload': renderUploadStep(),
+    'select-repo': renderSelectRepoStep(),
+    'processing': renderProcessing(),
+    'committing': renderCommittingStep(),
+    'done': renderDoneStep(),
+  }[isProcessing ? 'processing' : step];
 
   return (
     <Card className="glass-card flex flex-col h-full">
@@ -374,7 +388,7 @@ export function FileUploader() {
       {step === 'select-repo' && (
         <CardFooter className="border-t pt-6 flex justify-between items-center">
           <Button variant="ghost" onClick={resetState}>Start Over</Button>
-          <Button size="lg" onClick={handleCommit} disabled={isCommitting || isFetchingRepos}>
+          <Button size="lg" onClick={handleCommit} disabled={isCommitting || isFetchingRepos || !githubToken}>
             {isCommitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Commit Files'}
             {!isCommitting && <ArrowRight className="ml-2 h-4 w-4" />}
           </Button>
@@ -383,3 +397,5 @@ export function FileUploader() {
     </Card>
   );
 }
+
+    
