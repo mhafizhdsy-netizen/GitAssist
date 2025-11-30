@@ -1,6 +1,7 @@
+
 export default function TermsPage() {
     return (
-      <div className="container py-24">
+      <div className="container py-24 sm:py-32">
         <article className="prose prose-invert mx-auto max-w-3xl">
           <h1 className="font-headline text-4xl">Terms of Service</h1>
           <p className="lead">
@@ -46,4 +47,3 @@ export default function TermsPage() {
       </div>
     );
   }
-  

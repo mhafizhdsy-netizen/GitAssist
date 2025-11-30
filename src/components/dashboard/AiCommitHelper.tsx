@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -6,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { generateCommitMessage } from "@/ai/flows/generate-commit-message";
 import { useToast } from "@/hooks/use-toast";
-import { Sparkles, Clipboard } from "lucide-react";
+import { Sparkles, Clipboard, Loader2 } from "lucide-react";
 import { Skeleton } from "../ui/skeleton";
 
 export function AiCommitHelper() {
@@ -42,6 +43,7 @@ export function AiCommitHelper() {
   };
 
   const handleCopy = () => {
+    if (!commitMessage) return;
     navigator.clipboard.writeText(commitMessage);
     toast({
       title: "Copied!",
@@ -50,43 +52,52 @@ export function AiCommitHelper() {
   };
 
   return (
-    <Card className="glass-card">
+    <Card className="glass-card h-full flex flex-col">
       <CardHeader>
-        <CardTitle className="font-headline text-2xl">AI Commit Message Helper</CardTitle>
-        <CardDescription>Paste your code diff below to generate a conventional commit message.</CardDescription>
+        <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-lg flex items-center justify-center bg-primary/10 border border-primary/20">
+                <Sparkles className="h-6 w-6 text-primary" />
+            </div>
+            <div>
+                <CardTitle className="font-headline text-2xl">AI Commit Helper</CardTitle>
+                <CardDescription>Generate conventional commit messages.</CardDescription>
+            </div>
+        </div>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div>
+      <CardContent className="space-y-4 flex-grow flex flex-col">
+        <div className="flex-grow flex flex-col">
           <label htmlFor="diff-input" className="block text-sm font-medium mb-2">Code Diff</label>
           <Textarea
             id="diff-input"
             placeholder="Paste your git diff here..."
             value={diff}
             onChange={(e) => setDiff(e.target.value)}
-            className="font-code h-48"
+            className="font-code h-48 flex-grow"
           />
         </div>
-        <div>
-            <Button onClick={handleGenerate} disabled={isLoading}>
-                <Sparkles className="mr-2 h-4 w-4" />
-                {isLoading ? "Generating..." : "Generate Message"}
-            </Button>
+        <div className="pt-4">
+            {isLoading && (
+                <div className="space-y-2">
+                    <Skeleton className="h-5 w-3/4" />
+                    <Skeleton className="h-5 w-1/2" />
+                </div>
+            )}
+            {commitMessage && !isLoading && (
+                <div className="p-4 bg-background/50 rounded-lg border relative group">
+                    <pre className="whitespace-pre-wrap font-code text-sm text-foreground/90">{commitMessage}</pre>
+                    <Button variant="ghost" size="icon" className="absolute top-2 right-2 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity" onClick={handleCopy}>
+                        <Clipboard className="h-4 w-4" />
+                    </Button>
+                </div>
+            )}
         </div>
-        {isLoading && (
-            <div className="space-y-2">
-                <Skeleton className="h-4 w-[250px]" />
-                <Skeleton className="h-4 w-[200px]" />
-            </div>
-        )}
-        {commitMessage && (
-            <div className="p-4 bg-background/50 rounded-md border relative">
-                <pre className="whitespace-pre-wrap font-code text-sm">{commitMessage}</pre>
-                <Button variant="ghost" size="icon" className="absolute top-2 right-2" onClick={handleCopy}>
-                    <Clipboard className="h-4 w-4" />
-                </Button>
-            </div>
-        )}
       </CardContent>
+      <CardFooter>
+        <Button onClick={handleGenerate} disabled={isLoading} className="w-full">
+            {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+            {isLoading ? "Generating..." : "Generate Message"}
+        </Button>
+      </CardFooter>
     </Card>
   );
 }

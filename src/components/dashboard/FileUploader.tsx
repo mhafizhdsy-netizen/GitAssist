@@ -4,9 +4,9 @@
 import { useCallback, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import JSZip from "jszip";
-import { UploadCloud, File, Folder, Github, Sparkles, Loader2, CheckCircle, AlertCircle } from "lucide-react";
+import { UploadCloud, File, Folder, Github, Sparkles, Loader2, CheckCircle, ArrowRight } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -54,7 +54,7 @@ export function FileUploader() {
       }
       setFiles(extracted);
       setStep("select-repo");
-      toast({ title: "Success", description: "ZIP file extracted successfully." });
+      toast({ title: "Success", description: `${extracted.length} files extracted from ZIP.` });
     } catch (error) {
       console.error(error);
       toast({
@@ -134,18 +134,16 @@ export function FileUploader() {
     setIsCommitting(true);
     setStep("committing");
 
-    // Simulate commit process
     await new Promise(resolve => setTimeout(resolve, 2000));
     
-    // On real implementation, handle potential errors here.
-    const isSuccess = Math.random() > 0.1; // 90% success rate
+    const isSuccess = Math.random() > 0.1;
 
     if (isSuccess) {
         setStep("done");
         toast({ title: "Success!", description: "Files committed to the repository." });
     } else {
-        toast({ title: "Commit Failed", description: "Could not commit files to the repository. Please check the URL and your permissions.", variant: "destructive" });
-        setStep("select-repo"); // Go back to allow user to retry
+        toast({ title: "Commit Failed", description: "Could not commit files. Please check URL and permissions.", variant: "destructive" });
+        setStep("select-repo");
     }
 
     setIsCommitting(false);
@@ -161,8 +159,8 @@ export function FileUploader() {
   };
 
   const renderFileTree = () => (
-    <div className="mt-4 max-h-60 overflow-y-auto rounded-md border p-3 bg-background/50">
-        <h4 className="font-semibold mb-2">Files to be committed:</h4>
+    <div className="mt-4 max-h-48 overflow-y-auto rounded-lg border bg-background/50 p-3">
+        <h4 className="font-semibold mb-2 text-sm">Files to be committed ({files.length}):</h4>
         <ul className="space-y-1">
             {files.map((file) => (
                 <li key={file.path} className="flex items-center text-sm text-muted-foreground">
@@ -177,28 +175,28 @@ export function FileUploader() {
   const renderUploadStep = () => (
     <div
       {...getRootProps()}
-      className={`p-10 border-2 border-dashed rounded-lg text-center cursor-pointer transition-colors ${
+      className={`p-10 border-2 border-dashed rounded-xl text-center cursor-pointer transition-colors h-full flex flex-col justify-center items-center ${
         isDragActive ? "border-primary bg-primary/10" : "border-border hover:border-primary/50"
       }`}
     >
       <input {...getInputProps()} />
       <div className="flex flex-col items-center">
-        <UploadCloud className="h-12 w-12 text-muted-foreground mb-4" />
+        <UploadCloud className="h-16 w-16 text-muted-foreground mb-4" />
         {isDragActive ? (
-          <p className="font-semibold text-lg">Drop the files here ...</p>
+          <p className="font-semibold text-xl">Drop files here</p>
         ) : (
-          <p className="font-semibold text-lg">Drag & drop files or a ZIP archive here</p>
+          <p className="font-semibold text-xl">Drag & drop files or a ZIP archive</p>
         )}
-        <p className="text-sm text-muted-foreground mt-1">Or click to select files.</p>
+        <p className="text-sm text-muted-foreground mt-2">or click to select files from your computer</p>
       </div>
     </div>
   );
 
   const renderSelectRepoStep = () => (
-    <div className="space-y-4">
+    <div className="space-y-6">
         {renderFileTree()}
         <div>
-            <label htmlFor="repo-url" className="block text-sm font-medium mb-2">GitHub Repository URL</label>
+            <label htmlFor="repo-url" className="block text-sm font-medium mb-2">1. GitHub Repository URL</label>
             <div className="relative">
                 <Github className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <Input 
@@ -206,12 +204,12 @@ export function FileUploader() {
                     placeholder="e.g., https://github.com/user/repo"
                     value={repoUrl}
                     onChange={(e) => setRepoUrl(e.target.value)}
-                    className="pl-10"
+                    className="pl-10 h-11"
                 />
             </div>
         </div>
         <div>
-            <label htmlFor="commit-msg" className="block text-sm font-medium mb-2">Commit Message</label>
+            <label htmlFor="commit-msg" className="block text-sm font-medium mb-2">2. Commit Message</label>
             <Textarea
                 id="commit-msg"
                 placeholder="feat: Add new feature"
@@ -225,18 +223,11 @@ export function FileUploader() {
                 Generate with AI
             </Button>
         </div>
-        <div className="flex justify-between items-center">
-            <Button variant="ghost" onClick={resetState}>Start Over</Button>
-            <Button onClick={handleCommit} disabled={isCommitting}>
-                {isCommitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                Commit Files
-            </Button>
-        </div>
     </div>
   );
 
   const renderProcessing = () => (
-    <div className="text-center space-y-4 py-10">
+    <div className="text-center space-y-4 py-10 h-full flex flex-col items-center justify-center">
         <Loader2 className="mx-auto h-12 w-12 animate-spin text-primary" />
         <p className="font-semibold text-lg">Processing ZIP file...</p>
         <Progress value={uploadProgress} className="w-full max-w-sm mx-auto" />
@@ -245,51 +236,65 @@ export function FileUploader() {
   );
 
   const renderCommittingStep = () => (
-    <div className="text-center space-y-4 py-10">
+    <div className="text-center space-y-4 py-10 h-full flex flex-col items-center justify-center">
         <Loader2 className="mx-auto h-12 w-12 animate-spin text-primary" />
-        <p className="font-semibold text-lg">Committing to repository...</p>
-        <p className="text-sm text-muted-foreground">{repoUrl}</p>
+        <p className="font-semibold text-lg">Committing to Repository</p>
+        <p className="text-sm text-muted-foreground truncate max-w-sm">{repoUrl}</p>
     </div>
   );
 
   const renderDoneStep = () => (
-    <div className="text-center space-y-4 py-10">
-        <CheckCircle className="mx-auto h-12 w-12 text-green-500" />
-        <p className="font-semibold text-lg">Commit Successful!</p>
-        <p className="text-sm text-muted-foreground">Your files have been uploaded to the repository.</p>
-        <div className="flex gap-4 justify-center">
-            <Button onClick={resetState}>Upload More Files</Button>
-            <Button variant="outline" asChild>
+    <div className="text-center space-y-6 py-10 h-full flex flex-col items-center justify-center">
+        <CheckCircle className="mx-auto h-16 w-16 text-green-500" />
+        <div>
+            <p className="font-semibold text-xl">Commit Successful!</p>
+            <p className="text-muted-foreground mt-1">Your files have been uploaded.</p>
+        </div>
+        <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Button onClick={resetState} size="lg">Upload More Files</Button>
+            <Button variant="outline" size="lg" asChild>
                 <a href={repoUrl} target="_blank" rel="noopener noreferrer">
-                    View Repository <Github className="ml-2 h-4 w-4" />
+                    View on GitHub <Github className="ml-2 h-4 w-4" />
                 </a>
             </Button>
         </div>
     </div>
   );
+  
+  const stepContent = {
+    "upload": renderUploadStep,
+    "select-repo": renderSelectRepoStep,
+    "processing": renderProcessing,
+    "committing": renderCommittingStep,
+    "done": renderDoneStep,
+  }[isProcessing ? "processing" : step]();
+
 
   return (
-    <Card className="glass-card">
+    <Card className="glass-card flex flex-col h-full">
       <CardHeader>
-        <CardTitle className="font-headline text-2xl">Upload Files to GitHub</CardTitle>
-        <CardDescription>
-          {
-            {
-              "upload": "Drag and drop multiple files or a single ZIP archive to get started.",
-              "select-repo": "Select a repository and write a commit message for your files.",
-              "committing": "Your files are being committed. Please wait.",
-              "done": "Upload and commit process completed successfully."
-            }[step]
-          }
-        </CardDescription>
+        <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-lg flex items-center justify-center bg-primary/10 border border-primary/20">
+                <UploadCloud className="h-6 w-6 text-primary" />
+            </div>
+            <div>
+                <CardTitle className="font-headline text-2xl">Upload to GitHub</CardTitle>
+                <CardDescription>Drag & drop files or a ZIP to get started.</CardDescription>
+            </div>
+        </div>
       </CardHeader>
-      <CardContent className="p-6">
-        {isProcessing && renderProcessing()}
-        {!isProcessing && step === 'upload' && renderUploadStep()}
-        {!isProcessing && step === 'select-repo' && renderSelectRepoStep()}
-        {!isProcessing && step === 'committing' && renderCommittingStep()}
-        {!isProcessing && step === 'done' && renderDoneStep()}
+      <CardContent className="p-6 flex-grow">
+        {stepContent}
       </CardContent>
+      {step === "select-repo" && (
+        <CardFooter className="border-t pt-6 flex justify-between items-center">
+            <Button variant="ghost" onClick={resetState}>Start Over</Button>
+            <Button size="lg" onClick={handleCommit} disabled={isCommitting}>
+                {isCommitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Commit Files"}
+                {!isCommitting && <ArrowRight className="ml-2 h-4 w-4" />}
+            </Button>
+        </CardFooter>
+      )}
     </Card>
   );
 }

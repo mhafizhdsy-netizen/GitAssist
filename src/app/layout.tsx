@@ -1,3 +1,4 @@
+
 import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
@@ -30,10 +31,13 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body className={cn("font-sans antialiased", fontSans.variable, fontMono.variable)}>
-        <Header />
-        <main className="min-h-screen animated-gradient-bg">{children}</main>
-        <Footer />
-        <Toaster />
+        <div className="relative min-h-screen w-full">
+          <div className="absolute top-0 left-0 w-full h-[50vh] bg-gradient-to-b from-background to-transparent animated-gradient-bg opacity-30 z-0"></div>
+          <Header />
+          <main className="relative z-10">{children}</main>
+          <Footer />
+          <Toaster />
+        </div>
       </body>
     </html>
   );

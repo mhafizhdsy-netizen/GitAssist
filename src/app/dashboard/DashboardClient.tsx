@@ -1,10 +1,9 @@
+
 "use client";
 
 import { type User } from "@supabase/supabase-js";
 import { AiCommitHelper } from "@/components/dashboard/AiCommitHelper";
 import { FileUploader } from "@/components/dashboard/FileUploader";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Code, UploadCloud } from "lucide-react";
 
 type DashboardClientProps = {
   user: User;
@@ -12,26 +11,24 @@ type DashboardClientProps = {
 
 export default function DashboardClient({ user }: DashboardClientProps) {
   return (
-    <div className="container py-24">
-      <div className="text-center mb-12">
-        <h1 className="text-4xl font-headline font-bold">
+    <div className="container py-24 sm:py-32">
+      <div className="text-center mb-16">
+        <h1 className="text-4xl md:text-5xl font-headline font-bold">
           Welcome, {user.user_metadata.full_name || user.email}
         </h1>
-        <p className="text-muted-foreground mt-2">Ready to simplify your workflow?</p>
+        <p className="text-muted-foreground mt-2 text-lg">
+          Let's get started. What would you like to do today?
+        </p>
       </div>
 
-      <Tabs defaultValue="uploader" className="max-w-4xl mx-auto">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="uploader"><UploadCloud className="mr-2 h-4 w-4" /> Uploader</TabsTrigger>
-          <TabsTrigger value="ai-commit"><Code className="mr-2 h-4 w-4" /> AI Commit Helper</TabsTrigger>
-        </TabsList>
-        <TabsContent value="uploader">
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 max-w-7xl mx-auto">
+        <div className="lg:col-span-3">
           <FileUploader />
-        </TabsContent>
-        <TabsContent value="ai-commit">
+        </div>
+        <div className="lg:col-span-2">
           <AiCommitHelper />
-        </TabsContent>
-      </Tabs>
+        </div>
+      </div>
     </div>
   );
 }
