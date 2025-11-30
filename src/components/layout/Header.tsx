@@ -36,7 +36,7 @@ const Header = () => {
     }
   }, [mobileMenuOpen]);
 
-  const isDashboard = pathname.startsWith('/dashboard');
+  const isLoginPage = pathname === '/login';
 
   return (
     <>
@@ -52,38 +52,42 @@ const Header = () => {
             <span className="font-bold text-lg hidden sm:inline-block">GitAssist</span>
           </Link>
 
-          <nav className="hidden md:flex">
-            <ul className="flex items-center gap-6">
-              {!isDashboard && NAV_ITEMS.map((item) => (
-                <li key={item.label}>
-                  <Link
-                    href={item.href}
-                    className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-                  >
-                    {item.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </nav>
+          {!isLoginPage && (
+             <nav className="hidden md:flex">
+                <ul className="flex items-center gap-6">
+                  {NAV_ITEMS.map((item) => (
+                    <li key={item.label}>
+                      <Link
+                        href={item.href}
+                        className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+                      >
+                        {item.label}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </nav>
+          )}
 
           <div className="flex items-center gap-4">
-            <div className="hidden md:block">
+            <div className="flex-1 flex justify-end">
               <AuthButton />
             </div>
             
-            <div className="md:hidden">
-              <Button variant="ghost" size="icon" onClick={() => setMobileMenuOpen(true)}>
-                <Menu />
-                <span className="sr-only">Open menu</span>
-              </Button>
-            </div>
+            {!isLoginPage && (
+              <div className="md:hidden">
+                <Button variant="ghost" size="icon" onClick={() => setMobileMenuOpen(true)}>
+                  <Menu />
+                  <span className="sr-only">Open menu</span>
+                </Button>
+              </div>
+            )}
           </div>
         </div>
       </header>
 
       <AnimatePresence>
-        {mobileMenuOpen && (
+        {mobileMenuOpen && !isLoginPage && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -103,7 +107,7 @@ const Header = () => {
                 </Button>
               </div>
               <nav className="flex flex-col items-center justify-center flex-1 gap-8">
-                 {!isDashboard && NAV_ITEMS.map((item) => (
+                 {NAV_ITEMS.map((item) => (
                     <Link
                       key={item.label}
                       href={item.href}
@@ -113,9 +117,6 @@ const Header = () => {
                       {item.label}
                     </Link>
                   ))}
-                  <div className="mt-8">
-                    <AuthButton />
-                  </div>
               </nav>
             </div>
           </motion.div>

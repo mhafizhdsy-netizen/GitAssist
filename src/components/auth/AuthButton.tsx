@@ -14,6 +14,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { signOut } from '@/app/actions';
 import { ArrowRight, LogOut, User as UserIcon } from 'lucide-react';
 import { useUser } from '@/firebase';
+import { Skeleton } from '../ui/skeleton';
 
 export default function AuthButton() {
   const { user, loading } = useUser();
@@ -23,11 +24,11 @@ export default function AuthButton() {
     if (names.length > 1) {
       return names[0][0] + names[names.length - 1][0];
     }
-    return name.substring(0, 2);
+    return name.substring(0, 2).toUpperCase();
   };
 
   if (loading) {
-    return <Button className="w-full sm:w-auto">Loading...</Button>;
+    return <Skeleton className="h-10 w-10 rounded-full" />;
   }
 
   if (user) {
@@ -35,7 +36,7 @@ export default function AuthButton() {
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" className="relative h-10 w-10 rounded-full">
-            <Avatar className="h-10 w-10">
+            <Avatar className="h-10 w-10 border-2 border-primary/50">
               <AvatarImage src={user.photoURL || ''} alt={user.displayName || ''} />
               <AvatarFallback>{getInitials(user.displayName || user.email || 'U')}</AvatarFallback>
             </Avatar>
