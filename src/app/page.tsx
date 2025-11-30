@@ -7,18 +7,19 @@ import { FAQ } from "@/components/landing/FAQ";
 import { About } from "@/components/landing/About";
 import { Donate } from "@/components/landing/Donate";
 
-
 export default function Home() {
   return (
-    <div className="flex flex-col gap-20 md:gap-32">
+    <div className="flex flex-col">
       <Hero />
-      <Features />
-      <HowItWorks />
-      <Demo />
-      <Pricing />
-      <About />
-      <FAQ />
-      <Donate />
+      <div className="bg-background">
+        <Features />
+        <HowItWorks />
+        <Demo />
+        <Pricing />
+        <About />
+        <FAQ />
+        <Donate />
+      </div>
     </div>
   );
 }

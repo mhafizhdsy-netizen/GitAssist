@@ -3,8 +3,8 @@
     {
       "id": "demo-app-screenshot",
       "description": "A screenshot of the GitAssist application dashboard interface, showing the file uploader and repository selection.",
-      "imageUrl": "https://images.unsplash.com/photo-1758411898471-fa144c487c85?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxhcHAlMjBkYXNoYm9hcmR8ZW58MHx8fHwxNzY0NDI4MzY3fDA&ixlib=rb-4.1.0&q=80&w=1080",
-      "imageHint": "app dashboard"
+      "imageUrl": "https://images.unsplash.com/photo-1618423691384-1b094e219466?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxkYXJrJTIwdGVjaCUyMGRhc2hib2FyZHxlbnwwfHx8fDE3NjQ4NzE0ODR8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "dark dashboard"
     },
     {
       "id": "team-member-1",

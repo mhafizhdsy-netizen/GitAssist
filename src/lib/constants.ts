@@ -1,4 +1,4 @@
-import { Github, Zap, ShieldCheck, UploadCloud, FileArchive, Code, Users } from "lucide-react";
+import { Github, Zap, ShieldCheck, UploadCloud, FileArchive, Code } from "lucide-react";
 import type { NavItem, FeatureCard, PricingPlan, FAQItem, TeamMember } from "@/lib/types";
 
 export const NAV_ITEMS: NavItem[] = [
@@ -56,7 +56,7 @@ export const PRICING_PLANS: PricingPlan[] = [
       "GitHub Authentication",
       "Unlimited Public Repositories",
       "AI Commit Suggestions (10/day)",
-      "Batch Uploads",
+      "Batch Uploads up to 25 files",
       "Community Support",
     ],
     cta: "Get Started for Free",
@@ -69,7 +69,9 @@ export const PRICING_PLANS: PricingPlan[] = [
     features: [
       "Everything in Free, plus:",
       "Unlimited Private Repositories",
-      "Priority Support",
+      "Unlimited AI Commit Suggestions",
+      "Unlimited Batch Uploads",
+      "Priority Support & SLA",
       "On-premise Deployment Options",
       "Custom Integrations",
     ],
