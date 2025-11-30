@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from "next/link";
@@ -50,8 +49,8 @@ export function Hero() {
             </Link>
           </Button>
           <Button asChild variant="outline" size="lg" className="bg-transparent text-neutral-200 border-neutral-700 hover:bg-neutral-800 hover:text-white">
-            <a href="https://github.com" target="_blank" rel="noopener noreferrer">
-              <Github className="mr-2 h-5 w-5" /> Lihat di GitHub
+            <a href="https://github.com/mhafizhdsy-netizen/GitAssist" target="_blank" rel="noopener noreferrer">
+              <Github className="mr-2 h-5 w-5" /> View Source Code
             </a>
           </Button>
         </div>
