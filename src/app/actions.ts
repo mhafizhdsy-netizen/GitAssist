@@ -372,9 +372,9 @@ export async function fetchRepoContents(githubToken: string, owner: string, repo
           download_url: item.download_url
       }));
     } catch (error: any) {
-      if (error.message && (error.message.includes("This repository is empty") || error.message.includes("Not Found"))) {
-        return [];
-      }
-      throw error;
+        if (error.message && (error.message.includes("This repository is empty") || error.message.includes("Not Found"))) {
+            return [];
+        }
+        throw error;
     }
 }
