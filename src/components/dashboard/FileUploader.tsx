@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import JSZip from 'jszip';
 import { Buffer } from 'buffer';
-import { UploadCloud, File, Github, Sparkles, Loader2, CheckCircle, ArrowRight, Folder } from 'lucide-react';
+import { UploadCloud, File, Github, Sparkles, Loader2, CheckCircle, ArrowRight, Folder, X } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -52,7 +52,10 @@ export function FileUploader() {
 
   useEffect(() => {
     // Safely access sessionStorage only on the client side after mount
-    setGithubToken(sessionStorage.getItem('github-token'));
+    const token = sessionStorage.getItem('github-token');
+    if (token) {
+      setGithubToken(token);
+    }
   }, []);
 
   useEffect(() => {
@@ -149,6 +152,19 @@ export function FileUploader() {
     }
   });
 
+  const handleRemoveFile = (pathToRemove: string) => {
+    setFiles(prevFiles => {
+      const updatedFiles = prevFiles.filter(file => file.path !== pathToRemove);
+      if (updatedFiles.length === 0) {
+        resetState();
+      }
+      return updatedFiles;
+    });
+    toast({
+        title: "File removed",
+        description: `Removed ${pathToRemove} from the list.`,
+    });
+  };
 
   const handleGenerateCommitMessage = async () => {
     if (files.length === 0) {
@@ -255,9 +271,18 @@ export function FileUploader() {
       <h4 className="font-semibold mb-2 text-sm">Files to be committed ({files.length}):</h4>
       <ul className="space-y-1">
         {files.map((file) => (
-          <li key={file.path} className="flex items-center text-sm text-muted-foreground">
+          <li key={file.path} className="flex items-center text-sm text-muted-foreground group">
             <File className="mr-2 h-4 w-4 flex-shrink-0" />
-            <span className="truncate">{file.path}</span>
+            <span className="truncate flex-grow">{file.path}</span>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 ml-2 opacity-0 group-hover:opacity-100 transition-opacity"
+              onClick={() => handleRemoveFile(file.path)}
+              aria-label={`Remove ${file.path}`}
+            >
+              <X className="h-4 w-4" />
+            </Button>
           </li>
         ))}
       </ul>
@@ -397,7 +422,3 @@ export function FileUploader() {
     </Card>
   );
 }
-
-    
-
-    
