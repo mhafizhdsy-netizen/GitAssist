@@ -91,10 +91,13 @@ const Header = () => {
           </nav>
           
           <div className="md:hidden">
-            <Button variant="ghost" size="icon" onClick={() => setMobileMenuOpen(true)}>
-              <Menu />
-              <span className="sr-only">Buka menu</span>
-            </Button>
+             <div className="flex items-center gap-2">
+                <AuthButton />
+                <Button variant="ghost" size="icon" onClick={() => setMobileMenuOpen(true)}>
+                  <Menu />
+                  <span className="sr-only">Buka menu</span>
+                </Button>
+            </div>
           </div>
         </div>
       </header>
@@ -130,9 +133,6 @@ const Header = () => {
                       {item.label}
                     </Link>
                   ))}
-                  <div className="pt-4">
-                    <AuthButton />
-                  </div>
               </nav>
             </div>
           </motion.div>
