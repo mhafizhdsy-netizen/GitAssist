@@ -48,7 +48,7 @@ export type RepoContent = {
 
 type GitHubFile = {
   path: string;
-  content: string; // plain text content (will be encoded to base64 in the function)
+  content: string;
 };
 
 type CommitParams = {
@@ -66,8 +66,6 @@ type CommitParams = {
  * Formula: sha1("tree 0\0")
  */
 function generateEmptyTreeSHA(): string {
-    // Git object format: "tree <size>\0<content>"
-    // For empty tree: "tree 0\0" (no content)
     const header = 'tree 0\0';
     const hash = crypto.createHash('sha1');
     hash.update(header);
@@ -80,7 +78,6 @@ function generateEmptyTreeSHA(): string {
 /**
  * Fallback: hardcoded SHA-1 empty tree hash
  * This is the universal Git empty tree hash for SHA-1
- * Only used if dynamic generation fails
  */
 const FALLBACK_EMPTY_TREE_SHA = '4b825dc642cb6eb9a060e54bf8d69288fbee4904';
 
@@ -91,7 +88,6 @@ function getEmptyTreeSHA(): string {
     try {
         const dynamicSHA = generateEmptyTreeSHA();
         
-        // Verify it matches the expected value
         if (dynamicSHA === FALLBACK_EMPTY_TREE_SHA) {
             console.log('✓ Dynamic SHA matches expected value');
             return dynamicSHA;
@@ -168,11 +164,6 @@ async function initializeEmptyRepository(
     const repoInfo = await api(`/repos/${owner}/${repo}`, token);
     const branchToCreate = repoInfo.default_branch || 'main';
 
-    // METODE YANG BENAR BERDASARKAN STACKOVERFLOW UPDATE 2023:
-    // https://stackoverflow.com/questions/10790088/
-    // PENTING: Dummy file HARUS DIHAPUS sebelum membuat commit baru!
-    // Setelah dummy file dihapus, empty tree SHA baru bisa digunakan.
-
     // Step 1: Buat dummy file untuk initialize branch
     console.log('Step 1: Creating dummy file to initialize branch...');
     const dummyContent = Buffer.from('dummy', 'utf-8').toString('base64');
@@ -232,7 +223,7 @@ async function initializeEmptyRepository(
         body: JSON.stringify({
             message: commitMessage,
             tree: tree.sha,
-            parents: [], // Empty parents = initial commit
+            parents: [],
         }),
     });
     console.log(`✓ Created commit: ${commit.sha}`);
@@ -243,7 +234,7 @@ async function initializeEmptyRepository(
         method: 'PATCH',
         body: JSON.stringify({
             sha: commit.sha,
-            force: true // Force update untuk overwrite
+            force: true
         }),
     });
     console.log(`✓ Branch ${branchToCreate} now points to new commit`);
@@ -413,88 +404,5 @@ export async function fetchRepoContents(githubToken: string, owner: string, repo
         return [];
       }
       throw error;
-    }
-}}
-
-export async function fetchUserRepos(githubToken: string, page: number = 1, perPage: number = 100): Promise<Repo[]> {
-    if (!githubToken) {
-        throw new Error('Token GitHub diperlukan.');
-    }
-    
-    const repos = await api(`/user/repos?type=owner&sort=updated&per_page=${perPage}&page=${page}`, githubToken);
-    
-    if (!Array.isArray(repos)) return [];
-
-    return repos.map((repo: any) => ({
-        id: repo.id,
-        name: repo.name,
-        full_name: repo.full_name,
-        html_url: repo.html_url,
-        description: repo.description,
-        language: repo.language,
-        stargazers_count: repo.stargazers_count,
-        forks_count: repo.forks_count,
-        updated_at: repo.updated_at,
-        owner: {
-            login: repo.owner.login,
-        },
-        default_branch: repo.default_branch,
-        topics: repo.topics || [],
-    }));
-}
-
-export async function fetchRepoBranches(githubToken: string, owner: string, repo: string): Promise<Branch[]> {
-    if (!githubToken) {
-        throw new Error('Token GitHub diperlukan.');
-    }
-    try {
-        const branches = await api(`/repos/${owner}/${repo}/branches`, githubToken);
-        return branches || [];
-    } catch (error: any) {
-        if (error.message && (error.message.includes('Git Repository is empty') || error.message.includes('Not Found'))) {
-            return [];
-        }
-        console.error("Gagal mengambil branches:", error);
-        throw error;
-    }
-}
-
-export async function fetchRepoContents(githubToken: string, owner: string, repo: string, path: string = ''): Promise<RepoContent[] | string> {
-    if (!githubToken) {
-        throw new Error('Token GitHub diperlukan.');
-    }
-    try {
-      const contents = await api(`/repos/${owner}/${repo}/contents/${path}`, githubToken);
-      
-      if (contents === null) {
-          return [];
-      }
-
-      if (contents?.type === 'file' && typeof contents?.content === 'string' && contents.encoding === 'base64') {
-          return Buffer.from(contents.content, 'base64').toString('utf-8');
-      }
-
-      if (!Array.isArray(contents)) return [];
-      
-      contents.sort((a, b) => {
-          if (a.type === 'dir' && b.type !== 'dir') return -1;
-          if (a.type !== 'dir' && b.type === 'dir') return 1;
-          return a.name.localeCompare(b.name);
-      });
-
-      return contents.map((item: any) => ({
-          name: item.name,
-          path: item.path,
-          sha: item.sha,
-          size: item.size,
-          type: item.type,
-          html_url: item.html_url,
-          download_url: item.download_url
-      }));
-    } catch (error: any) {
-        if (error.message && (error.message.includes("This repository is empty") || error.message.includes("Not Found"))) {
-            return [];
-        }
-        throw error;
     }
 }
