@@ -48,7 +48,7 @@ export type RepoContent = {
 
 type GitHubFile = {
   path: string;
-  content: string; // base64 encoded content
+  content: string; // plain text content (will be encoded to base64 in the function)
 };
 
 type CommitParams = {
@@ -72,8 +72,6 @@ async function api(url: string, token: string, options: RequestInit = {}) {
     });
   
     if (response.status === 404 || response.status === 409) {
-      // 404: Not Found (e.g., ref doesn't exist)
-      // 409: Conflict (e.g., repo is empty)
       return null; 
     }
   
@@ -93,16 +91,15 @@ async function api(url: string, token: string, options: RequestInit = {}) {
 async function isRepositoryEmpty(owner: string, repo: string, token: string): Promise<boolean> {
     try {
         const repoData = await api(`/repos/${owner}/${repo}`, token);
-        if (!repoData) return true; // Fail-safe if repo info can't be fetched
+        if (!repoData) return true;
 
         const branchName = repoData.default_branch || 'main';
         const refData = await api(`/repos/${owner}/${repo}/git/refs/heads/${branchName}`, token);
         
-        // If refData is null, it means the ref was not found (404/409), so the repo is empty.
         return refData === null;
     } catch (error) {
         console.error("Error saat mendeteksi repositori kosong:", error);
-        return true; // Assume empty on error to trigger initialization
+        return true;
     }
 }
 
@@ -117,9 +114,10 @@ async function initializeEmptyRepository(
 
     const blobs = await Promise.all(
       files.map(async (file) => {
+        const base64Content = Buffer.from(file.content).toString('base64');
         const blobData = await api(`/repos/${owner}/${repo}/git/blobs`, token, {
             method: 'POST',
-            body: JSON.stringify({ content: file.content, encoding: 'base64' }),
+            body: JSON.stringify({ content: base64Content, encoding: 'base64' }),
         });
         if (!blobData) throw new Error(`Gagal membuat blob untuk ${file.path}`);
         return { path: file.path, sha: blobData.sha, mode: '100644', type: 'blob' as const };
@@ -128,7 +126,7 @@ async function initializeEmptyRepository(
 
     const tree = await api(`/repos/${owner}/${repo}/git/trees`, token, {
         method: 'POST',
-        body: JSON.stringify({ tree: blobs }), // no base_tree for initial commit
+        body: JSON.stringify({ tree: blobs }),
     });
     if (!tree) throw new Error("Gagal membuat tree.");
 
@@ -137,7 +135,7 @@ async function initializeEmptyRepository(
         body: JSON.stringify({
             message: commitMessage,
             tree: tree.sha,
-            parents: [], // no parents for initial commit
+            parents: [],
         }),
     });
     if (!commit) throw new Error("Gagal membuat commit.");
@@ -178,9 +176,10 @@ async function commitToExistingRepo(
 
     const blobs = await Promise.all(
         files.map(async (file) => {
+            const base64Content = Buffer.from(file.content).toString('base64');
             const blob = await api(`/repos/${owner}/${repo}/git/blobs`, token, {
                 method: 'POST',
-                body: JSON.stringify({ content: file.content, encoding: 'base64' }),
+                body: JSON.stringify({ content: base64Content, encoding: 'base64' }),
             });
             if (!blob) throw new Error(`Gagal membuat blob untuk ${file.path}`);
             return { path: file.path, sha: blob.sha, mode: '100644', type: 'blob' as const };
@@ -295,7 +294,7 @@ export async function fetchRepoContents(githubToken: string, owner: string, repo
           return [];
       }
 
-      if (typeof contents?.content === 'string' && contents.encoding === 'base64') {
+      if (contents?.type === 'file' && typeof contents?.content === 'string' && contents.encoding === 'base64') {
           return Buffer.from(contents.content, 'base64').toString('utf-8');
       }
 
@@ -323,5 +322,3 @@ export async function fetchRepoContents(githubToken: string, owner: string, repo
       throw error;
     }
 }
-
-    
