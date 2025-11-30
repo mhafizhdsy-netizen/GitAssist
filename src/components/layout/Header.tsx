@@ -92,10 +92,13 @@ const Header = () => {
                 <div className="hidden md:block">
                     <AuthButton />
                 </div>
-                <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setMobileMenuOpen(true)}>
-                    <Menu />
-                    <span className="sr-only">Buka menu</span>
-                </Button>
+                <div className="md:hidden flex items-center gap-2">
+                  <AuthButton />
+                  <Button variant="ghost" size="icon" onClick={() => setMobileMenuOpen(true)}>
+                      <Menu />
+                      <span className="sr-only">Buka menu</span>
+                  </Button>
+                </div>
             </div>
           </>
           )}
@@ -118,7 +121,6 @@ const Header = () => {
                   <span className="font-bold text-lg">GitAssist</span>
                 </Link>
                 <div className="flex items-center gap-2">
-                    <AuthButton />
                     <Button variant="ghost" size="icon" onClick={() => setMobileMenuOpen(false)}>
                       <X />
                       <span className="sr-only">Tutup menu</span>
