@@ -36,9 +36,9 @@ const prompt = ai.definePrompt({
   Please create a concise and informative commit message based on the following code changes:
 
   Diff:
-  ```
-  {{{diff}}}
-  ```
+  \`\`\`
+  {{diff}}
+  \`\`\`
   `,
 });
 
