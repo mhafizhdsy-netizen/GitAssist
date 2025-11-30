@@ -6,7 +6,6 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "Fitur", href: "/#features" },
   { label: "Cara Kerja", href: "/#how-it-works" },
   { label: "FAQ", href: "/#faq" },
-  { label: "Donasi", href: "/donate" },
 ];
 
 export const FEATURES: FeatureCard[] = [
@@ -81,7 +80,7 @@ export const FOOTER_LINKS = {
     "Produk": [
         { label: "Fitur", href: "/#features" },
         { label: "Cara Kerja", href: "/#how-it-works" },
-        { label: "Donasi", href: "/donate" },
+        { label: "Donasi", href: "https://saweria.co/Antraxxx" },
     ],
     "Perusahaan": [
         { label: "Kebijakan Privasi", href: "/privacy" },

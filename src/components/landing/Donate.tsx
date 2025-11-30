@@ -13,10 +13,10 @@ export function Donate() {
         </p>
         <div className="mt-8">
           <Button asChild size="lg" className="group">
-            <Link href="/donate">
+            <a href="https://saweria.co/Antraxxx" target="_blank" rel="noopener noreferrer">
               <Heart className="mr-2 h-5 w-5" /> Donasi Sekarang
               <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
-            </Link>
+            </a>
           </Button>
         </div>
       </div>
