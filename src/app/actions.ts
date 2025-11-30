@@ -133,7 +133,7 @@ async function initializeEmptyRepository(
     const tree = await api(`/repos/${owner}/${repo}/git/trees`, token, {
         method: 'POST',
         body: JSON.stringify({ 
-            // base_tree: '4b825dc642cb6eb9a060e54bf8d69288fbee4904', // Empty tree SHA
+            // base_tree: '4b825dc642cb6eb9a060e54bf8d69288fbee4904', // Empty tree SHA (This seems to cause issues, create without base_tree)
             tree: blobs 
         }),
     });
