@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { NAV_ITEMS } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import AuthButton from "@/components/auth/AuthButton";
+import { useUser } from "@/firebase";
 
 const CustomGitIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg
@@ -36,6 +37,7 @@ const Header = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const pathname = usePathname();
+  const { user, loading } = useUser();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -56,7 +58,11 @@ const Header = () => {
     }
   }, [mobileMenuOpen]);
 
+  const isHomePage = pathname === '/';
   const isLoginPage = pathname === '/login';
+
+  // Hide the AuthButton (specifically the "Mulai" button when not logged in) on the home page.
+  const showAuthButton = !isHomePage || user || loading;
 
   return (
     <>
@@ -90,10 +96,10 @@ const Header = () => {
             </nav>
             <div className="flex items-center gap-2">
                 <div className="hidden md:block">
-                    <AuthButton />
+                    {showAuthButton && <AuthButton />}
                 </div>
                 <div className="md:hidden flex items-center gap-2">
-                  <AuthButton />
+                  {showAuthButton && <AuthButton />}
                   <Button variant="ghost" size="icon" onClick={() => setMobileMenuOpen(true)}>
                       <Menu />
                       <span className="sr-only">Buka menu</span>
@@ -138,7 +144,7 @@ const Header = () => {
                       {item.label}
                     </Link>
                   ))}
-                  {/* AuthButton is already outside, no need to show it here again */}
+                  {/* AuthButton is handled outside the modal for mobile */}
               </nav>
             </div>
           </motion.div>
