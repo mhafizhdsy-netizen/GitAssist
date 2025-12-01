@@ -38,7 +38,7 @@ type FileOrFolder = {
   content?: File; // Content is always a File object from the browser
 };
 
-type CommitStatus = UploadProgress;
+type CommitStatus = UploadProgress & { step: 'preparing' | 'uploading' | 'finalizing' };
 
 type ModalStatus = 'inactive' | 'processing' | 'committing' | 'done';
 
@@ -395,7 +395,7 @@ export function FileUploader() {
           destinationPath,
           branchName: selectedBranch,
           onProgress: (progress) => {
-            setCommitStatus(progress);
+            setCommitStatus(progress as CommitStatus);
           }
       });
 
@@ -692,5 +692,7 @@ export function FileUploader() {
     </>
   );
 }
+
+    
 
     
