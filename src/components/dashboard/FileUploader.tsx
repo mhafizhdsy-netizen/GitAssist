@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import JSZip from 'jszip';
 import { Buffer } from 'buffer';
-import { UploadCloud, File, Github, Sparkles, Folder, PlusCircle, Trash2, Loader2, ArrowRight, GitBranch, X, FileArchive, Settings } from 'lucide-react';
+import { UploadCloud, File, Github, Sparkles, Folder, PlusCircle, Trash2, Loader2, ArrowRight, GitBranch, X, FileArchive, Settings, Unpack } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,6 +23,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { RepoPathPickerModal } from './RepoPathPickerModal';
 import { Label } from '../ui/label';
 import { Switch } from '../ui/switch';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 
 
 // Make Buffer available globally for JSZip to use
@@ -40,6 +41,10 @@ type FileOrFolder = {
 type CommitStatus = UploadProgress;
 
 type ModalStatus = 'inactive' | 'processing' | 'committing' | 'done';
+
+const isZipFile = (file: FileOrFolder) => {
+    return file.name.endsWith('.zip') || (file.content as File)?.type === 'application/zip';
+}
 
 export function FileUploader() {
   const [files, setFiles] = useState<FileOrFolder[]>([]);
@@ -147,7 +152,12 @@ export function FileUploader() {
           throw new Error("File ZIP tidak berisi file yang dapat diekstrak.");
       }
       
-      setFiles(prev => append ? [...prev, ...extracted] : extracted);
+      setFiles(prev => {
+        const currentFiles = append ? prev : [];
+        const existingPaths = new Set(currentFiles.map(f => f.path));
+        const newUniqueFiles = extracted.filter(f => !existingPaths.has(f.path));
+        return [...currentFiles, ...newUniqueFiles];
+      });
       setSelectedFilePaths(prev => {
         const newSelection = new Set(prev);
         extracted.forEach(f => newSelection.add(f.path));
@@ -167,31 +177,58 @@ export function FileUploader() {
     }
   }, [toast]);
 
+  const handleManualExtract = (zipFile: FileOrFolder) => {
+    if (!zipFile.content || !(zipFile.content instanceof File)) return;
+
+    // 1. Remove the original zip file from the list
+    setFiles(prevFiles => prevFiles.filter(f => f.path !== zipFile.path));
+    setSelectedFilePaths(prevSelected => {
+        const newSelection = new Set(prevSelected);
+        newSelection.delete(zipFile.path);
+        return newSelection;
+    });
+
+    // 2. Extract its contents and append them
+    handleZipExtraction(zipFile.content, true);
+  };
+
+
   const onDrop = useCallback(
     (acceptedFiles: File[]) => {
       if (acceptedFiles.length === 0) return;
 
       const isAppending = files.length > 0;
-      const zipFile = acceptedFiles.find((f) => f.type === 'application/zip' || f.name.endsWith('.zip'));
+      
+      const fileList: FileOrFolder[] = acceptedFiles.map((file) => ({
+        name: file.name,
+        path: (file as any).webkitRelativePath || file.name,
+        type: 'file',
+        content: file,
+      }));
 
-      if (zipFile && autoExtractZip) {
-        if (acceptedFiles.length > 1) {
-          toast({
-            title: 'Kesalahan Unggah',
-            description: 'Silakan unggah file ZIP secara terpisah saat ekstraksi otomatis aktif.',
-            variant: 'destructive',
+      // If auto-extract is on, find ZIP files and extract them
+      if (autoExtractZip) {
+          const zips = fileList.filter(f => isZipFile(f));
+          const nonZips = fileList.filter(f => !isZipFile(f));
+
+          zips.forEach(zipFile => {
+            if (zipFile.content instanceof File) {
+                handleZipExtraction(zipFile.content, isAppending || nonZips.length > 0);
+            }
           });
-          return;
-        }
-        handleZipExtraction(zipFile, isAppending);
+          
+          const currentPaths = new Set(files.map(f => f.path));
+          const newUniqueFiles = nonZips.filter(f => !currentPaths.has(f.path));
+
+          setFiles(prev => [...prev, ...newUniqueFiles]);
+          setSelectedFilePaths(prev => {
+              const newSelection = new Set(prev);
+              newUniqueFiles.forEach(f => newSelection.add(f.path));
+              return newSelection;
+          });
+
       } else {
-        const fileList: FileOrFolder[] = acceptedFiles.map((file) => ({
-          name: file.name,
-          path: (file as any).webkitRelativePath || file.name,
-          type: 'file',
-          content: file,
-        }));
-        
+        // If auto-extract is off, add all files as they are
         const currentPaths = new Set(files.map(f => f.path));
         const newUniqueFiles = fileList.filter(f => !currentPaths.has(f.path));
 
@@ -376,7 +413,7 @@ export function FileUploader() {
         console.error(error);
         toast({ title: 'Commit Gagal', description: error.message || 'Tidak dapat melakukan commit file. Periksa URL dan izin.', variant: 'destructive' });
         setModalStatus('inactive');
-        setCommitStatus({ step: 'inactive', progress: 0 });
+        setCommitStatus({ step: 'preparing', progress: 0 });
     }
   };
   
@@ -390,7 +427,7 @@ export function FileUploader() {
     setCommitUrl('');
     setBranches([]);
     setSelectedBranch('');
-    setCommitStatus({ step: 'inactive', progress: 0 });
+    setCommitStatus({ step: 'preparing', progress: 0 });
     if (fullReset) {
       setRepos([]);
       setSelectedRepo(null);
@@ -409,20 +446,6 @@ export function FileUploader() {
             <UploadCloud className="mx-auto h-12 w-12 text-muted-foreground" />
             <p className="mt-4 font-semibold text-base">Seret & lepas file, folder, atau arsip ZIP</p>
             <p className="text-sm text-muted-foreground">atau klik untuk menelusuri</p>
-        </div>
-        <div 
-          className="mt-6 flex items-center space-x-2"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <Switch 
-            id="auto-extract-zip" 
-            checked={autoExtractZip} 
-            onCheckedChange={setAutoExtractZip} 
-          />
-          <Label htmlFor="auto-extract-zip" className="flex items-center gap-2 cursor-pointer">
-            <FileArchive className="h-4 w-4" />
-            <span>Ekstrak ZIP Otomatis</span>
-          </Label>
         </div>
     </div>
   );
@@ -467,8 +490,13 @@ export function FileUploader() {
                     checked={selectedFilePaths.has(file.path)}
                     onCheckedChange={(checked) => handleFileSelectionChange(file.path, checked)}
                     />
-                    <File className="mr-2 h-4 w-4 flex-shrink-0" />
+                    { isZipFile(file) ? <FileArchive className="mr-2 h-4 w-4 flex-shrink-0 text-yellow-400" /> : <File className="mr-2 h-4 w-4 flex-shrink-0" /> }
                     <label htmlFor={`select-${file.path}`} className="truncate flex-grow cursor-pointer">{file.path}</label>
+                    { isZipFile(file) && (
+                        <Button variant="ghost" size="icon" className="h-7 w-7 ml-2" onClick={() => handleManualExtract(file)}>
+                            <Unpack className="h-4 w-4" />
+                        </Button>
+                    )}
                 </li>
                 ))}
             </ul>
@@ -599,18 +627,37 @@ export function FileUploader() {
       )}
       <Card className="glass-card flex flex-col h-full">
         <CardHeader>
-          <div className="flex items-center gap-3">
-              {(files.length === 0) && (
-                  <div className="w-12 h-12 rounded-lg flex items-center justify-center bg-primary/10 border border-primary/20">
-                      <UploadCloud className="h-6 w-6 text-primary" />
+          <div className="flex justify-between items-start">
+            <div>
+              <CardTitle className="font-headline text-2xl">Unggah ke GitHub</CardTitle>
+              <CardDescription>
+                {files.length === 0 ? 'Seret & lepas file, folder, atau ZIP untuk memulai.' : 'Atur detail commit Anda.'}
+              </CardDescription>
+            </div>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="ghost" size="icon">
+                  <Settings className="h-5 w-5" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-64" align="end">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="auto-extract-zip" className="flex flex-col space-y-1">
+                      <span>Ekstrak ZIP Otomatis</span>
+                      <span className="font-normal leading-snug text-muted-foreground text-xs">
+                        Ekstrak file .zip secara otomatis saat diunggah.
+                      </span>
+                    </Label>
+                    <Switch 
+                      id="auto-extract-zip" 
+                      checked={autoExtractZip} 
+                      onCheckedChange={setAutoExtractZip} 
+                    />
                   </div>
-              )}
-              <div>
-                  <CardTitle className="font-headline text-2xl">Unggah ke GitHub</CardTitle>
-                  <CardDescription>
-                      {files.length === 0 ? 'Seret & lepas file, folder, atau ZIP untuk memulai.' : 'Atur detail commit Anda.'}
-                  </CardDescription>
-              </div>
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
         </CardHeader>
         <CardContent className="p-6 flex-grow flex flex-col">
@@ -647,5 +694,7 @@ export function FileUploader() {
     </>
   );
 }
+
+    
 
     
