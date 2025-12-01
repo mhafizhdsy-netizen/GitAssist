@@ -20,6 +20,7 @@ import { cn } from '@/lib/utils';
 import { UploadStatusModal } from './UploadStatusModal';
 import { Alert, AlertDescription } from '../ui/alert';
 import { motion, AnimatePresence } from "framer-motion";
+import { RepoPathPickerModal } from './RepoPathPickerModal';
 
 
 // Make Buffer available globally for JSZip to use
@@ -45,7 +46,7 @@ export function FileUploader() {
   
   const [repos, setRepos] = useState<Repo[]>([]);
   const [isFetchingRepos, setIsFetchingRepos] = useState(false);
-  const [selectedRepo, setSelectedRepo] = useState<string>('');
+  const [selectedRepo, setSelectedRepo] = useState<Repo | null>(null);
 
   const [branches, setBranches] = useState<Branch[]>([]);
   const [isFetchingBranches, setIsFetchingBranches] = useState(false);
@@ -53,10 +54,11 @@ export function FileUploader() {
   
   const [destinationPath, setDestinationPath] = useState('');
   const [githubToken, setGithubToken] = useState<string | null>(null);
+  const [isPickerModalOpen, setIsPickerModalOpen] = useState(false);
 
   const [commitMessage, setCommitMessage] = useState('');
   const [modalStatus, setModalStatus] = useState<ModalStatus>('inactive');
-  const [commitStatus, setCommitStatus] = useState<CommitStatus>({ step: 'inactive', progress: 0 });
+  const [commitStatus, setCommitStatus] = useState<CommitStatus>({ step: 'preparing', progress: 0 });
   const [isGenerating, setIsGenerating] = useState(false);
   const [commitUrl, setCommitUrl] = useState('');
   const { toast } = useToast();
@@ -90,7 +92,7 @@ export function FileUploader() {
     const repo = repos.find(r => r.full_name === repoFullName);
     if (!repo || !githubToken) return;
 
-    setSelectedRepo(repo.html_url);
+    setSelectedRepo(repo);
     setSelectedBranch('');
     setBranches([]);
     setIsFetchingBranches(true);
@@ -347,7 +349,7 @@ export function FileUploader() {
       );
       
       const result = await commitToRepo({
-          repoUrl: selectedRepo,
+          repoUrl: selectedRepo.html_url,
           commitMessage,
           files: filesToCommitContent,
           githubToken: token,
@@ -379,7 +381,6 @@ export function FileUploader() {
     setFiles([]);
     setSelectedFilePaths(new Set());
     setZipExtractProgress(0);
-    setSelectedRepo('');
     setDestinationPath('');
     setCommitMessage('');
     setModalStatus('inactive');
@@ -389,6 +390,7 @@ export function FileUploader() {
     setCommitStatus({ step: 'inactive', progress: 0 });
     if (fullReset) {
       setRepos([]);
+      setSelectedRepo(null);
     }
   };
   
@@ -472,7 +474,7 @@ export function FileUploader() {
                   {isFetchingRepos ? (
                       <Skeleton className="h-11 w-full" />
                   ) : (
-                      <Select value={repos.find(r => r.html_url === selectedRepo)?.full_name} onValueChange={handleRepoChange} disabled={!githubToken}>
+                      <Select value={selectedRepo?.full_name} onValueChange={handleRepoChange} disabled={!githubToken}>
                           <SelectTrigger id="repo-select" className="h-11">
                               <Github className="h-5 w-5 text-muted-foreground mr-2" />
                               <SelectValue placeholder="Pilih repositori..." />
@@ -518,19 +520,20 @@ export function FileUploader() {
               )}
           </div>
           <div>
-              <label htmlFor="dest-path" className="block text-sm font-medium mb-2">
-              Folder Tujuan (Opsional)
+              <label className="block text-sm font-medium mb-2">
+                Folder Tujuan (Opsional)
               </label>
-              <div className="relative">
-              <Folder className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-              <Input
-                  id="dest-path"
-                  placeholder="cth., src/assets"
-                  value={destinationPath}
-                  onChange={(e) => setDestinationPath(e.target.value)}
-                  className="pl-10 h-11"
-              />
-              </div>
+              <Button
+                variant="outline"
+                className="h-11 w-full justify-start text-left font-normal"
+                onClick={() => setIsPickerModalOpen(true)}
+                disabled={!selectedRepo}
+              >
+                  <Folder className="mr-2 h-5 w-5 text-muted-foreground" />
+                  <span className="truncate">
+                    {destinationPath ? destinationPath : "Root Repositori"}
+                  </span>
+              </Button>
           </div>
           </div>
           
@@ -562,8 +565,21 @@ export function FileUploader() {
         commitStatus={commitStatus}
         commitUrl={commitUrl}
         onRestart={() => resetState(true)}
-        repoName={selectedRepo.split('/').pop() || ''}
+        repoName={selectedRepo?.name || ''}
       />
+      {selectedRepo && githubToken && (
+        <RepoPathPickerModal
+            isOpen={isPickerModalOpen}
+            onClose={() => setIsPickerModalOpen(false)}
+            onPathSelect={(path) => {
+                setDestinationPath(path);
+                setIsPickerModalOpen(false);
+            }}
+            githubToken={githubToken}
+            owner={selectedRepo.owner.login}
+            repoName={selectedRepo.name}
+        />
+      )}
       <Card className="glass-card flex flex-col h-full">
         <CardHeader>
           <div className="flex items-center gap-3">
