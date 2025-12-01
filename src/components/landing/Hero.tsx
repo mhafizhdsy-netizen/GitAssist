@@ -53,7 +53,7 @@ export function Hero() {
           </span>
         </h1>
         <p className="mt-6 max-w-2xl text-lg md:text-xl text-muted-foreground">
-          GitAssist menggunakan AI untuk mengotomatiskan pesan commit Anda, menangani unggahan massal dengan mulus, dan menyederhanakan manajemen repositori.
+          Otomatiskan pesan commit, kelola issues dan rilis, serta tangani unggahan massal dengan mulus. Fokus pada kode, bukan pada tugas repetitif.
         </p>
         <div className="mt-8 flex flex-col sm:flex-row gap-4">
           <Button asChild size="lg" className="group">
