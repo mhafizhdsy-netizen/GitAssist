@@ -1,4 +1,3 @@
-
 'use client';
 
 import { HowItWorks } from "@/components/landing/HowItWorks";
@@ -21,7 +20,7 @@ export default function HowItWorksPage() {
                 </div>
                 <CardTitle className="text-4xl font-headline">Cara Kerjanya</CardTitle>
                 <CardDescription>
-                    Dari login hingga commit dalam waktu kurang dari satu menit.
+                    Dari login hingga eksekusi tugas GitHub dalam waktu kurang dari satu menit.
                 </CardDescription>
             </CardHeader>
             <CardContent>

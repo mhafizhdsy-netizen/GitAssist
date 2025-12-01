@@ -1,29 +1,29 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { LogIn, Upload, GitBranch, Sparkles } from "lucide-react";
+import { LogIn, AppWindow, Sparkles, Send } from "lucide-react";
 import { Card } from "../ui/card";
 
 const steps = [
   {
     icon: LogIn,
-    title: "Autentikasi",
-    description: "Hubungkan akun GitHub Anda dengan aman dalam satu klik.",
+    title: "1. Autentikasi Cepat",
+    description: "Hubungkan akun GitHub Anda dengan aman hanya dengan satu klik untuk memulai.",
   },
   {
-    icon: Upload,
-    title: "Unggah File",
-    description: "Seret dan lepas file atau arsip ZIP Anda ke dalam aplikasi.",
+    icon: AppWindow,
+    title: "2. Pilih Fitur Anda",
+    description: "Pilih tugas yang ingin Anda lakukan, mulai dari Commit file, membuat Issue, hingga merilis versi baru.",
   },
   {
     icon: Sparkles,
-    title: "Buat Pesan",
-    description: "Gunakan asisten AI kami untuk membuat pesan commit yang sempurna.",
+    title: "3. Isi & Sempurnakan",
+    description: "Lengkapi detail yang diperlukan dan biarkan asisten AI kami membantu menyempurnakan deskripsi Anda.",
   },
   {
-    icon: GitBranch,
-    title: "Commit ke Repo",
-    description: "Pilih repositori Anda dan commit file Anda secara langsung.",
+    icon: Send,
+    title: "4. Eksekusi & Selesai",
+    description: "Kirim perubahan Anda langsung ke GitHub. Commit, Issue, atau Rilis Anda berhasil dibuat!",
   },
 ];
 
@@ -47,7 +47,7 @@ export function HowItWorks() {
       <div className="text-center mb-16">
         <h2 className="text-3xl md:text-5xl font-bold">Empat Langkah Sederhana</h2>
         <p className="mt-4 max-w-2xl mx-auto text-lg text-muted-foreground">
-          Dari login hingga commit dalam waktu kurang dari satu menit. Begini cara kerjanya.
+          Dari login hingga eksekusi tugas GitHub dalam waktu kurang dari satu menit. Begini cara kerjanya.
         </p>
       </div>
 
@@ -64,9 +64,6 @@ export function HowItWorks() {
               <div className="relative inline-block mb-6">
                 <div className="w-16 h-16 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20">
                     <step.icon className="w-8 h-8 text-primary" />
-                </div>
-                <div className="absolute -top-3 -right-3 flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground font-bold text-sm">
-                  {index + 1}
                 </div>
               </div>
               <h3 className="text-xl font-bold mt-4">{step.title}</h3>
