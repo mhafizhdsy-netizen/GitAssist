@@ -1,10 +1,10 @@
-
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import JSZip from 'jszip';
-import { Buffer } from 'buffer';
+// Hapus import Buffer karena akan menggunakan polyfill yang lebih baik
+// import { Buffer } from 'buffer';
 import { UploadCloud, File, Github, Sparkles, Folder, PlusCircle, Trash2, Loader2, ArrowRight, GitBranch, X, FileArchive, Settings, Unpack } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -25,23 +25,32 @@ import { Label } from '../ui/label';
 import { Switch } from '../ui/switch';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 
-if (typeof window !== 'undefined' && typeof (window as any).Buffer === 'undefined') {
-  (window as any).Buffer = Buffer;
+// Polyfill Buffer dengan cara yang lebih baik
+if (typeof window !== 'undefined') {
+  window.Buffer = window.Buffer || require('buffer').Buffer;
 }
 
 type FileOrFolder = {
   name: string;
   path: string;
   type: 'file' | 'folder';
-  content?: File;
+  content?: File; // Content is always a File object from the browser
 };
 
 type CommitStatus = UploadProgress & { step: 'preparing' | 'uploading' | 'finalizing' };
 
 type ModalStatus = 'inactive' | 'processing' | 'committing' | 'done';
 
+// Perbaikan fungsi deteksi ZIP
 const isZipFile = (file: FileOrFolder | File) => {
-    return file.name.endsWith('.zip') || file.type === 'application/zip' || file.type === 'application/x-zip-compressed';
+    const fileName = file.name.toLowerCase();
+    return fileName.endsWith('.zip') || 
+           fileName.endsWith('.jar') || 
+           fileName.endsWith('.war') || 
+           fileName.endsWith('.ear') || 
+           file.type === 'application/zip' || 
+           file.type === 'application/x-zip-compressed' ||
+           file.type === 'application/x-zip';
 }
 
 export function FileUploader() {
@@ -70,6 +79,7 @@ export function FileUploader() {
   const [autoExtractZip, setAutoExtractZip] = useState(true);
 
   useEffect(() => {
+    // Safely access localStorage only on the client side
     const token = localStorage.getItem('github-token');
     if (token) {
       setGithubToken(token);
@@ -79,7 +89,7 @@ export function FileUploader() {
   useEffect(() => {
     if (files.length > 0 && githubToken && repos.length === 0) {
       setIsFetchingRepos(true);
-      fetchUserRepos(githubToken, 1, 100)
+      fetchUserRepos(githubToken, 1, 100) // Fetch up to 100 repos
         .then(setRepos)
         .catch(err => {
           console.error("Gagal mengambil repositori", err);
@@ -122,89 +132,137 @@ export function FileUploader() {
         .finally(() => setIsFetchingBranches(false));
   };
   
+  // Perbaikan fungsi extractZip
   const extractZip = useCallback(async (zipFile: File): Promise<FileOrFolder[]> => {
-    setModalStatus('processing');
-    setZipExtractProgress(0);
-    const extractedFiles: FileOrFolder[] = [];
-    try {
-        const zip = await JSZip.loadAsync(zipFile);
-        const allZipFiles = Object.values(zip.files).filter(f => !f.dir && !f.name.startsWith('__MACOSX/'));
-        const totalInZip = allZipFiles.length;
+      setModalStatus('processing');
+      setZipExtractProgress(0);
+      try {
+          const zip = await JSZip.loadAsync(zipFile);
+          const extractedFiles: FileOrFolder[] = [];
+          const allZipFiles = Object.values(zip.files).filter(file => !file.dir && !file.name.startsWith('__MACOSX/'));
+          const totalFiles = allZipFiles.length;
+          let processedFiles = 0;
 
-        for (let i = 0; i < totalInZip; i++) {
-            const zipEntry = allZipFiles[i];
-            const blob = await zipEntry.async('blob');
-            const extractedFile = new File([blob], zipEntry.name.split('/').pop() || zipEntry.name, { type: blob.type });
-            const item: FileOrFolder = { name: extractedFile.name, path: zipEntry.name, type: 'file', content: extractedFile };
-            extractedFiles.push(item);
-            setZipExtractProgress(((i + 1) / totalInZip) * 100);
-        }
-        toast({ title: 'Ekstraksi Berhasil', description: `${totalInZip} file diekstrak dari ${zipFile.name}.`, variant: 'success' });
-        return extractedFiles;
-    } catch (error) {
-        console.error(`Gagal mengekstrak ${zipFile.name}:`, error);
-        toast({ title: 'Kesalahan Ekstraksi', description: `Gagal memproses ${zipFile.name}.`, variant: 'destructive' });
-        return []; // Return empty array on failure
-    } finally {
-        setModalStatus('inactive');
-    }
+          for (const zipEntry of allZipFiles) {
+              try {
+                  const blob = await zipEntry.async('blob');
+                  const extractedFile = new File([blob], zipEntry.name.split('/').pop() || zipEntry.name, { type: blob.type });
+                  extractedFiles.push({ 
+                      name: extractedFile.name, 
+                      path: zipEntry.name, 
+                      type: 'file', 
+                      content: extractedFile 
+                  });
+                  processedFiles++;
+                  setZipExtractProgress((processedFiles / totalFiles) * 100);
+              } catch (fileError) {
+                  console.error(`Gagal mengekstrak file ${zipEntry.name}:`, fileError);
+                  // Lanjutkan ke file berikutnya meskipun ada error
+              }
+          }
+          
+          if (extractedFiles.length === 0) {
+              throw new Error('Tidak ada file yang berhasil diekstrak dari arsip ZIP');
+          }
+          
+          toast({ 
+              title: 'Ekstraksi Berhasil', 
+              description: `${extractedFiles.length} file diekstrak dari ${zipFile.name}.`, 
+              variant: 'success' 
+          });
+          return extractedFiles;
+      } catch (error: any) {
+          console.error(`Gagal mengekstrak ${zipFile.name}:`, error);
+          toast({ 
+              title: 'Kesalahan Ekstraksi', 
+              description: `Gagal memproses ${zipFile.name}: ${error.message || 'File mungkin bukan arsip ZIP yang valid'}.`, 
+              variant: 'destructive' 
+          });
+          return [];
+      } finally {
+          setModalStatus('inactive');
+      }
   }, [toast]);
-  
-  const onDrop = useCallback(async (acceptedFiles: File[]) => {
-    if (acceptedFiles.length === 0) return;
 
-    let newFilesToAdd: FileOrFolder[] = [];
-    const newPathsToSelect: string[] = [];
+  const handleManualExtract = useCallback(async (zipFile: FileOrFolder) => {
+    if (!zipFile.content || !isZipFile(zipFile)) return;
 
-    for (const file of acceptedFiles) {
-        const path = (file as any).webkitRelativePath || file.name;
-        
-        if (autoExtractZip && isZipFile(file)) {
-            const extracted = await extractZip(file);
-            newFilesToAdd.push(...extracted);
-            newPathsToSelect.push(...extracted.map(f => f.path));
-        } else {
-            const fileToAdd: FileOrFolder = { name: file.name, path: path, type: 'file', content: file };
-            newFilesToAdd.push(fileToAdd);
-            newPathsToSelect.push(path);
-        }
-    }
-
-    setFiles(currentFiles => {
-        const existingPaths = new Set(currentFiles.map(f => f.path));
-        const uniqueNewFiles = newFilesToAdd.filter(f => !existingPaths.has(f.path));
-        return [...currentFiles, ...uniqueNewFiles];
-    });
-
-    setSelectedFilePaths(currentSelection => new Set([...currentSelection, ...newPathsToSelect]));
-
-  }, [autoExtractZip, extractZip]);
-  
-  const handleManualExtract = useCallback(async (zipFileToExtract: FileOrFolder) => {
-    if (!zipFileToExtract.content || !isZipFile(zipFileToExtract)) return;
-    
-    const extracted = await extractZip(zipFileToExtract.content);
+    const extracted = await extractZip(zipFile.content);
 
     if (extracted.length > 0) {
-        setFiles(prev => {
-            const withoutZip = prev.filter(f => f.path !== zipFileToExtract.path);
-            const existingPaths = new Set(withoutZip.map(f => f.path));
-            const newUniqueFiles = extracted.filter(f => !existingPaths.has(f.path));
-            return [...withoutZip, ...newUniqueFiles];
-        });
+      setFiles(prev => {
+        const otherFiles = prev.filter(f => f.path !== zipFile.path);
+        const existingPaths = new Set(otherFiles.map(f => f.path));
+        const newUniqueFiles = extracted.filter(f => !existingPaths.has(f.path));
+        return [...otherFiles, ...newUniqueFiles];
+      });
 
-        setSelectedFilePaths(prev => {
-            const newSelection = new Set(prev);
-            newSelection.delete(zipFileToExtract.path);
-            extracted.forEach(f => newSelection.add(f.path));
-            return newSelection;
-        });
+      setSelectedFilePaths(prev => {
+        const newSelection = new Set(prev);
+        newSelection.delete(zipFile.path);
+        extracted.forEach(f => newSelection.add(f.path));
+        return newSelection;
+      });
     }
   }, [extractZip]);
   
+  // Perbaikan fungsi onDrop
+  const onDrop = useCallback(async (acceptedFiles: File[]) => {
+    if (acceptedFiles.length === 0) return;
+
+    let newFiles: FileOrFolder[] = [];
+    let newPaths = new Set<string>();
+
+    for (const file of acceptedFiles) {
+        // Periksa apakah file adalah ZIP dan auto extract diaktifkan
+        if (autoExtractZip && isZipFile(file)) {
+            try {
+                const extracted = await extractZip(file);
+                newFiles.push(...extracted);
+                extracted.forEach(f => newPaths.add(f.path));
+            } catch (error) {
+                console.error('Gagal mengekstrak ZIP:', error);
+                // Jika ekstraksi gagal, tambahkan file ZIP sebagai file biasa
+                const fileToAdd: FileOrFolder = {
+                    name: file.name,
+                    path: (file as any).webkitRelativePath || file.name,
+                    type: 'file',
+                    content: file,
+                };
+                newFiles.push(fileToAdd);
+                newPaths.add(fileToAdd.path);
+            }
+        } else {
+            // Tambahkan file seperti biasa jika bukan ZIP atau auto extract dinonaktifkan
+            const fileToAdd: FileOrFolder = {
+                name: file.name,
+                path: (file as any).webkitRelativePath || file.name,
+                type: 'file',
+                content: file,
+            };
+            newFiles.push(fileToAdd);
+            newPaths.add(fileToAdd.path);
+        }
+    }
+    
+    // Update state once with all accumulated files
+    setFiles(prev => {
+      const existingPaths = new Set(prev.map(f => f.path));
+      const uniqueNewFiles = newFiles.filter(f => !existingPaths.has(f.path));
+      return [...prev, ...uniqueNewFiles];
+    });
+
+    setSelectedFilePaths(prev => {
+      const newSelection = new Set(prev);
+      newPaths.forEach(path => newSelection.add(path));
+      return newSelection;
+    });
+
+  }, [autoExtractZip, extractZip]);
+  
   const { getRootProps, getInputProps, isDragActive, open: openFileDialog } = useDropzone({
     onDrop,
-    noClick: true,
+    noClick: true, // We'll handle clicks manually
     noKeyboard: true,
     getFilesFromEvent: async (event: any) => {
         const items = event.dataTransfer ? event.dataTransfer.items : [];
@@ -294,6 +352,7 @@ export function FileUploader() {
     }
     setIsGenerating(true);
     try {
+      // Create a simplified diff for AI context
       const diff = filesToConsider.map((f) => `A ${f.path}`).join('\n');
       const result = await generateCommitMessage({ diff });
       setCommitMessage(result.commitMessage);
@@ -339,6 +398,8 @@ export function FileUploader() {
           .filter((f) => f.type === 'file' && f.content)
           .map(async (file) => {
             const fileContent = file.content as (File | Blob);
+            // Check if content is binary or text
+            // A simple heuristic: check for null bytes
             const buffer = await fileContent.arrayBuffer();
             const uint8 = new Uint8Array(buffer);
             let isBinary = false;
@@ -349,8 +410,9 @@ export function FileUploader() {
                 }
             }
             
+            // Perbaikan penggunaan Buffer
             const contentString = isBinary 
-                ? Buffer.from(buffer).toString('base64') 
+                ? btoa(String.fromCharCode(...new Uint8Array(buffer))) // Gunakan btoa sebagai alternatif Buffer
                 : await fileContent.text();
 
             return {
@@ -491,7 +553,7 @@ export function FileUploader() {
                   {isFetchingRepos ? (
                       <Skeleton className="h-11 w-full" />
                   ) : (
-                      <Select value={selectedRepo?.full_name} onValueChange={handleRepoChange} disabled={!githubToken}>
+                      <Select onValueChange={handleRepoChange} disabled={!githubToken} value={selectedRepo?.full_name ?? undefined}>
                           <SelectTrigger id="repo-select" className="h-11">
                               <Github className="h-5 w-5 text-muted-foreground mr-2" />
                               <SelectValue placeholder="Pilih repositori..." />
