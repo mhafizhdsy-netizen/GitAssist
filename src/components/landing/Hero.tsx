@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -24,6 +25,18 @@ export function Hero() {
         transition={{ duration: 0.8, ease: "easeOut" }}
         className="relative z-10 flex flex-col items-center text-center px-4"
       >
+        <motion.div
+            className="mb-4 flex items-center gap-2 px-3 py-1.5 rounded-full border border-green-500/30 bg-green-500/10 text-xs font-medium text-green-300"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2, duration: 0.5 }}
+        >
+            PRIVACY & FILE 100% AMAN
+            <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+            </span>
+        </motion.div>
         <motion.div 
           className="mb-4 px-4 py-1.5 rounded-full border border-primary/30 bg-primary/10"
           initial={{ opacity: 0, y: 20 }}
