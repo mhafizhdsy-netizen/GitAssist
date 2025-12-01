@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import AuthButton from "@/components/auth/AuthButton";
 import { useUser } from "@/firebase";
 import NewLogo from "./NewLogo";
+import AnimatedHamburgerIcon from "./AnimatedHamburgerIcon";
 
 const Header = () => {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -104,8 +105,8 @@ const Header = () => {
                 </div>
                 <div className="md:hidden flex items-center gap-2">
                   {showAuthButton && <AuthButton />}
-                  <Button variant="ghost" size="icon" onClick={() => setMobileMenuOpen(true)}>
-                      <Menu />
+                  <Button variant="ghost" size="icon" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
+                      <AnimatedHamburgerIcon isOpen={mobileMenuOpen} />
                       <span className="sr-only">Buka menu</span>
                   </Button>
                 </div>
@@ -132,7 +133,7 @@ const Header = () => {
                 </Link>
                 <div className="flex items-center gap-2">
                     <Button variant="ghost" size="icon" onClick={() => setMobileMenuOpen(false)}>
-                      <X />
+                      <AnimatedHamburgerIcon isOpen={mobileMenuOpen} />
                       <span className="sr-only">Tutup menu</span>
                     </Button>
                 </div>
