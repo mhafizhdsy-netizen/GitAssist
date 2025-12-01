@@ -9,23 +9,23 @@
 
 **GitAssist** adalah aplikasi web modern yang dirancang untuk menyederhanakan dan mempercepat alur kerja GitHub Anda. Dengan memanfaatkan kekuatan AI dari Google Gemini, GitAssist mengotomatiskan tugas-tugas yang membosankan, memungkinkan Anda untuk fokus pada hal yang paling penting: membuat kode berkualitas.
 
-### [â¡ï¸ Kunjungi Demo Langsung](https://gitassist.web.app/)
+### [➡️ Kunjungi Demo Langsung](https://gitassist.web.app/)
 
 ---
 
-![Cuplikan Layar GitAssist](https://i.ibb.co/qMF5V5jY/Screenshot-20251201-155910-2.jpg)
+![Cuplikan Layar GitAssist](https://i.ibb.co/qMF5V5jY/Screenshot-20251201-155910-2.jpg?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxkYXJrJTIwdGVjaCUyMGRhc2hib2FyZHxlbnwwfHx8fDE3NjQ4NzE0ODR8MA&ixlib=rb-4.1.0&q=80&w=1080)
 
-## â¨ Fitur Utama
+## ✨ Fitur Utama
 
--   ð **Unggahan Massal**: Unggah beberapa file dan seluruh folder dengan mudah ke repositori GitHub Anda hanya dengan beberapa klik.
--   ðï¸ **Ekstraksi ZIP Otomatis**: Cukup seret dan lepas file `.zip`. GitAssist akan secara otomatis mengekstrak isinya sambil mempertahankan struktur direktori asli.
--   ð¤ **Pesan Commit Berbasis AI**: Biarkan AI kami menganalisis perubahan file Anda (`git diff`) dan secara otomatis menghasilkan pesan commit yang deskriptif dan sesuai dengan standar *Conventional Commits*.
--   ð **Autentikasi GitHub Aman**: Masuk dengan aman menggunakan akun GitHub Anda melalui OAuth2. Token akses Anda disimpan dengan aman di sesi browser dan tidak pernah diekspos.
--   ð **Manajemen File Interaktif**: Setelah mengunggah, Anda dapat meninjau semua file yang akan di-commit dan menghapus file yang tidak diinginkan sebelum proses commit.
--   ð¯ **Pemilihan Repositori & Path Tujuan**: Pilih repositori target dari daftar repo yang Anda miliki, dan tentukan path folder tujuan (opsional) untuk menempatkan file Anda.
--   ð **Antarmuka Modern**: UI yang bersih, responsif, dan intuitif dibangun dengan Next.js dan Shadcn/UI untuk pengalaman pengguna yang luar biasa.
+-   🚀 **Unggahan Massal**: Unggah beberapa file dan seluruh folder dengan mudah ke repositori GitHub Anda hanya dengan beberapa klik.
+-   🗂️ **Ekstraksi ZIP Otomatis**: Cukup seret dan lepas file `.zip`. GitAssist akan secara otomatis mengekstrak isinya sambil mempertahankan struktur direktori asli.
+-   🤖 **Pesan Commit Berbasis AI**: Biarkan AI kami menganalisis perubahan file Anda (`git diff`) dan secara otomatis menghasilkan pesan commit yang deskriptif dan sesuai dengan standar *Conventional Commits*.
+-   🔐 **Autentikasi GitHub Aman**: Masuk dengan aman menggunakan akun GitHub Anda melalui OAuth2. Token akses Anda disimpan dengan aman di sesi browser dan tidak pernah diekspos.
+-   📂 **Manajemen File Interaktif**: Setelah mengunggah, Anda dapat meninjau semua file yang akan di-commit dan menghapus file yang tidak diinginkan sebelum proses commit.
+-   🎯 **Pemilihan Repositori & Path Tujuan**: Pilih repositori target dari daftar repo yang Anda miliki, dan tentukan path folder tujuan (opsional) untuk menempatkan file Anda.
+-   🌐 **Antarmuka Modern**: UI yang bersih, responsif, dan intuitif dibangun dengan Next.js dan Shadcn/UI untuk pengalaman pengguna yang luar biasa.
 
-## ð ï¸ Tumpukan Teknologi
+## 🛠️ Tumpukan Teknologi
 
 -   **Framework**: [Next.js](https://nextjs.org/) (App Router)
 -   **Styling**: [Tailwind CSS](https://tailwindcss.com/) & [Shadcn/UI](https://ui.shadcn.com/)
@@ -33,7 +33,7 @@
 -   **Autentikasi**: [Firebase Authentication](https://firebase.google.com/docs/auth) (GitHub Provider)
 -   **Hosting**: [Firebase App Hosting](https://firebase.google.com/docs/app-hosting)
 
-## ð Memulai
+## 🚀 Memulai
 
 Ikuti langkah-langkah ini untuk menjalankan salinan lokal dari proyek ini.
 
@@ -82,7 +82,7 @@ Ikuti langkah-langkah ini untuk menjalankan salinan lokal dari proyek ini.
     ```
     Buka [http://localhost:9002](http://localhost:9002) di browser Anda untuk melihat hasilnya.
 
-## âï¸ Deploy Proyek Anda
+## ☁️ Deploy Proyek Anda
 
 Deploy proyek ini dengan mudah ke platform favorit Anda menggunakan tombol di bawah ini:
 
@@ -92,7 +92,7 @@ Deploy proyek ini dengan mudah ke platform favorit Anda menggunakan tombol di ba
 
 **Penting**: Jangan lupa untuk menambahkan variabel lingkungan yang ada di file `.env` Anda ke pengaturan proyek di platform hosting pilihan Anda.
 
-## ð¤ Berkontribusi
+## 🤝 Berkontribusi
 
 Kontribusi Anda sangat kami hargai! Jika Anda memiliki ide untuk fitur baru atau menemukan bug, jangan ragu untuk membuka *issue* atau mengirimkan *pull request*.
 
@@ -102,6 +102,6 @@ Kontribusi Anda sangat kami hargai! Jika Anda memiliki ide untuk fitur baru atau
 4.  **Push** ke branch Anda (`git push origin fitur/FiturLuarBiasa`).
 5.  Buka **Pull Request**.
 
-## ð Lisensi
+## 📄 Lisensi
 
 Proyek ini dilisensikan di bawah Lisensi MIT. Lihat file [LICENSE](LICENSE) untuk detail lebih lanjut.
