@@ -124,7 +124,7 @@ export function FileUploader() {
         })
         .finally(() => setIsFetchingBranches(false));
   };
-
+  
   const extractZip = useCallback(async (zipFile: File): Promise<FileOrFolder[]> => {
       setModalStatus('processing');
       setZipExtractProgress(0);
@@ -159,10 +159,7 @@ export function FileUploader() {
     const extracted = await extractZip(zipFile.content);
 
     if (extracted.length > 0) {
-      const extractedPaths = new Set(extracted.map(f => f.path));
-
       setFiles(prev => {
-        // Remove the original zip file and add the new extracted files
         const otherFiles = prev.filter(f => f.path !== zipFile.path);
         const existingPaths = new Set(otherFiles.map(f => f.path));
         const newUniqueFiles = extracted.filter(f => !existingPaths.has(f.path));
@@ -171,8 +168,8 @@ export function FileUploader() {
 
       setSelectedFilePaths(prev => {
         const newSelection = new Set(prev);
-        newSelection.delete(zipFile.path); // Unselect original zip
-        extractedPaths.forEach(p => newSelection.add(p)); // Select all new files
+        newSelection.delete(zipFile.path);
+        extracted.forEach(f => newSelection.add(f.path));
         return newSelection;
       });
     }
@@ -185,21 +182,20 @@ export function FileUploader() {
     let newPaths = new Set<string>();
 
     for (const file of acceptedFiles) {
-      const fileToAdd: FileOrFolder = {
-        name: file.name,
-        path: (file as any).webkitRelativePath || file.name,
-        type: 'file',
-        content: file,
-      };
-      
-      if (autoExtractZip && isZipFile(file) && fileToAdd.content) {
-        const extracted = await extractZip(fileToAdd.content);
-        newFiles.push(...extracted);
-        extracted.forEach(f => newPaths.add(f.path));
-      } else {
-        newFiles.push(fileToAdd);
-        newPaths.add(fileToAdd.path);
-      }
+        if (autoExtractZip && isZipFile(file)) {
+            const extracted = await extractZip(file);
+            newFiles.push(...extracted);
+            extracted.forEach(f => newPaths.add(f.path));
+        } else {
+            const fileToAdd: FileOrFolder = {
+                name: file.name,
+                path: (file as any).webkitRelativePath || file.name,
+                type: 'file',
+                content: file,
+            };
+            newFiles.push(fileToAdd);
+            newPaths.add(fileToAdd.path);
+        }
     }
     
     // Update state once with all accumulated files
@@ -684,3 +680,5 @@ export function FileUploader() {
     </>
   );
 }
+
+    
