@@ -179,16 +179,7 @@ export function FileUploader() {
 
   const handleManualExtract = (zipFile: FileOrFolder) => {
     if (!zipFile.content || !(zipFile.content instanceof File)) return;
-
-    // 1. Remove the original zip file from the list
-    setFiles(prevFiles => prevFiles.filter(f => f.path !== zipFile.path));
-    setSelectedFilePaths(prevSelected => {
-        const newSelection = new Set(prevSelected);
-        newSelection.delete(zipFile.path);
-        return newSelection;
-    });
-
-    // 2. Extract its contents and append them
+    // Extract contents and append them, but do not remove the original zip file.
     handleZipExtraction(zipFile.content, true);
   };
 
