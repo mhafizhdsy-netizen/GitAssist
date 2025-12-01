@@ -5,6 +5,8 @@ import { Buffer } from 'buffer';
 import crypto from 'crypto';
 
 export async function signOut() {
+  // This server action is now only responsible for redirection.
+  // The client will handle the actual Firebase sign-out.
   return redirect('/');
 }
 
@@ -58,32 +60,45 @@ type CommitParams = {
   branchName?: string;
 };
 
-export interface UploadProgress {
-  total: number;
-  completed: number;
-  failed: number;
-  percentage: number;
-  currentBatch?: number;
-  totalBatches?: number;
-}
-
+/**
+ * Generate SHA-1 hash for Git empty tree
+ * This creates the universal empty tree hash that Git uses
+ * Formula: sha1("tree 0\0")
+ */
 function generateEmptyTreeSHA(): string {
     const header = 'tree 0\0';
     const hash = crypto.createHash('sha1');
     hash.update(header);
-    return hash.digest('hex');
+    const sha = hash.digest('hex');
+    
+    console.log(`✓ Generated empty tree SHA: ${sha}`);
+    return sha;
 }
 
+/**
+ * Fallback: hardcoded SHA-1 empty tree hash
+ * This is the universal Git empty tree hash for SHA-1
+ */
 const FALLBACK_EMPTY_TREE_SHA = '4b825dc642cb6eb9a060e54bf8d69288fbee4904';
 
+/**
+ * Get empty tree SHA with fallback
+ */
 function getEmptyTreeSHA(): string {
     try {
         const dynamicSHA = generateEmptyTreeSHA();
+        
         if (dynamicSHA === FALLBACK_EMPTY_TREE_SHA) {
+            console.log('✓ Dynamic SHA matches expected value');
             return dynamicSHA;
+        } else {
+            console.warn(`⚠️ Dynamic SHA (${dynamicSHA}) doesn't match expected (${FALLBACK_EMPTY_TREE_SHA})`);
+            console.warn('Using fallback SHA');
+            return FALLBACK_EMPTY_TREE_SHA;
         }
-        return FALLBACK_EMPTY_TREE_SHA;
     } catch (error) {
+        console.error('Failed to generate empty tree SHA dynamically:', error);
+        console.log('Using fallback SHA');
         return FALLBACK_EMPTY_TREE_SHA;
     }
 }
@@ -101,9 +116,15 @@ async function api(url: string, token: string, options: RequestInit = {}) {
 
     if (!response.ok) {
         const errorBody = await response.json().catch(() => ({ message: response.statusText }));
-        console.error('--- GITHUB API ERROR ---');
-        console.error(`${options.method || 'GET'} ${url}: ${response.status}`);
-        throw new Error(errorBody.message || `GitHub API error: ${response.status}`);
+        
+        console.error('--- GITHUB API ERROR DETAIL ---');
+        console.error(`METHOD: ${options.method || 'GET'}`);
+        console.error(`URL: https://api.github.com${url}`);
+        console.error(`STATUS: ${response.status} ${response.statusText}`);
+        console.error('BODY:', errorBody);
+        console.error('-----------------------------');
+
+        throw new Error(errorBody.message || `GitHub API error: ${response.status} ${response.statusText}`);
     }
   
     if (response.status === 204 || response.headers.get('Content-Length') === '0') {
@@ -118,15 +139,22 @@ async function isRepositoryEmpty(owner: string, repo: string, token: string): Pr
         const repoData = await api(`/repos/${owner}/${repo}`, token);
         if (!repoData) return true;
 
-        const branchName = repoData.default_branch || 'main';
-        await api(`/repos/${owner}/${repo}/git/ref/heads/${branchName}`, token);
+        // An empty repo might have a default branch name but no actual branches.
+        // We must check if any refs exist.
+        const refs = await api(`/repos/${owner}/${repo}/git/refs?per_page=1`, token);
+        if (Array.isArray(refs) && refs.length === 0) {
+            return true;
+        }
         
         return false;
     } catch (error: any) {
-        if (error.message && (error.message.includes('Not Found') || error.message.includes('Git Repository is empty'))) {
+        // A 404 on the repo itself means it doesn't exist, which isn't "empty" in this context
+        // But a 409 usually means it's empty.
+        if (error.message && (error.message.includes('Git Repository is empty') || error.message.includes('409'))) {
             return true;
         }
-        throw error;
+        console.error("Error saat mendeteksi repositori kosong:", error);
+        throw error; // Rethrow other errors
     }
 }
 
@@ -137,58 +165,43 @@ async function initializeEmptyRepository(
     token: string,
     commitMessage: string
 ): Promise<{ success: boolean; commitUrl: string }> {
-    console.log(`Initializing empty repository ${owner}/${repo}`);
+    console.log(`Memulai inisialisasi repositori kosong untuk ${owner}/${repo}`);
 
     const repoInfo = await api(`/repos/${owner}/${repo}`, token);
     const branchToCreate = repoInfo.default_branch || 'main';
 
-    const dummyContent = Buffer.from('dummy', 'utf-8').toString('base64');
-    const dummyResponse = await api(`/repos/${owner}/${repo}/contents/dummy`, token, {
-        method: 'PUT',
-        body: JSON.stringify({
-            message: 'Initialize repository',
-            content: dummyContent,
-            branch: branchToCreate
-        }),
-    });
-
-    const dummySHA = dummyResponse.content?.sha;
-
-    await api(`/repos/${owner}/${repo}/contents/dummy`, token, {
-        method: 'DELETE',
-        body: JSON.stringify({
-            message: 'Delete dummy file',
-            sha: dummySHA,
-            branch: branchToCreate
-        }),
-    });
-
+    console.log(`Step 1: Creating ${files.length} blob(s) for initial commit...`);
     const blobs = await Promise.all(
         files.map(async (file) => {
-            const base64Content = Buffer.from(file.content, 'utf-8').toString('base64');
+            const base64Content = file.content; // Content is already base64 encoded
             const blob = await api(`/repos/${owner}/${repo}/git/blobs`, token, {
                 method: 'POST',
                 body: JSON.stringify({ content: base64Content, encoding: 'base64' }),
             });
+            console.log(`✓ Created blob for ${file.path}: ${blob.sha}`);
             return { path: file.path, sha: blob.sha, mode: '100644', type: 'blob' as const };
         })
     );
 
-    const emptyTreeSHA = getEmptyTreeSHA();
+    console.log('Step 2: Creating tree from blobs...');
     const tree = await api(`/repos/${owner}/${repo}/git/trees`, token, {
         method: 'POST',
-        body: JSON.stringify({ base_tree: emptyTreeSHA, tree: blobs }),
+        body: JSON.stringify({ tree: blobs }),
     });
+    console.log(`✓ Created tree: ${tree.sha}`);
 
+    console.log('Step 3: Creating initial commit...');
     const commit = await api(`/repos/${owner}/${repo}/git/commits`, token, {
         method: 'POST',
         body: JSON.stringify({
             message: commitMessage,
             tree: tree.sha,
-            parents: [],
+            parents: [], // No parents for the first commit
         }),
     });
+    console.log(`✓ Created commit: ${commit.sha}`);
 
+    console.log('Step 4: Creating new branch ref...');
     await api(`/repos/${owner}/${repo}/git/refs`, token, {
         method: 'POST',
         body: JSON.stringify({
@@ -196,6 +209,7 @@ async function initializeEmptyRepository(
             sha: commit.sha,
         }),
     });
+    console.log(`✓ Branch ${branchToCreate} created and points to new commit`);
 
     return { 
         success: true, 
@@ -203,20 +217,16 @@ async function initializeEmptyRepository(
     };
 }
 
-/**
- * OPTIMIZED: Upload banyak file dengan parallel processing
- * Menggunakan Promise.all untuk membuat blobs secara paralel
- */
-async function commitToExistingRepoOptimized(
+
+async function commitToExistingRepo(
     owner: string,
     repo: string,
     files: Array<{ path: string; content: string }>,
     token: string,
     targetBranch: string,
-    commitMessage: string,
-    concurrency: number = 10
+    commitMessage: string
 ): Promise<{ success: boolean; commitUrl: string }> {
-    console.log(`Committing ${files.length} files to ${owner}/${repo}...`);
+    console.log(`Melakukan commit ke repositori yang sudah ada ${owner}/${repo} di branch ${targetBranch}`);
 
     const refData = await api(`/repos/${owner}/${repo}/git/refs/heads/${targetBranch}`, token);
     const latestCommitSha = refData.object.sha;
@@ -224,23 +234,16 @@ async function commitToExistingRepoOptimized(
     const latestCommitData = await api(`/repos/${owner}/${repo}/git/commits/${latestCommitSha}`, token);
     const baseTreeSha = latestCommitData.tree.sha;
 
-    // OPTIMIZED: Create blobs in parallel with concurrency control
-    const blobs = [];
-    for (let i = 0; i < files.length; i += concurrency) {
-        const batch = files.slice(i, i + concurrency);
-        const batchBlobs = await Promise.all(
-            batch.map(async (file) => {
-                const base64Content = Buffer.from(file.content, 'utf-8').toString('base64');
-                const blob = await api(`/repos/${owner}/${repo}/git/blobs`, token, {
-                    method: 'POST',
-                    body: JSON.stringify({ content: base64Content, encoding: 'base64' }),
-                });
-                return { path: file.path, sha: blob.sha, mode: '100644' as const, type: 'blob' as const };
-            })
-        );
-        blobs.push(...batchBlobs);
-        console.log(`Progress: ${Math.min(i + concurrency, files.length)}/${files.length} blobs created`);
-    }
+    const blobs = await Promise.all(
+        files.map(async (file) => {
+            const base64Content = file.content; // Content is already base64
+            const blob = await api(`/repos/${owner}/${repo}/git/blobs`, token, {
+                method: 'POST',
+                body: JSON.stringify({ content: base64Content, encoding: 'base64' }),
+            });
+            return { path: file.path, sha: blob.sha, mode: '100644' as const, type: 'blob' as const };
+        })
+    );
 
     const newTree = await api(`/repos/${owner}/${repo}/git/trees`, token, {
         method: 'POST',
@@ -260,26 +263,14 @@ async function commitToExistingRepoOptimized(
     return { success: true, commitUrl: newCommit.html_url };
 }
 
-/**
- * STRATEGY: Automatic decision between single commit or batched commits
- * - < 500 files: Single commit with parallel blob creation
- * - >= 500 files: Multiple commits in batches
- */
-export async function commitToRepo({ 
-    repoUrl, 
-    commitMessage, 
-    files, 
-    githubToken, 
-    destinationPath, 
-    branchName 
-}: CommitParams) {
+export async function commitToRepo({ repoUrl, commitMessage, files, githubToken, destinationPath, branchName }: CommitParams) {
     if (!githubToken) {
-        throw new Error('GitHub token required');
+        throw new Error('Token GitHub diperlukan.');
     }
 
     const urlParts = repoUrl.replace('https://github.com/', '').split('/');
     if (urlParts.length < 2) {
-        throw new Error('Invalid repository URL format');
+        throw new Error('Format URL repositori tidak valid. Diharapkan "owner/repo".');
     }
     const [owner, repo] = urlParts;
 
@@ -292,91 +283,23 @@ export async function commitToRepo({
         const repoIsEmpty = await isRepositoryEmpty(owner, repo, githubToken);
         
         if (repoIsEmpty) {
-            console.log('⚠️  Empty repository detected. Initializing...');
+            console.log('⚠️ Repositori kosong terdeteksi. Menjalankan inisialisasi...');
             return await initializeEmptyRepository(owner, repo, finalFiles, githubToken, commitMessage);
-        }
-
-        const repoInfo = await api(`/repos/${owner}/${repo}`, githubToken);
-        const targetBranch = branchName || repoInfo.default_branch || 'main';
-
-        // STRATEGY: Choose optimal upload method based on file count
-        const fileCount = finalFiles.length;
-        
-        if (fileCount <= 500) {
-            // Single commit with parallel blob creation (FASTEST)
-            console.log(`✓ Using single commit strategy for ${fileCount} files`);
-            return await commitToExistingRepoOptimized(
-                owner, 
-                repo, 
-                finalFiles, 
-                githubToken, 
-                targetBranch, 
-                commitMessage,
-                10 // 10 parallel requests
-            );
         } else {
-            // Multiple commits in batches (for large uploads)
-            console.log(`✓ Using batched commit strategy for ${fileCount} files`);
-            return await commitInBatches(
-                owner,
-                repo,
-                finalFiles,
-                githubToken,
-                targetBranch,
-                commitMessage,
-                100 // 100 files per batch
-            );
+            console.log('✓ Repositori sudah ada isinya. Melanjutkan commit standar...');
+            const repoInfo = await api(`/repos/${owner}/${repo}`, githubToken);
+            const targetBranch = branchName || repoInfo.default_branch || 'main';
+            return await commitToExistingRepo(owner, repo, finalFiles, githubToken, targetBranch, commitMessage);
         }
     } catch (error: any) {
-        console.error('Failed to commit to GitHub:', error);
-        throw new Error(error.message || 'Failed to commit files');
+        console.error('Gagal melakukan commit ke GitHub:', error);
+        throw new Error(error.message || 'Gagal melakukan commit file ke repositori.');
     }
-}
-
-/**
- * BATCHED COMMITS: For very large file uploads (500+ files)
- */
-async function commitInBatches(
-    owner: string,
-    repo: string,
-    files: Array<{ path: string; content: string }>,
-    token: string,
-    branch: string,
-    commitMessage: string,
-    batchSize: number = 100
-): Promise<{ success: boolean; commitUrl: string }> {
-    const batches = [];
-    for (let i = 0; i < files.length; i += batchSize) {
-        batches.push(files.slice(i, i + batchSize));
-    }
-
-    console.log(`Splitting into ${batches.length} batches of ${batchSize} files each`);
-
-    let lastCommitUrl = '';
-
-    for (let i = 0; i < batches.length; i++) {
-        console.log(`Processing batch ${i + 1}/${batches.length}...`);
-        const result = await commitToExistingRepoOptimized(
-            owner,
-            repo,
-            batches[i],
-            token,
-            branch,
-            `${commitMessage} (batch ${i + 1}/${batches.length})`,
-            10
-        );
-        lastCommitUrl = result.commitUrl;
-    }
-
-    return {
-        success: true,
-        commitUrl: lastCommitUrl
-    };
 }
 
 export async function fetchUserRepos(githubToken: string, page: number = 1, perPage: number = 100): Promise<Repo[]> {
     if (!githubToken) {
-        throw new Error('GitHub token required');
+        throw new Error('Token GitHub diperlukan.');
     }
     
     const repos = await api(`/user/repos?type=owner&sort=updated&per_page=${perPage}&page=${page}`, githubToken);
@@ -403,7 +326,7 @@ export async function fetchUserRepos(githubToken: string, page: number = 1, perP
 
 export async function fetchRepoBranches(githubToken: string, owner: string, repo: string): Promise<Branch[]> {
     if (!githubToken) {
-        throw new Error('GitHub token required');
+        throw new Error('Token GitHub diperlukan.');
     }
     try {
         const branches = await api(`/repos/${owner}/${repo}/branches`, githubToken);
@@ -412,18 +335,46 @@ export async function fetchRepoBranches(githubToken: string, owner: string, repo
         if (error.message && (error.message.includes('Git Repository is empty') || error.message.includes('Not Found'))) {
             return [];
         }
+        console.error("Gagal mengambil branches:", error);
         throw error;
     }
 }
 
+export async function createBranch(githubToken: string, owner: string, repo: string, newBranchName: string, sourceBranchName: string): Promise<any> {
+    if (!githubToken) {
+      throw new Error('Token GitHub diperlukan.');
+    }
+    
+    // 1. Get the SHA of the source branch
+    const refData = await api(`/repos/${owner}/${repo}/git/ref/heads/${sourceBranchName}`, githubToken);
+    const sha = refData.object.sha;
+  
+    if (!sha) {
+      throw new Error(`Tidak dapat menemukan SHA untuk branch sumber '${sourceBranchName}'.`);
+    }
+  
+    // 2. Create the new branch (ref)
+    const newRef = await api(`/repos/${owner}/${repo}/git/refs`, githubToken, {
+      method: 'POST',
+      body: JSON.stringify({
+        ref: `refs/heads/${newBranchName}`,
+        sha: sha,
+      }),
+    });
+  
+    return newRef;
+}
+
 export async function fetchRepoContents(githubToken: string, owner: string, repo: string, path: string = ''): Promise<RepoContent[] | string> {
     if (!githubToken) {
-        throw new Error('GitHub token required');
+        throw new Error('Token GitHub diperlukan.');
     }
     try {
       const contents = await api(`/repos/${owner}/${repo}/contents/${path}`, githubToken);
       
-      if (contents === null) return [];
+      if (contents === null) {
+          return [];
+      }
 
       if (contents?.type === 'file' && typeof contents?.content === 'string' && contents.encoding === 'base64') {
           return Buffer.from(contents.content, 'base64').toString('utf-8');
@@ -452,4 +403,4 @@ export async function fetchRepoContents(githubToken: string, owner: string, repo
       }
       throw error;
     }
-          }
+}

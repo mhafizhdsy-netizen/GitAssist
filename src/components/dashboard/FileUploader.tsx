@@ -3,14 +3,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import JSZip from 'jszip';
-import { UploadCloud, File as FileIcon, Github, Sparkles, Folder, PlusCircle, Trash2, Loader2, ArrowRight, GitBranch, X, FileArchive, Settings, PackageOpen } from 'lucide-react';
+import { UploadCloud, File as FileIcon, Github, Sparkles, Folder, PlusCircle, Trash2, Loader2, ArrowRight, GitBranch, X, FileArchive, Settings, PackageOpen, Plus } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { generateCommitMessage } from '@/ai/flows/generate-commit-message';
-import { commitToRepo, fetchUserRepos, fetchRepoBranches, type Repo, type Branch, type UploadProgress } from '@/app/actions';
+import { commitToRepo, fetchUserRepos, fetchRepoBranches, type Repo, type Branch, createBranch } from '@/app/actions';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '../ui/skeleton';
 import { Checkbox } from '../ui/checkbox';
@@ -22,6 +22,15 @@ import { RepoPathPickerModal } from './RepoPathPickerModal';
 import { Label } from '../ui/label';
 import { Switch } from '../ui/switch';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
+} from "@/components/ui/dialog";
 
 type FileOrFolder = {
   name: string;
@@ -30,7 +39,10 @@ type FileOrFolder = {
   content?: File | Blob; // Content is always a File object from the browser
 };
 
-type CommitStatus = UploadProgress & { step: 'preparing' | 'uploading' | 'finalizing' };
+type CommitStatus = {
+  step: 'preparing' | 'uploading' | 'finalizing';
+  progress: number;
+};
 
 type ModalStatus = 'inactive' | 'processing' | 'committing' | 'done';
 
@@ -70,6 +82,13 @@ export function FileUploader() {
   const { toast } = useToast();
   const [autoExtractZip, setAutoExtractZip] = useState(true);
 
+  // New state for creating a branch
+  const [isCreateBranchModalOpen, setCreateBranchModalOpen] = useState(false);
+  const [newBranchName, setNewBranchName] = useState('');
+  const [sourceBranch, setSourceBranch] = useState('');
+  const [isCreatingBranch, setIsCreatingBranch] = useState(false);
+
+
   useEffect(() => {
     // Safely access localStorage only on the client side
     const token = localStorage.getItem('github-token');
@@ -95,22 +114,31 @@ export function FileUploader() {
     }
   }, [files.length, githubToken, toast, repos.length]);
 
-  const handleRepoChange = (repoFullName: string) => {
-    const repo = repos.find(r => r.full_name === repoFullName);
-    if (!repo || !githubToken) return;
+  const loadBranches = useCallback((repo: Repo) => {
+    if (!githubToken) return;
 
-    setSelectedRepo(repo);
-    setSelectedBranch('');
-    setBranches([]);
     setIsFetchingBranches(true);
-
     const [owner, repoName] = repo.full_name.split('/');
     fetchRepoBranches(githubToken, owner, repoName)
-        .then(branches => {
-            setBranches(branches);
-            if (branches.length > 0) {
-              const defaultBranch = branches.find(b => b.name === repo.default_branch);
-              setSelectedBranch(defaultBranch ? defaultBranch.name : branches[0].name);
+        .then(fetchedBranches => {
+            setBranches(fetchedBranches);
+            if (fetchedBranches.length > 0) {
+              const defaultBranch = fetchedBranches.find(b => b.name === repo.default_branch);
+              const newBranch = fetchedBranches.find(b => b.name === newBranchName);
+              if (newBranch) {
+                setSelectedBranch(newBranch.name);
+                setSourceBranch(newBranch.name);
+              } else if (defaultBranch) {
+                setSelectedBranch(defaultBranch.name);
+                setSourceBranch(defaultBranch.name);
+              } else {
+                setSelectedBranch(fetchedBranches[0].name);
+                setSourceBranch(fetchedBranches[0].name);
+              }
+            } else {
+                // For empty repos, set a default branch name
+                setSelectedBranch(repo.default_branch || 'main');
+                setSourceBranch(repo.default_branch || 'main');
             }
         })
         .catch(err => {
@@ -122,6 +150,16 @@ export function FileUploader() {
             });
         })
         .finally(() => setIsFetchingBranches(false));
+}, [githubToken, toast, newBranchName]);
+
+  const handleRepoChange = (repoFullName: string) => {
+    const repo = repos.find(r => r.full_name === repoFullName);
+    if (!repo) return;
+
+    setSelectedRepo(repo);
+    setSelectedBranch('');
+    setBranches([]);
+    loadBranches(repo);
   };
   
 const extractZip = useCallback(async (zipFile: File): Promise<FileOrFolder[]> => {
@@ -461,22 +499,18 @@ const handleManualExtract = useCallback(async (zipFileToExtract: FileOrFolder) =
             }
             
             let contentString: string;
-            let encoding: 'base64' | 'utf-8';
             if (isBinary) {
                 // Handle binary files
                 const base64 = btoa(String.fromCharCode(...uint8));
                 contentString = base64;
-                encoding = 'base64';
             } else {
                 // Handle text files
                 contentString = await fileContent.text();
-                encoding = 'utf-8';
             }
 
             return {
               path: file.path,
               content: contentString,
-              encoding: encoding,
             };
           })
       );
@@ -488,9 +522,6 @@ const handleManualExtract = useCallback(async (zipFileToExtract: FileOrFolder) =
           githubToken: token,
           destinationPath,
           branchName: selectedBranch,
-          onProgress: (progress) => {
-            setCommitStatus(progress as CommitStatus);
-          }
       });
 
 
@@ -509,6 +540,31 @@ const handleManualExtract = useCallback(async (zipFileToExtract: FileOrFolder) =
     }
   };
   
+  const handleCreateBranch = async () => {
+    if (!newBranchName || !sourceBranch || !selectedRepo || !githubToken) {
+        toast({ title: 'Error', description: 'Informasi yang diperlukan untuk membuat branch tidak lengkap.', variant: 'destructive' });
+        return;
+    }
+    setIsCreatingBranch(true);
+    try {
+        const [owner, repoName] = selectedRepo.full_name.split('/');
+        await createBranch(githubToken, owner, repoName, newBranchName, sourceBranch);
+        
+        toast({ title: 'Berhasil', description: `Branch '${newBranchName}' berhasil dibuat.`, variant: 'success' });
+        setCreateBranchModalOpen(false);
+        
+        // Reload branches and set the new branch as selected
+        loadBranches(selectedRepo);
+
+    } catch (error: any) {
+        console.error('Gagal membuat branch:', error);
+        toast({ title: 'Gagal Membuat Branch', description: error.message, variant: 'destructive' });
+    } finally {
+        setIsCreatingBranch(false);
+        setNewBranchName('');
+    }
+  };
+
   const resetState = (fullReset = true) => {
     setFiles([]);
     setSelectedFilePaths(new Set());
@@ -626,34 +682,42 @@ const handleManualExtract = useCallback(async (zipFileToExtract: FileOrFolder) =
                       </Select>
                   )}
               </div>
-              {selectedRepo && (branches.length > 0 || isFetchingBranches) && (
-                    <div>
-                      <label htmlFor="branch-select" className="block text-sm font-medium mb-2">
-                      2. Pilih Branch
-                      </label>
-                      {isFetchingBranches ? (
-                            <Skeleton className="h-11 w-full" />
-                      ) : (
-                          <Select value={selectedBranch} onValueChange={setSelectedBranch} disabled={branches.length === 0}>
-                              <SelectTrigger id="branch-select" className="h-11">
-                                  <GitBranch className="h-5 w-5 text-muted-foreground mr-2" />
-                                  <SelectValue placeholder="Pilih branch..." />
-                              </SelectTrigger>
-                              <SelectContent>
-                                  {branches.map(branch => (
-                                      <SelectItem key={branch.name} value={branch.name}>{branch.name}</SelectItem>
-                                  ))}
-                              </SelectContent>
-                          </Select>
-                      )}
-                  </div>
-              )}
-              {selectedRepo && branches.length === 0 && !isFetchingBranches && (
-                  <Alert>
-                      <AlertDescription>
-                          Repositori ini tampaknya kosong. Commit pertama akan dibuat pada branch <strong>{selectedBranch || 'main'}</strong>.
-                      </AlertDescription>
-                  </Alert>
+              {selectedRepo && (
+                <div>
+                    <label htmlFor="branch-select" className="block text-sm font-medium mb-2">
+                    2. Pilih Branch
+                    </label>
+                    <div className="flex gap-2">
+                    {isFetchingBranches ? (
+                        <Skeleton className="h-11 w-full" />
+                    ) : (
+                        <Select value={selectedBranch} onValueChange={setSelectedBranch} disabled={isFetchingBranches || !selectedRepo}>
+                            <SelectTrigger id="branch-select" className="h-11">
+                                <GitBranch className="h-5 w-5 text-muted-foreground mr-2" />
+                                <SelectValue placeholder="Pilih branch..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {branches.length > 0 ? branches.map(branch => (
+                                    <SelectItem key={branch.name} value={branch.name}>{branch.name}</SelectItem>
+                                )) : (
+                                  <SelectItem value={selectedBranch} disabled>{selectedBranch || 'main'}</SelectItem>
+                                )}
+                            </SelectContent>
+                        </Select>
+                    )}
+                    <Button variant="outline" size="icon" className="h-11 w-11 flex-shrink-0" onClick={() => setCreateBranchModalOpen(true)} disabled={!selectedRepo || isFetchingBranches}>
+                        <Plus className="h-5 w-5" />
+                        <span className="sr-only">Buat Branch Baru</span>
+                    </Button>
+                    </div>
+                    {branches.length === 0 && !isFetchingBranches && (
+                      <Alert className="mt-2">
+                          <AlertDescription>
+                              Repositori ini mungkin kosong. Commit pertama akan dibuat pada branch <strong>{selectedRepo?.default_branch || 'main'}</strong>.
+                          </AlertDescription>
+                      </Alert>
+                    )}
+                </div>
               )}
           </div>
           <div>
@@ -717,6 +781,50 @@ const handleManualExtract = useCallback(async (zipFileToExtract: FileOrFolder) =
             repoName={selectedRepo.name}
         />
       )}
+      <Dialog open={isCreateBranchModalOpen} onOpenChange={setCreateBranchModalOpen}>
+        <DialogContent className="glass-card">
+            <DialogHeader>
+                <DialogTitle>Buat Branch Baru</DialogTitle>
+                <DialogDescription>
+                    Buat branch baru di repositori <span className="font-bold text-primary">{selectedRepo?.name}</span>.
+                </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                    <Label htmlFor="source-branch">Branch Sumber</Label>
+                    <Select value={sourceBranch} onValueChange={setSourceBranch} disabled={branches.length === 0}>
+                        <SelectTrigger id="source-branch">
+                            <SelectValue placeholder="Pilih branch sumber..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {branches.map(branch => (
+                                <SelectItem key={branch.name} value={branch.name}>{branch.name}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                    {branches.length === 0 && <p className="text-xs text-muted-foreground">Repositori kosong, branch akan dibuat dari awal.</p>}
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="new-branch-name">Nama Branch Baru</Label>
+                    <Input 
+                        id="new-branch-name" 
+                        placeholder="cth: fitur/tampilan-baru" 
+                        value={newBranchName}
+                        onChange={(e) => setNewBranchName(e.target.value)}
+                    />
+                </div>
+            </div>
+            <DialogFooter>
+                <DialogClose asChild>
+                    <Button variant="outline">Batal</Button>
+                </DialogClose>
+                <Button onClick={handleCreateBranch} disabled={isCreatingBranch || !newBranchName || !sourceBranch}>
+                    {isCreatingBranch && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {isCreatingBranch ? 'Membuat...' : 'Buat Branch'}
+                </Button>
+            </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <Card className="glass-card flex flex-col h-full">
         <CardHeader>
           <div className="flex justify-between items-start">
