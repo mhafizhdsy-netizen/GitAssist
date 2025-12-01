@@ -17,12 +17,12 @@
 
 ## ✨ Fitur Utama
 
--   🚀 **Unggahan Massal**: Unggah beberapa file dan seluruh folder dengan mudah ke repositori GitHub Anda hanya dengan beberapa klik.
--   🗂️ **Ekstraksi ZIP Otomatis**: Cukup seret dan lepas file `.zip`. GitAssist akan secara otomatis mengekstrak isinya sambil mempertahankan struktur direktori asli.
+-   🚀 **Commit Cepat**: Unggah beberapa file dan seluruh folder dengan mudah. GitAssist akan secara otomatis mengekstrak arsip `.zip` sambil mempertahankan struktur direktori asli.
 -   🤖 **Pesan Commit Berbasis AI**: Biarkan AI kami menganalisis perubahan file Anda (`git diff`) dan secara otomatis menghasilkan pesan commit yang deskriptif dan sesuai dengan standar *Conventional Commits*.
+-   🎯 **Manajemen Issues & Rilis**: Buat dan kelola GitHub Issues, serta publikasikan rilis baru langsung dari dasbor. Manfaatkan AI untuk menyempurnakan deskripsi *issue* dan catatan rilis Anda.
+-   🌿 **Manajemen Branch yang Mudah**: Pilih *branch* yang ada atau buat yang baru dengan mudah sebelum melakukan *commit*, semuanya tanpa meninggalkan antarmuka aplikasi.
 -   🔐 **Autentikasi GitHub Aman**: Masuk dengan aman menggunakan akun GitHub Anda melalui OAuth2. Token akses Anda disimpan dengan aman di sesi browser dan tidak pernah diekspos.
--   📂 **Manajemen File Interaktif**: Setelah mengunggah, Anda dapat meninjau semua file yang akan di-commit dan menghapus file yang tidak diinginkan sebelum proses commit.
--   🎯 **Pemilihan Repositori & Path Tujuan**: Pilih repositori target dari daftar repo yang Anda miliki, dan tentukan path folder tujuan (opsional) untuk menempatkan file Anda.
+-   📂 **Manajemen File Interaktif**: Tinjau semua file yang diunggah, pilih mana yang akan di-*commit*, dan hapus file yang tidak diinginkan sebelum diproses.
 -   🌐 **Antarmuka Modern**: UI yang bersih, responsif, dan intuitif dibangun dengan Next.js dan Shadcn/UI untuk pengalaman pengguna yang luar biasa.
 
 ## 🛠️ Tumpukan Teknologi
