@@ -612,7 +612,7 @@ const extractZip = useCallback(async (zipFile: File): Promise<FileOrFolder[]> =>
           </div>
           <div>
               <label className="block text-sm font-medium mb-2">
-                Folder Tujuan (Opsional)
+                3.Folder Tujuan (Opsional)
               </label>
               <Button
                 variant="outline"
@@ -630,7 +630,7 @@ const extractZip = useCallback(async (zipFile: File): Promise<FileOrFolder[]> =>
           
           <div>
           <label htmlFor="commit-msg" className="block text-sm font-medium mb-2">
-              Pesan Commit
+              4.Pesan Commit
           </label>
           <Textarea
               id="commit-msg"
