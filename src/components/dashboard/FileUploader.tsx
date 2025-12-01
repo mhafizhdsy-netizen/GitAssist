@@ -43,7 +43,7 @@ type CommitStatus = UploadProgress & { step: 'preparing' | 'uploading' | 'finali
 type ModalStatus = 'inactive' | 'processing' | 'committing' | 'done';
 
 const isZipFile = (file: FileOrFolder | File) => {
-    return file.name.endsWith('.zip') || file.type === 'application/zip';
+    return file.name.endsWith('.zip') || file.type === 'application/zip' || file.type === 'application/x-zip-compressed';
 }
 
 export function FileUploader() {
@@ -130,53 +130,51 @@ export function FileUploader() {
     setModalStatus('processing');
     setZipExtractProgress(0);
     try {
-      const zip = await JSZip.loadAsync(zipFile);
-      const extractedFiles: FileOrFolder[] = [];
-      const allZipFiles = Object.values(zip.files).filter(file => 
-        !file.dir && !file.name.startsWith('__MACOSX/')
-      );
-      const totalFiles = allZipFiles.length;
-      let processedFiles = 0;
+        const zip = await JSZip.loadAsync(zipFile);
+        const extractedFiles: FileOrFolder[] = [];
+        const allZipFiles = Object.values(zip.files).filter(file => 
+            !file.dir && !file.name.startsWith('__MACOSX/')
+        );
+        const totalFiles = allZipFiles.length;
+        let processedFiles = 0;
 
-      for (const zipEntry of allZipFiles) {
-        const blob = await zipEntry.async('blob');
-        const extractedFile = new File([blob], zipEntry.name.split('/').pop() || zipEntry.name, { type: blob.type });
+        for (const zipEntry of allZipFiles) {
+            const blob = await zipEntry.async('blob');
+            const extractedFile = new File([blob], zipEntry.name.split('/').pop() || zipEntry.name, { type: blob.type });
 
-        extractedFiles.push({ name: extractedFile.name, path: zipEntry.name, type: 'file', content: extractedFile });
-        processedFiles++;
-        setZipExtractProgress((processedFiles / totalFiles) * 100);
-      }
+            extractedFiles.push({ name: extractedFile.name, path: zipEntry.name, type: 'file', content: extractedFile });
+            processedFiles++;
+            setZipExtractProgress((processedFiles / totalFiles) * 100);
+        }
       
-      if (extractedFiles.length === 0) {
-          throw new Error("File ZIP tidak berisi file yang dapat diekstrak.");
-      }
+        if (extractedFiles.length === 0) {
+            throw new Error("File ZIP tidak berisi file yang dapat diekstrak.");
+        }
 
-      setFiles(prev => {
-        const currentFiles = isAppending ? prev : [];
-        const existingPaths = new Set(currentFiles.map(f => f.path));
-        const newUniqueFiles = extractedFiles.filter(f => !existingPaths.has(f.path));
-        return [...currentFiles, ...newUniqueFiles];
-      });
+        setFiles(prev => {
+            const currentFiles = isAppending ? prev : [];
+            const existingPaths = new Set(currentFiles.map(f => f.path));
+            const newUniqueFiles = extractedFiles.filter(f => !existingPaths.has(f.path));
+            return [...currentFiles, ...newUniqueFiles];
+        });
 
-      // Also select the newly extracted files
-      setSelectedFilePaths(prev => {
-        const newSelection = new Set(prev);
-        extractedFiles.forEach(f => newSelection.add(f.path));
-        return newSelection;
-      });
+        setSelectedFilePaths(prev => {
+            const newSelection = new Set(prev);
+            extractedFiles.forEach(f => newSelection.add(f.path));
+            return newSelection;
+        });
 
-      toast({ title: 'Ekstraksi Berhasil', description: `${extractedFiles.length} file berhasil diekstrak.`, variant: 'success' });
+        toast({ title: 'Ekstraksi Berhasil', description: `${extractedFiles.length} file berhasil diekstrak.`, variant: 'success' });
     } catch (error: any) {
-      console.error(error);
-      toast({
-        title: 'Kesalahan Ekstraksi ZIP',
-        description: error.message || 'Gagal mengekstrak file ZIP. Mungkin file tersebut rusak atau formatnya tidak didukung.',
-        variant: 'destructive',
-      });
-      // Do not reset state if appending, to avoid clearing other files.
-      if (!isAppending) resetState();
+        console.error(error);
+        toast({
+            title: 'Kesalahan Ekstraksi ZIP',
+            description: error.message || 'Gagal mengekstrak file ZIP. Mungkin file tersebut rusak atau formatnya tidak didukung.',
+            variant: 'destructive',
+        });
+        if (!isAppending) resetState();
     } finally {
-      setModalStatus('inactive');
+        setModalStatus('inactive');
     }
   }, [toast]);
 
@@ -185,60 +183,80 @@ export function FileUploader() {
     // Extract contents and append them, but do not remove the original zip file.
     handleZipExtraction(zipFile.content, true);
   };
-
-  const onDrop = useCallback(
-    (acceptedFiles: File[]) => {
+  
+  const onDrop = useCallback(async (acceptedFiles: File[]) => {
       if (acceptedFiles.length === 0) return;
-  
-      const addFilesToState = (filesToAdd: FileOrFolder[]) => {
-        setFiles(prev => {
-          const existingPaths = new Set(prev.map(f => f.path));
-          const uniqueNewFiles = filesToAdd.filter(f => !existingPaths.has(f.path));
-          return [...prev, ...uniqueNewFiles];
-        });
-        setSelectedFilePaths(prev => {
-          const newSelection = new Set(prev);
-          filesToAdd.forEach(f => newSelection.add(f.path));
-          return newSelection;
-        });
-      };
-  
+
       const newFiles: FileOrFolder[] = acceptedFiles.map(file => ({
-        name: file.name,
-        path: (file as any).webkitRelativePath || file.name,
-        type: 'file',
-        content: file,
+          name: file.name,
+          path: (file as any).webkitRelativePath || file.name,
+          type: 'file',
+          content: file,
       }));
-  
+
+      const allFilesToAdd: FileOrFolder[] = [];
+      const allPathsToAdd = new Set<string>();
+
       if (autoExtractZip) {
-        const zips: File[] = [];
-        const nonZips: FileOrFolder[] = [];
-        
-        newFiles.forEach(file => {
-          if (isZipFile(file) && file.content) {
-            zips.push(file.content);
-          } else {
-            nonZips.push(file);
+          const zips: File[] = [];
+          
+          newFiles.forEach(file => {
+              if (isZipFile(file) && file.content) {
+                  zips.push(file.content);
+              } else {
+                  allFilesToAdd.push(file);
+                  allPathsToAdd.add(file.path);
+              }
+          });
+
+          if (zips.length > 0) {
+              setModalStatus('processing');
+              setZipExtractProgress(0);
+
+              for (const zipFile of zips) {
+                  try {
+                      const zip = await JSZip.loadAsync(zipFile);
+                      const zipEntries = Object.values(zip.files).filter(entry => !entry.dir && !entry.name.startsWith('__MACOSX/'));
+                      let processed = 0;
+                      
+                      for (const entry of zipEntries) {
+                          const blob = await entry.async('blob');
+                          const extractedFile = new File([blob], entry.name.split('/').pop() || entry.name, { type: blob.type });
+                          const fileToAdd: FileOrFolder = { name: extractedFile.name, path: entry.name, type: 'file', content: extractedFile };
+                          allFilesToAdd.push(fileToAdd);
+                          allPathsToAdd.add(fileToAdd.path);
+                          processed++;
+                          setZipExtractProgress((processed / zipEntries.length) * 100);
+                      }
+                      toast({ title: 'Ekstraksi Berhasil', description: `${zipEntries.length} file diekstrak dari ${zipFile.name}.`, variant: 'success' });
+                  } catch (error: any) {
+                      console.error(`Gagal mengekstrak ${zipFile.name}:`, error);
+                      toast({ title: 'Kesalahan Ekstraksi', description: `Gagal memproses ${zipFile.name}.`, variant: 'destructive' });
+                  }
+              }
+
+              setModalStatus('inactive');
           }
-        });
-  
-        // Add non-ZIP files immediately
-        if (nonZips.length > 0) {
-          addFilesToState(nonZips);
-        }
-  
-        // Process ZIP files and always append their contents
-        zips.forEach(zipFile => {
-          handleZipExtraction(zipFile, true); // Always append when auto-extracting
-        });
-  
       } else {
-        // Add all files as they are, without extraction
-        addFilesToState(newFiles);
+          newFiles.forEach(file => {
+              allFilesToAdd.push(file);
+              allPathsToAdd.add(file.path);
+          });
       }
-    },
-    [files, toast, handleZipExtraction, autoExtractZip]
-  );
+
+      setFiles(prev => {
+          const existingPaths = new Set(prev.map(f => f.path));
+          const uniqueNewFiles = allFilesToAdd.filter(f => !existingPaths.has(f.path));
+          return [...prev, ...uniqueNewFiles];
+      });
+
+      setSelectedFilePaths(prev => {
+          const newSelection = new Set(prev);
+          allPathsToAdd.forEach(path => newSelection.add(path));
+          return newSelection;
+      });
+
+  }, [autoExtractZip, toast]);
   
   const { getRootProps, getInputProps, isDragActive, open: openFileDialog } = useDropzone({
     onDrop,
@@ -691,5 +709,7 @@ export function FileUploader() {
     </>
   );
 }
+
+    
 
     
