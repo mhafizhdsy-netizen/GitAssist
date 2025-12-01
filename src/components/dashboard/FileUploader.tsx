@@ -5,7 +5,7 @@ import { useDropzone } from 'react-dropzone';
 import JSZip from 'jszip';
 // Hapus import Buffer karena akan menggunakan polyfill yang lebih baik
 // import { Buffer } from 'buffer';
-import { UploadCloud, File, Github, Sparkles, Folder, PlusCircle, Trash2, Loader2, ArrowRight, GitBranch, X, FileArchive, Settings, Unpack } from 'lucide-react';
+import { UploadCloud, File, Github, Sparkles, Folder, PlusCircle, Trash2, Loader2, ArrowRight, GitBranch, X, FileArchive, Settings, PackageOpen } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -528,7 +528,7 @@ export function FileUploader() {
                     <label htmlFor={`select-${file.path}`} className="truncate flex-grow cursor-pointer">{file.path}</label>
                     { isZipFile(file) && (
                         <Button variant="ghost" size="icon" className="h-7 w-7 ml-2" onClick={() => handleManualExtract(file)}>
-                            <Unpack className="h-4 w-4" />
+                            <PackageOpen className="h-4 w-4" />
                         </Button>
                     )}
                 </li>
