@@ -132,30 +132,35 @@ export function FileUploader() {
         .finally(() => setIsFetchingBranches(false));
   };
   
-// --- VERSI PERBAIKAN FUNGSI extractZip ---
+// --- VERSI AKHIR DAN PALING KUAT DARI FUNGSI extractZip ---
 
 const extractZip = useCallback(async (zipFile: File): Promise<FileOrFolder[]> => {
     setModalStatus('processing');
     setZipExtractProgress(0);
     
     try {
-        // 1. Muat file ZIP
         const zip = await JSZip.loadAsync(zipFile);
         const extractedFiles: FileOrFolder[] = [];
         
-        // 2. Filter untuk mendapatkan HANYA file (bukan folder) dan hitung totalnya
-        // Ini lebih andal daripada memeriksa entry.dir di dalam loop
-        const fileEntries = Object.values(zip.files).filter(entry => !entry.dir);
+        // --- LANGKAH DEBUGGING: Lihat struktur yang ditemukan JSZip ---
+        // Buka konsol browser Anda (F12) dan lihat tab "Console".
+        // Ini akan menampilkan semua entri yang ditemukan di dalam file ZIP Anda.
+        console.log("Struktur file yang ditemukan JSZip untuk", zipFile.name, ":", zip.files);
+
+        // --- PERUBAHAN KRUSIAL 1: Filter file yang lebih andal ---
+        // Kita tidak lagi menggunakan `entry.dir`. Sebagai gantinya, kita secara eksplisit
+        // mencari entri yang TIDAK BERAKHIR dengan '/', yang merupakan standar untuk direktori.
+        const fileEntries = Object.values(zip.files).filter(entry => !entry.name.endsWith('/'));
         const totalFiles = fileEntries.length;
 
-        // 3. Jika ZIP tidak memiliki file (hanya folder atau kosong)
+        console.log("Total file yang berhasil diidentifikasi setelah filtering:", totalFiles);
+
         if (totalFiles === 0) {
-            throw new Error('Arsip ZIP tidak berisi file yang bisa diekstrak.');
+            throw new Error('Tidak ada file yang ditemukan di dalam arsip ZIP (hanya folder atau arsip kosong).');
         }
 
         let processedFiles = 0;
 
-        // 4. Iterasi HANYA pada entri yang sudah dipastikan adalah file
         for (const zipEntry of fileEntries) {
             // Lewati file metadata sistem yang tidak perlu
             if (zipEntry.name.startsWith('__MACOSX/') || zipEntry.name.endsWith('.DS_Store')) {
@@ -165,20 +170,20 @@ const extractZip = useCallback(async (zipFile: File): Promise<FileOrFolder[]> =>
             }
 
             try {
-                // Konversi entri ZIP menjadi Blob
-                const blob = await zipEntry.async('blob');
+                // --- PERUBAHAN KRUSIAL 2: Metode ekstraksi data yang lebih kuat ---
+                // Kita mengambil data sebagai Uint8Array (array byte mentah), yang lebih andal,
+                // lalu kita membuat Blob secara manual. Ini menghindari potensi masalah di `async('blob')`.
+                const uint8Array = await zipEntry.async('uint8array');
+                const blob = new Blob([uint8Array]);
                 
-                // Path lengkap dari file di dalam ZIP (misal: 'folder/subfolder/file.txt')
                 const fullPath = zipEntry.name;
-                // Nama file adalah bagian terakhir dari path (misal: 'file.txt')
                 const fileName = fullPath.split('/').pop() || fullPath;
                 
                 const extractedFile = new File([blob], fileName, { type: blob.type });
                 
-                // Tambahkan file yang berhasil diekstrak ke daftar
                 extractedFiles.push({ 
                     name: extractedFile.name, 
-                    path: fullPath, // Simpan path lengkap untuk menjaga struktur folder
+                    path: fullPath, 
                     type: 'file', 
                     content: extractedFile 
                 });
@@ -187,15 +192,14 @@ const extractZip = useCallback(async (zipFile: File): Promise<FileOrFolder[]> =>
                 console.error(`Gagal mengekstrak file ${zipEntry.name}:`, fileError);
                 // Lanjutkan ke file berikutnya jika ada yang gagal
             } finally {
-                // 5. Selalu update progress, baik sukses maupun gagal, agar progress bar selesai
+                // Selalu update progress agar progress bar selesai
                 processedFiles++;
                 setZipExtractProgress((processedFiles / totalFiles) * 100);
             }
         }
         
-        // 6. Jika setelah semua proses tidak ada file yang berhasil diekstrak
         if (extractedFiles.length === 0) {
-            throw new Error('Tidak ada file yang berhasil diekstrak dari arsip ZIP.');
+            throw new Error('Proses ekstraksi selesai, tetapi tidak ada file yang berhasil disimpan. Semua file mungkin gagal diproses.');
         }
         
         toast({ 
@@ -207,10 +211,10 @@ const extractZip = useCallback(async (zipFile: File): Promise<FileOrFolder[]> =>
 
     } catch (error: any) {
         console.error(`Gagal mengekstrak ${zipFile.name}:`, error);
-        // Berikan pesan error yang lebih spesifik jika memungkinkan
+        
         let errorMessage = error.message;
         if (error.message.includes('invalid signature')) {
-            errorMessage = 'File yang dipilih bukan arsip ZIP yang valid.';
+            errorMessage = 'File yang dipilih bukan arsip ZIP yang valid atau mungkin rusak.';
         }
         
         toast({ 
