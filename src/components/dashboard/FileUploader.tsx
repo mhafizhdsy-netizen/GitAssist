@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import JSZip from 'jszip';
 import { Buffer } from 'buffer';
-import { UploadCloud, File, Github, Sparkles, Folder, PlusCircle, Trash2, Loader2, ArrowRight, GitBranch, X } from 'lucide-react';
+import { UploadCloud, File, Github, Sparkles, Folder, PlusCircle, Trash2, Loader2, ArrowRight, GitBranch, X, FileArchive, Settings } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,6 +21,8 @@ import { UploadStatusModal } from './UploadStatusModal';
 import { Alert, AlertDescription } from '../ui/alert';
 import { motion, AnimatePresence } from "framer-motion";
 import { RepoPathPickerModal } from './RepoPathPickerModal';
+import { Label } from '../ui/label';
+import { Switch } from '../ui/switch';
 
 
 // Make Buffer available globally for JSZip to use
@@ -62,6 +64,7 @@ export function FileUploader() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [commitUrl, setCommitUrl] = useState('');
   const { toast } = useToast();
+  const [autoExtractZip, setAutoExtractZip] = useState(true);
 
   useEffect(() => {
     // Safely access localStorage only on the client side
@@ -171,11 +174,11 @@ export function FileUploader() {
       const isAppending = files.length > 0;
       const zipFile = acceptedFiles.find((f) => f.type === 'application/zip' || f.name.endsWith('.zip'));
 
-      if (zipFile) {
+      if (zipFile && autoExtractZip) {
         if (acceptedFiles.length > 1) {
           toast({
             title: 'Kesalahan Unggah',
-            description: 'Silakan unggah file ZIP secara terpisah.',
+            description: 'Silakan unggah file ZIP secara terpisah saat ekstraksi otomatis aktif.',
             variant: 'destructive',
           });
           return;
@@ -200,7 +203,7 @@ export function FileUploader() {
         });
       }
     },
-    [files, toast, handleZipExtraction]
+    [files, toast, handleZipExtraction, autoExtractZip]
   );
 
   const { getRootProps, getInputProps, isDragActive, open: openFileDialog } = useDropzone({
@@ -400,12 +403,26 @@ export function FileUploader() {
         'border-primary bg-primary/10': isDragActive,
         'border-border hover:border-primary/50': !isDragActive,
       }),
-      onClick: openFileDialog,
     })}>
         <input {...getInputProps()} />
-        <div className="text-center">
+        <div className="text-center" onClick={(e) => { e.stopPropagation(); openFileDialog(); }}>
             <UploadCloud className="mx-auto h-12 w-12 text-muted-foreground" />
             <p className="mt-4 font-semibold text-base">Seret & lepas file, folder, atau arsip ZIP</p>
+            <p className="text-sm text-muted-foreground">atau klik untuk menelusuri</p>
+        </div>
+        <div 
+          className="mt-6 flex items-center space-x-2"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <Switch 
+            id="auto-extract-zip" 
+            checked={autoExtractZip} 
+            onCheckedChange={setAutoExtractZip} 
+          />
+          <Label htmlFor="auto-extract-zip" className="flex items-center gap-2 cursor-pointer">
+            <FileArchive className="h-4 w-4" />
+            <span>Ekstrak ZIP Otomatis</span>
+          </Label>
         </div>
     </div>
   );
@@ -630,3 +647,5 @@ export function FileUploader() {
     </>
   );
 }
+
+    
