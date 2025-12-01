@@ -89,7 +89,7 @@ const Header = () => {
       >
         <div className="container flex h-16 items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
-            <NewLogo className="h-10 w-10 text-primary" />
+            <NewLogo className="h-12 w-12 text-primary" />
             <span className="font-bold text-lg hidden sm:inline-block">GitAssist</span>
           </Link>
 
@@ -127,7 +127,7 @@ const Header = () => {
             <div className="container flex flex-col h-full">
               <div className="flex h-16 items-center justify-between">
                  <Link href="/" className="flex items-center gap-2" onClick={() => setMobileMenuOpen(false)}>
-                  <NewLogo className="h-10 w-10 text-primary" />
+                  <NewLogo className="h-12 w-12 text-primary" />
                   <span className="font-bold text-lg">GitAssist</span>
                 </Link>
                 <div className="flex items-center gap-2">
