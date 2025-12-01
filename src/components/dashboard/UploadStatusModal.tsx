@@ -4,13 +4,16 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { Loader2, CheckCircle, Github, X, FileUp, GitCommit, Check } from 'lucide-react';
+import { CheckCircle, Github, X, FileUp, GitCommit, Check } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 type ModalStatus = 'inactive' | 'processing' | 'committing' | 'done';
+
 type CommitStatus = {
   step: 'inactive' | 'preparing' | 'uploading' | 'finalizing';
   progress: number;
+  currentBatch?: number;
+  totalBatches?: number;
 };
 
 type UploadStatusModalProps = {
@@ -23,6 +26,7 @@ type UploadStatusModalProps = {
 };
 
 const commitStepDetails = {
+    inactive: { text: "Memulai...", icon: FileUp },
     preparing: { text: "Mempersiapkan file...", icon: FileUp },
     uploading: { text: "Mengunggah file ke repositori...", icon: GitCommit },
     finalizing: { text: "Menyelesaikan commit...", icon: Check },
@@ -52,6 +56,10 @@ export function UploadStatusModal({ status, zipExtractProgress, commitStatus, co
         );
       case 'committing':
         const CurrentStepIcon = commitStepDetails[commitStatus.step].icon;
+        const stepText = commitStatus.totalBatches 
+            ? `${commitStepDetails[commitStatus.step].text} (Batch ${commitStatus.currentBatch}/${commitStatus.totalBatches})`
+            : commitStepDetails[commitStatus.step].text;
+
         return (
           <>
             <DialogHeader>
@@ -62,13 +70,14 @@ export function UploadStatusModal({ status, zipExtractProgress, commitStatus, co
             </DialogHeader>
             <div className="py-8 px-4 space-y-6">
                 <motion.div
+                    key={commitStatus.step}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.5 }}
                     className="flex flex-col items-center justify-center text-center"
                 >
                     <CurrentStepIcon className="h-10 w-10 text-primary mb-3" />
-                    <p className="font-medium text-foreground">{commitStepDetails[commitStatus.step].text}</p>
+                    <p className="font-medium text-foreground">{stepText}</p>
                 </motion.div>
                 <div className="w-full max-w-sm mx-auto">
                     <Progress value={commitStatus.progress} className="h-2 transition-all duration-300 ease-linear" />

@@ -1,3 +1,4 @@
+
 'use server';
 
 import { redirect } from 'next/navigation';
@@ -49,6 +50,13 @@ type GitHubFile = {
   content: string;
 };
 
+export interface UploadProgress {
+  step: 'preparing' | 'uploading' | 'finalizing';
+  progress: number;
+  totalBatches?: number;
+  currentBatch?: number;
+}
+
 type CommitParams = {
   repoUrl: string;
   commitMessage: string;
@@ -56,16 +64,9 @@ type CommitParams = {
   githubToken: string;
   destinationPath?: string;
   branchName?: string;
+  onProgress?: (progress: UploadProgress) => void;
 };
 
-export interface UploadProgress {
-  total: number;
-  completed: number;
-  failed: number;
-  percentage: number;
-  currentBatch?: number;
-  totalBatches?: number;
-}
 
 function generateEmptyTreeSHA(): string {
     const header = 'tree 0\0';
@@ -116,7 +117,7 @@ async function api(url: string, token: string, options: RequestInit = {}) {
 async function isRepositoryEmpty(owner: string, repo: string, token: string): Promise<boolean> {
     try {
         const repoData = await api(`/repos/${owner}/${repo}`, token);
-        if (!repoData) return true;
+        if (!repoData || repoData.size === 0) return true;
 
         const branchName = repoData.default_branch || 'main';
         await api(`/repos/${owner}/${repo}/git/ref/heads/${branchName}`, token);
@@ -135,49 +136,32 @@ async function initializeEmptyRepository(
     repo: string,
     files: Array<{ path: string; content: string }>,
     token: string,
-    commitMessage: string
+    commitMessage: string,
+    onProgress?: (progress: UploadProgress) => void
 ): Promise<{ success: boolean; commitUrl: string }> {
     console.log(`Initializing empty repository ${owner}/${repo}`);
+    onProgress?.({ step: 'preparing', progress: 10 });
 
     const repoInfo = await api(`/repos/${owner}/${repo}`, token);
     const branchToCreate = repoInfo.default_branch || 'main';
 
-    const dummyContent = Buffer.from('dummy', 'utf-8').toString('base64');
-    const dummyResponse = await api(`/repos/${owner}/${repo}/contents/dummy`, token, {
-        method: 'PUT',
-        body: JSON.stringify({
-            message: 'Initialize repository',
-            content: dummyContent,
-            branch: branchToCreate
-        }),
-    });
-
-    const dummySHA = dummyResponse.content?.sha;
-
-    await api(`/repos/${owner}/${repo}/contents/dummy`, token, {
-        method: 'DELETE',
-        body: JSON.stringify({
-            message: 'Delete dummy file',
-            sha: dummySHA,
-            branch: branchToCreate
-        }),
-    });
-
     const blobs = await Promise.all(
-        files.map(async (file) => {
+        files.map(async (file, index) => {
             const base64Content = Buffer.from(file.content, 'utf-8').toString('base64');
             const blob = await api(`/repos/${owner}/${repo}/git/blobs`, token, {
                 method: 'POST',
                 body: JSON.stringify({ content: base64Content, encoding: 'base64' }),
             });
+            onProgress?.({ step: 'uploading', progress: 10 + Math.round(((index + 1) / files.length) * 70) });
             return { path: file.path, sha: blob.sha, mode: '100644', type: 'blob' as const };
         })
     );
+    
+    onProgress?.({ step: 'finalizing', progress: 80 });
 
-    const emptyTreeSHA = getEmptyTreeSHA();
     const tree = await api(`/repos/${owner}/${repo}/git/trees`, token, {
         method: 'POST',
-        body: JSON.stringify({ base_tree: emptyTreeSHA, tree: blobs }),
+        body: JSON.stringify({ tree: blobs }),
     });
 
     const commit = await api(`/repos/${owner}/${repo}/git/commits`, token, {
@@ -188,6 +172,8 @@ async function initializeEmptyRepository(
             parents: [],
         }),
     });
+    
+    onProgress?.({ step: 'finalizing', progress: 90 });
 
     await api(`/repos/${owner}/${repo}/git/refs`, token, {
         method: 'POST',
@@ -203,10 +189,7 @@ async function initializeEmptyRepository(
     };
 }
 
-/**
- * OPTIMIZED: Upload banyak file dengan parallel processing
- * Menggunakan Promise.all untuk membuat blobs secara paralel
- */
+
 async function commitToExistingRepoOptimized(
     owner: string,
     repo: string,
@@ -214,9 +197,11 @@ async function commitToExistingRepoOptimized(
     token: string,
     targetBranch: string,
     commitMessage: string,
-    concurrency: number = 10
+    options: { concurrency?: number; onProgress?: (progress: UploadProgress) => void; batchInfo?: { current: number, total: number }}
 ): Promise<{ success: boolean; commitUrl: string }> {
+    const { concurrency = 10, onProgress, batchInfo } = options;
     console.log(`Committing ${files.length} files to ${owner}/${repo}...`);
+    onProgress?.({ step: 'preparing', progress: 10, ...(batchInfo && { currentBatch: batchInfo.current, totalBatches: batchInfo.total }) });
 
     const refData = await api(`/repos/${owner}/${repo}/git/refs/heads/${targetBranch}`, token);
     const latestCommitSha = refData.object.sha;
@@ -224,9 +209,11 @@ async function commitToExistingRepoOptimized(
     const latestCommitData = await api(`/repos/${owner}/${repo}/git/commits/${latestCommitSha}`, token);
     const baseTreeSha = latestCommitData.tree.sha;
 
-    // OPTIMIZED: Create blobs in parallel with concurrency control
     const blobs = [];
-    for (let i = 0; i < files.length; i += concurrency) {
+    const totalFiles = files.length;
+    let filesProcessed = 0;
+    
+    for (let i = 0; i < totalFiles; i += concurrency) {
         const batch = files.slice(i, i + concurrency);
         const batchBlobs = await Promise.all(
             batch.map(async (file) => {
@@ -235,12 +222,16 @@ async function commitToExistingRepoOptimized(
                     method: 'POST',
                     body: JSON.stringify({ content: base64Content, encoding: 'base64' }),
                 });
+                 filesProcessed++;
+                 const overallProgress = 10 + Math.round((filesProcessed / totalFiles) * 70);
+                 onProgress?.({ step: 'uploading', progress: overallProgress, ...(batchInfo && { currentBatch: batchInfo.current, totalBatches: batchInfo.total }) });
                 return { path: file.path, sha: blob.sha, mode: '100644' as const, type: 'blob' as const };
             })
         );
         blobs.push(...batchBlobs);
-        console.log(`Progress: ${Math.min(i + concurrency, files.length)}/${files.length} blobs created`);
     }
+
+    onProgress?.({ step: 'finalizing', progress: 80, ...(batchInfo && { currentBatch: batchInfo.current, totalBatches: batchInfo.total }) });
 
     const newTree = await api(`/repos/${owner}/${repo}/git/trees`, token, {
         method: 'POST',
@@ -251,6 +242,8 @@ async function commitToExistingRepoOptimized(
         method: 'POST',
         body: JSON.stringify({ message: commitMessage, tree: newTree.sha, parents: [latestCommitSha] }),
     });
+    
+    onProgress?.({ step: 'finalizing', progress: 90, ...(batchInfo && { currentBatch: batchInfo.current, totalBatches: batchInfo.total }) });
 
     await api(`/repos/${owner}/${repo}/git/refs/heads/${targetBranch}`, token, {
         method: 'PATCH',
@@ -260,18 +253,15 @@ async function commitToExistingRepoOptimized(
     return { success: true, commitUrl: newCommit.html_url };
 }
 
-/**
- * STRATEGY: Automatic decision between single commit or batched commits
- * - < 500 files: Single commit with parallel blob creation
- * - >= 500 files: Multiple commits in batches
- */
+
 export async function commitToRepo({ 
     repoUrl, 
     commitMessage, 
     files, 
     githubToken, 
     destinationPath, 
-    branchName 
+    branchName,
+    onProgress
 }: CommitParams) {
     if (!githubToken) {
         throw new Error('GitHub token required');
@@ -287,23 +277,23 @@ export async function commitToRepo({
       const finalPath = destinationPath ? `${destinationPath.replace(/^\/|\/$/g, '')}/${file.path}` : file.path;
       return { ...file, path: finalPath };
     });
+    
+    onProgress?.({ step: 'preparing', progress: 5 });
 
     try {
         const repoIsEmpty = await isRepositoryEmpty(owner, repo, githubToken);
         
         if (repoIsEmpty) {
             console.log('⚠️  Empty repository detected. Initializing...');
-            return await initializeEmptyRepository(owner, repo, finalFiles, githubToken, commitMessage);
+            return await initializeEmptyRepository(owner, repo, finalFiles, githubToken, commitMessage, onProgress);
         }
 
         const repoInfo = await api(`/repos/${owner}/${repo}`, githubToken);
         const targetBranch = branchName || repoInfo.default_branch || 'main';
 
-        // STRATEGY: Choose optimal upload method based on file count
         const fileCount = finalFiles.length;
         
         if (fileCount <= 500) {
-            // Single commit with parallel blob creation (FASTEST)
             console.log(`✓ Using single commit strategy for ${fileCount} files`);
             return await commitToExistingRepoOptimized(
                 owner, 
@@ -312,10 +302,9 @@ export async function commitToRepo({
                 githubToken, 
                 targetBranch, 
                 commitMessage,
-                10 // 10 parallel requests
+                { onProgress, concurrency: 10 }
             );
         } else {
-            // Multiple commits in batches (for large uploads)
             console.log(`✓ Using batched commit strategy for ${fileCount} files`);
             return await commitInBatches(
                 owner,
@@ -324,7 +313,7 @@ export async function commitToRepo({
                 githubToken,
                 targetBranch,
                 commitMessage,
-                100 // 100 files per batch
+                { onProgress, batchSize: 100, concurrency: 10 }
             );
         }
     } catch (error: any) {
@@ -333,9 +322,7 @@ export async function commitToRepo({
     }
 }
 
-/**
- * BATCHED COMMITS: For very large file uploads (500+ files)
- */
+
 async function commitInBatches(
     owner: string,
     repo: string,
@@ -343,27 +330,32 @@ async function commitInBatches(
     token: string,
     branch: string,
     commitMessage: string,
-    batchSize: number = 100
+    options: { onProgress?: (progress: UploadProgress) => void; batchSize?: number; concurrency?: number; }
 ): Promise<{ success: boolean; commitUrl: string }> {
+    const { onProgress, batchSize = 100, concurrency = 10 } = options;
+
     const batches = [];
     for (let i = 0; i < files.length; i += batchSize) {
         batches.push(files.slice(i, i + batchSize));
     }
 
-    console.log(`Splitting into ${batches.length} batches of ${batchSize} files each`);
+    const totalBatches = batches.length;
+    console.log(`Splitting into ${totalBatches} batches of ${batchSize} files each`);
 
     let lastCommitUrl = '';
 
     for (let i = 0; i < batches.length; i++) {
-        console.log(`Processing batch ${i + 1}/${batches.length}...`);
+        const currentBatch = i + 1;
+        console.log(`Processing batch ${currentBatch}/${totalBatches}...`);
+        
         const result = await commitToExistingRepoOptimized(
             owner,
             repo,
             batches[i],
             token,
             branch,
-            `${commitMessage} (batch ${i + 1}/${batches.length})`,
-            10
+            `${commitMessage} (batch ${currentBatch}/${totalBatches})`,
+            { onProgress, concurrency, batchInfo: { current: currentBatch, total: totalBatches } }
         );
         lastCommitUrl = result.commitUrl;
     }

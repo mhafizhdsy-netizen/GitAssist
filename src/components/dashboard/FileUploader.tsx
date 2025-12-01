@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
@@ -11,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { generateCommitMessage } from '@/ai/flows/generate-commit-message';
-import { commitToRepo, fetchUserRepos, fetchRepoBranches, type Repo, type Branch } from '@/app/actions';
+import { commitToRepo, fetchUserRepos, fetchRepoBranches, type Repo, type Branch, type UploadProgress } from '@/app/actions';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '../ui/skeleton';
 import { Checkbox } from '../ui/checkbox';
@@ -33,10 +34,8 @@ type FileOrFolder = {
   content?: File | Blob;
 };
 
-type CommitStatus = {
-    step: 'inactive' | 'preparing' | 'uploading' | 'finalizing';
-    progress: number;
-};
+type CommitStatus = UploadProgress;
+
 type ModalStatus = 'inactive' | 'processing' | 'committing' | 'done';
 
 export function FileUploader() {
@@ -334,7 +333,6 @@ export function FileUploader() {
     setCommitStatus({ step: 'preparing', progress: 0 });
 
     try {
-      setCommitStatus({ step: 'preparing', progress: 10 });
       const filesToCommitContent = await Promise.all(
         filesToCommitPaths
           .filter((f) => f.type === 'file' && f.content)
@@ -348,18 +346,18 @@ export function FileUploader() {
           })
       );
       
-      setCommitStatus({ step: 'uploading', progress: 40 });
-
       const result = await commitToRepo({
           repoUrl: selectedRepo,
           commitMessage,
           files: filesToCommitContent,
           githubToken: token,
           destinationPath,
-          branchName: selectedBranch
+          branchName: selectedBranch,
+          onProgress: (progress) => {
+            setCommitStatus(progress);
+          }
       });
 
-      setCommitStatus({ step: 'finalizing', progress: 90 });
 
       if (result.success && result.commitUrl) {
         setCommitUrl(result.commitUrl);
