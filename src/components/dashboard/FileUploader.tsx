@@ -25,7 +25,6 @@ import { Label } from '../ui/label';
 import { Switch } from '../ui/switch';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 
-
 // Make Buffer available globally for JSZip to use
 if (typeof window !== 'undefined' && typeof (window as any).Buffer === 'undefined') {
   (window as any).Buffer = Buffer;
@@ -133,15 +132,15 @@ export function FileUploader() {
           const extractedFiles: FileOrFolder[] = [];
           const allZipFiles = Object.values(zip.files).filter(file => !file.dir && !file.name.startsWith('__MACOSX/'));
           const totalFiles = allZipFiles.length;
-          let processedFiles = 0;
 
-          for (const zipEntry of allZipFiles) {
+          for (let i = 0; i < allZipFiles.length; i++) {
+              const zipEntry = allZipFiles[i];
               const blob = await zipEntry.async('blob');
               const extractedFile = new File([blob], zipEntry.name.split('/').pop() || zipEntry.name, { type: blob.type });
               extractedFiles.push({ name: extractedFile.name, path: zipEntry.name, type: 'file', content: extractedFile });
-              processedFiles++;
-              setZipExtractProgress((processedFiles / totalFiles) * 100);
+              setZipExtractProgress(((i + 1) / totalFiles) * 100);
           }
+
           toast({ title: 'Ekstraksi Berhasil', description: `${extractedFiles.length} file diekstrak dari ${zipFile.name}.`, variant: 'success' });
           return extractedFiles;
       } catch (error: any) {
@@ -153,39 +152,40 @@ export function FileUploader() {
       }
   }, [toast]);
 
-  const handleManualExtract = useCallback(async (zipFile: FileOrFolder) => {
-    if (!zipFile.content || !isZipFile(zipFile)) return;
+  const handleManualExtract = useCallback(async (zipFileToExtract: FileOrFolder) => {
+    if (!zipFileToExtract.content || !isZipFile(zipFileToExtract)) return;
 
-    const extracted = await extractZip(zipFile.content);
+    const extracted = await extractZip(zipFileToExtract.content);
 
-    if (extracted.length > 0) {
-      setFiles(prev => {
-        const otherFiles = prev.filter(f => f.path !== zipFile.path);
+    setFiles(prev => {
+        // Remove the original zip file and add the extracted files
+        const otherFiles = prev.filter(f => f.path !== zipFileToExtract.path);
         const existingPaths = new Set(otherFiles.map(f => f.path));
         const newUniqueFiles = extracted.filter(f => !existingPaths.has(f.path));
         return [...otherFiles, ...newUniqueFiles];
-      });
+    });
 
-      setSelectedFilePaths(prev => {
+    setSelectedFilePaths(prev => {
         const newSelection = new Set(prev);
-        newSelection.delete(zipFile.path);
+        newSelection.delete(zipFileToExtract.path);
         extracted.forEach(f => newSelection.add(f.path));
         return newSelection;
-      });
-    }
+    });
   }, [extractZip]);
   
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     if (acceptedFiles.length === 0) return;
 
-    let newFiles: FileOrFolder[] = [];
-    let newPaths = new Set<string>();
+    const allNewFiles: FileOrFolder[] = [];
+    const allNewPaths = new Set<string>();
 
     for (const file of acceptedFiles) {
         if (autoExtractZip && isZipFile(file)) {
             const extracted = await extractZip(file);
-            newFiles.push(...extracted);
-            extracted.forEach(f => newPaths.add(f.path));
+            for (const extractedFile of extracted) {
+                allNewFiles.push(extractedFile);
+                allNewPaths.add(extractedFile.path);
+            }
         } else {
             const fileToAdd: FileOrFolder = {
                 name: file.name,
@@ -193,21 +193,20 @@ export function FileUploader() {
                 type: 'file',
                 content: file,
             };
-            newFiles.push(fileToAdd);
-            newPaths.add(fileToAdd.path);
+            allNewFiles.push(fileToAdd);
+            allNewPaths.add(fileToAdd.path);
         }
     }
     
-    // Update state once with all accumulated files
     setFiles(prev => {
       const existingPaths = new Set(prev.map(f => f.path));
-      const uniqueNewFiles = newFiles.filter(f => !existingPaths.has(f.path));
+      const uniqueNewFiles = allNewFiles.filter(f => !existingPaths.has(f.path));
       return [...prev, ...uniqueNewFiles];
     });
 
     setSelectedFilePaths(prev => {
       const newSelection = new Set(prev);
-      newPaths.forEach(path => newSelection.add(path));
+      allNewPaths.forEach(path => newSelection.add(path));
       return newSelection;
     });
 
@@ -215,7 +214,7 @@ export function FileUploader() {
   
   const { getRootProps, getInputProps, isDragActive, open: openFileDialog } = useDropzone({
     onDrop,
-    noClick: true, // We'll handle clicks manually
+    noClick: true,
     noKeyboard: true,
     getFilesFromEvent: async (event: any) => {
         const items = event.dataTransfer ? event.dataTransfer.items : [];
@@ -305,7 +304,6 @@ export function FileUploader() {
     }
     setIsGenerating(true);
     try {
-      // Create a simplified diff for AI context
       const diff = filesToConsider.map((f) => `A ${f.path}`).join('\n');
       const result = await generateCommitMessage({ diff });
       setCommitMessage(result.commitMessage);
@@ -351,8 +349,6 @@ export function FileUploader() {
           .filter((f) => f.type === 'file' && f.content)
           .map(async (file) => {
             const fileContent = file.content as (File | Blob);
-            // Check if content is binary or text
-            // A simple heuristic: check for null bytes
             const buffer = await fileContent.arrayBuffer();
             const uint8 = new Uint8Array(buffer);
             let isBinary = false;
