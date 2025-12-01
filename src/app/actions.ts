@@ -252,6 +252,48 @@ async function commitToExistingRepoOptimized(
     return { success: true, commitUrl: newCommit.html_url };
 }
 
+async function commitInBatches(
+    owner: string,
+    repo: string,
+    files: Array<{ path: string; content: string; encoding: 'utf-8' | 'base64' }>,
+    token: string,
+    branch: string,
+    commitMessage: string,
+    options: { onProgress?: (progress: UploadProgress) => void; batchSize?: number; concurrency?: number; }
+): Promise<{ success: boolean; commitUrl: string }> {
+    const { onProgress, batchSize = 100, concurrency = 10 } = options;
+
+    const batches = [];
+    for (let i = 0; i < files.length; i += batchSize) {
+        batches.push(files.slice(i, i + batchSize));
+    }
+
+    const totalBatches = batches.length;
+    console.log(`Splitting into ${totalBatches} batches of ${batchSize} files each`);
+
+    let lastCommitUrl = '';
+
+    for (let i = 0; i < batches.length; i++) {
+        const currentBatch = i + 1;
+        console.log(`Processing batch ${currentBatch}/${totalBatches}...`);
+        
+        const result = await commitToExistingRepoOptimized(
+            owner,
+            repo,
+            batches[i],
+            token,
+            branch,
+            `${commitMessage} (batch ${currentBatch}/${totalBatches})`,
+            { onProgress, concurrency, batchInfo: { current: currentBatch, total: totalBatches } }
+        );
+        lastCommitUrl = result.commitUrl;
+    }
+
+    return {
+        success: true,
+        commitUrl: lastCommitUrl
+    };
+}
 
 export async function commitToRepo({ 
     repoUrl, 
@@ -261,7 +303,7 @@ export async function commitToRepo({
     destinationPath, 
     branchName,
     onProgress
-}: CommitParams) {
+}: CommitParams): Promise<{ success: boolean; commitUrl: string }> {
     if (!githubToken) {
         throw new Error('GitHub token required');
     }
@@ -321,49 +363,6 @@ export async function commitToRepo({
     }
 }
 
-
-async function commitInBatches(
-    owner: string,
-    repo: string,
-    files: Array<{ path: string; content: string; encoding: 'utf-8' | 'base64' }>,
-    token: string,
-    branch: string,
-    commitMessage: string,
-    options: { onProgress?: (progress: UploadProgress) => void; batchSize?: number; concurrency?: number; }
-): Promise<{ success: boolean; commitUrl: string }> {
-    const { onProgress, batchSize = 100, concurrency = 10 } = options;
-
-    const batches = [];
-    for (let i = 0; i < files.length; i += batchSize) {
-        batches.push(files.slice(i, i + batchSize));
-    }
-
-    const totalBatches = batches.length;
-    console.log(`Splitting into ${totalBatches} batches of ${batchSize} files each`);
-
-    let lastCommitUrl = '';
-
-    for (let i = 0; i < batches.length; i++) {
-        const currentBatch = i + 1;
-        console.log(`Processing batch ${currentBatch}/${totalBatches}...`);
-        
-        const result = await commitToExistingRepoOptimized(
-            owner,
-            repo,
-            batches[i],
-            token,
-            branch,
-            `${commitMessage} (batch ${currentBatch}/${totalBatches})`,
-            { onProgress, concurrency, batchInfo: { current: currentBatch, total: totalBatches } }
-        );
-        lastCommitUrl = result.commitUrl;
-    }
-
-    return {
-        success: true,
-        commitUrl: lastCommitUrl
-    };
-}
 
 export async function fetchUserRepos(githubToken: string, page: number = 1, perPage: number = 100): Promise<Repo[]> {
     if (!githubToken) {
