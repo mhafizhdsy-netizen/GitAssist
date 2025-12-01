@@ -1,8 +1,6 @@
 
 'use client';
 
-import { HelpCircle } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { FAQ } from "@/components/landing/FAQ";
 import { motion } from "framer-motion";
 
@@ -14,20 +12,15 @@ export default function FAQPage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, ease: "easeOut" }}
       >
-        <Card className="max-w-4xl mx-auto glass-card">
-            <CardHeader className="text-center">
-                <div className="mx-auto w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-4 border border-primary/20">
-                    <HelpCircle className="h-8 w-8 text-primary" />
-                </div>
-                <CardTitle className="text-4xl font-headline">Pertanyaan yang Sering Diajukan</CardTitle>
-                <CardDescription>
-                    Punya pertanyaan? Kami punya jawabannya.
-                </CardDescription>
-            </CardHeader>
-            <CardContent>
-                <FAQ />
-            </CardContent>
-        </Card>
+        <div className="text-center mb-16">
+            <h1 className="text-4xl md:text-5xl font-bold font-headline">
+            Ada Pertanyaan?
+            </h1>
+            <p className="mt-4 max-w-2xl mx-auto text-lg text-muted-foreground">
+            Temukan jawaban untuk pertanyaan yang paling sering diajukan tentang GitAssist.
+            </p>
+        </div>
+        <FAQ />
       </motion.div>
   );
 }

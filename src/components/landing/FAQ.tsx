@@ -1,69 +1,71 @@
 
 "use client";
 
-import { motion } from "framer-motion";
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { FAQ_ITEMS } from "@/lib/constants";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
+import { Card, CardContent } from "@/components/ui/card";
+import { HelpCircle, ChevronRight } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export function FAQ() {
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: { staggerChildren: 0.1, delayChildren: 0.2 },
-    },
-  };
+  const [activeIndex, setActiveIndex] = useState(0);
 
-  const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: { duration: 0.4, ease: "easeOut" },
-    },
-  };
+  const activeItem = FAQ_ITEMS[activeIndex];
 
   return (
-    <section id="faq" className="container py-24 sm:py-32">
-      <div className="text-center mb-16">
-        <h2 className="text-4xl md:text-5xl font-bold font-headline">
-          Pertanyaan yang Sering Diajukan
-        </h2>
-        <p className="mt-4 max-w-3xl mx-auto text-lg text-muted-foreground">
-          Punya pertanyaan? Kami punya jawabannya. Jika Anda tidak menemukan
-          jawaban di sini, jangan ragu untuk menghubungi kami.
-        </p>
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12 max-w-6xl mx-auto">
+      {/* Kolom Kiri: Daftar Pertanyaan */}
+      <div className="lg:col-span-1">
+        <h3 className="text-xl font-semibold mb-4 px-4">Topik Pertanyaan</h3>
+        <div className="space-y-2">
+          {FAQ_ITEMS.map((item, index) => (
+            <button
+              key={index}
+              onClick={() => setActiveIndex(index)}
+              className={cn(
+                "w-full text-left p-4 rounded-lg transition-all duration-300 flex items-center justify-between",
+                "hover:bg-primary/10",
+                activeIndex === index
+                  ? "bg-primary/10 text-primary font-semibold"
+                  : "text-muted-foreground"
+              )}
+            >
+              <span>{item.question}</span>
+              <ChevronRight className={cn("h-5 w-5 transition-transform duration-300", activeIndex === index ? "translate-x-1" : "")} />
+            </button>
+          ))}
+        </div>
       </div>
 
-      <motion.div
-        className="max-w-3xl mx-auto"
-        variants={containerVariants}
-        initial="hidden"
-        whileInView="visible"
-        viewport={{ once: true, amount: 0.2 }}
-      >
-        <Accordion type="single" collapsible className="w-full space-y-4">
-            {FAQ_ITEMS.map((item, index) => (
-            <motion.div key={index} variants={itemVariants}>
-                <AccordionItem value={`item-${index}`} className="glass-card border-white/10 rounded-xl transition-all duration-300 hover:border-primary/50 overflow-hidden">
-                    <AccordionTrigger className="p-6 text-left font-bold text-lg hover:no-underline">
-                        {item.question}
-                    </AccordionTrigger>
-                    <AccordionContent>
-                        <div className="px-6 pb-6 pt-0 text-muted-foreground">
-                            {item.answer}
-                        </div>
-                    </AccordionContent>
-                </AccordionItem>
-            </motion.div>
-            ))}
-        </Accordion>
-      </motion.div>
-    </section>
+      {/* Kolom Kanan: Jawaban */}
+      <div className="lg:col-span-2">
+        <Card className="glass-card sticky top-24">
+          <CardContent className="p-8 md:p-10 min-h-[300px]">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeIndex}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.3, ease: "easeOut" }}
+              >
+                <div className="flex items-start gap-4 mb-6">
+                    <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/20">
+                        <HelpCircle className="h-6 w-6 text-primary" />
+                    </div>
+                    <h3 className="text-xl lg:text-2xl font-bold text-foreground mt-1.5">
+                    {activeItem.question}
+                    </h3>
+                </div>
+                <p className="text-base lg:text-lg leading-relaxed text-muted-foreground">
+                  {activeItem.answer}
+                </p>
+              </motion.div>
+            </AnimatePresence>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
   );
 }
