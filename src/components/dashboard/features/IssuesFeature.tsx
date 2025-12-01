@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -88,11 +87,11 @@ export function IssuesFeature() {
     
     setIsCreating(true);
     setModalStatus('processing');
-    setOperationStatus({ step: 'preparing', progress: 25, text: 'Mempersiapkan issue...' });
+    setOperationStatus({ step: 'preparing', progress: 25, text: 'Mempersiapkan issue...', Icon: AlertCircle });
 
     try {
         const [owner, repoName] = selectedRepo.full_name.split('/');
-        setOperationStatus({ step: 'uploading', progress: 60, text: 'Membuat issue di GitHub...' });
+        setOperationStatus({ step: 'uploading', progress: 60, text: 'Membuat issue di GitHub...', Icon: Github });
         
         const result = await createIssue(githubToken, owner, repoName, title, description);
         setResultUrl(result.html_url);
@@ -130,6 +129,12 @@ export function IssuesFeature() {
         operationType="issue"
       />
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-7xl mx-auto">
+        <motion.div 
+            key="issue-creator"
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5, ease: 'easeOut' }}
+        >
         <Card className="glass-card">
           <CardHeader>
             <CardTitle className="font-headline text-2xl flex items-center gap-3">
@@ -194,8 +199,21 @@ export function IssuesFeature() {
             </Button>
           </CardFooter>
         </Card>
+        </motion.div>
 
-        <IssuesList issues={issues} isLoading={isFetchingIssues} repoName={selectedRepo?.name} />
+        <AnimatePresence>
+        {selectedRepo && (
+             <motion.div
+                key="issues-list"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 20 }}
+                transition={{ duration: 0.5, ease: 'easeOut' }}
+             >
+                <IssuesList issues={issues} isLoading={isFetchingIssues} repoName={selectedRepo.name} />
+             </motion.div>
+        )}
+        </AnimatePresence>
       </div>
     </>
   );

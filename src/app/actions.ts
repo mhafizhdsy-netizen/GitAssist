@@ -1,4 +1,3 @@
-
 'use server';
 
 import { redirect } from 'next/navigation';
@@ -50,6 +49,26 @@ export type Issue = {
         login: string;
         avatar_url: string;
     };
+};
+
+export type Release = {
+    id: number;
+    tag_name: string;
+    name: string;
+    body: string | null;
+    html_url: string;
+    published_at: string;
+    author: {
+        login: string;
+        avatar_url: string;
+    };
+    assets: Array<{
+        id: number;
+        name: string;
+        browser_download_url: string;
+    }>;
+    tarball_url: string | null;
+    zipball_url: string | null;
 };
 
 export type RepoContent = {
@@ -183,10 +202,11 @@ type CommitParams = {
 
 async function isRepositoryEmpty(owner: string, repo: string, token: string): Promise<boolean> {
     try {
-        const refs = await api(`/repos/${owner}/${repo}/git/refs?per_page=1`, token);
-        return Array.isArray(refs) && refs.length === 0;
+        const repoData = await api(`/repos/${owner}/${repo}`, token);
+        // An empty repo has size 0
+        return repoData.size === 0;
     } catch (error: any) {
-        if (error.message && error.message.includes('409')) return true;
+        if (error.message && error.message.includes('404')) return true; // Not found can be considered empty for our purpose
         throw error;
     }
 }
@@ -212,6 +232,7 @@ async function commitToExistingRepo(owner: string, repo: string, files: Array<{ 
     const latestCommitSha = refData.object.sha;
     const latestCommitData = await api(`/repos/${owner}/${repo}/git/commits/${latestCommitSha}`, token);
     const baseTreeSha = latestCommitData.tree.sha;
+    
     const blobs = await Promise.all(
         files.map(async (file) => {
             const blob = await api(`/repos/${owner}/${repo}/git/blobs`, token, {
@@ -240,7 +261,19 @@ export async function commitToRepo({ repoUrl, commitMessage, files, githubToken,
     try {
         const repoInfo = await api(`/repos/${owner}/${repo}`, githubToken);
         const targetBranch = branchName || repoInfo.default_branch || 'main';
-        const repoIsEmpty = await isRepositoryEmpty(owner, repo, githubToken);
+        
+        let repoIsEmpty;
+        try {
+            // Check for branches. If it fails with 404 or empty repo error, it's empty.
+            await api(`/repos/${owner}/${repo}/branches/${targetBranch}`, githubToken);
+            repoIsEmpty = false;
+        } catch (error: any) {
+            if (error.message.includes('Not Found') || error.message.includes('Git Repository is empty')) {
+                repoIsEmpty = true;
+            } else {
+                throw error;
+            }
+        }
         
         if (repoIsEmpty) {
             return await initializeEmptyRepository(owner, repo, finalFiles, githubToken, commitMessage, targetBranch);
@@ -280,6 +313,12 @@ type ReleasePayload = {
     draft?: boolean;
     prerelease?: boolean;
 };
+
+export async function fetchRepoReleases(githubToken: string, owner: string, repo: string): Promise<Release[]> {
+    if (!githubToken) throw new Error('Token GitHub diperlukan.');
+    const releases = await api(`/repos/${owner}/${repo}/releases`, githubToken);
+    return Array.isArray(releases) ? releases : [];
+}
 
 export async function createRelease(githubToken: string, owner: string, repo: string, payload: ReleasePayload): Promise<any> {
     if (!githubToken) throw new Error('Token GitHub diperlukan.');

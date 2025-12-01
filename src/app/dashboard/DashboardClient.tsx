@@ -2,18 +2,28 @@
 "use client";
 
 import { type User } from "firebase/auth";
-import { motion } from "framer-motion";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { GitCommit, AlertCircle, Rocket } from "lucide-react";
 import { CommitFeature } from "@/components/dashboard/features/CommitFeature";
 import { IssuesFeature } from "@/components/dashboard/features/IssuesFeature";
 import { ReleasesFeature } from "@/components/dashboard/features/ReleasesFeature";
+import { cn } from "@/lib/utils";
 
 type DashboardClientProps = {
   user: User;
 };
 
+const TABS = [
+  { value: "commit", label: "Commit", Icon: GitCommit, component: <CommitFeature /> },
+  { value: "issues", label: "Issues", Icon: AlertCircle, component: <IssuesFeature /> },
+  { value: "releases", label: "Releases", Icon: Rocket, component: <ReleasesFeature /> },
+];
+
 export default function DashboardClient({ user }: DashboardClientProps) {
+  const [activeTab, setActiveTab] = useState(TABS[0].value);
+
   const containerVariants = {
     hidden: { opacity: 0, y: 20 },
     visible: {
@@ -25,6 +35,12 @@ export default function DashboardClient({ user }: DashboardClientProps) {
         ease: 'easeOut'
       }
     },
+  };
+  
+  const contentVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } },
+    exit: { opacity: 0, y: -20, transition: { duration: 0.3, ease: "easeIn" } },
   };
 
   return (
@@ -50,29 +66,35 @@ export default function DashboardClient({ user }: DashboardClientProps) {
       </div>
 
       <motion.div variants={containerVariants}>
-        <Tabs defaultValue="commit" className="w-full">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <motion.div variants={containerVariants} className="flex justify-center mb-8">
-            <TabsList className="grid w-full max-w-md grid-cols-3 h-auto">
-              <TabsTrigger value="commit" className="py-2.5">
-                <GitCommit className="mr-2" /> Commit
-              </TabsTrigger>
-              <TabsTrigger value="issues" className="py-2.5">
-                <AlertCircle className="mr-2" /> Issues
-              </TabsTrigger>
-              <TabsTrigger value="releases" className="py-2.5">
-                <Rocket className="mr-2" /> Releases
-              </TabsTrigger>
+            <TabsList className="h-auto p-1.5 rounded-xl glass-card border-none">
+              {TABS.map((tab) => (
+                <TabsTrigger 
+                  key={tab.value}
+                  value={tab.value}
+                  className={cn(
+                    "px-4 sm:px-6 py-2.5 text-sm sm:text-base font-medium transition-colors rounded-lg",
+                    "data-[state=inactive]:bg-transparent data-[state=inactive]:text-muted-foreground data-[state=inactive]:hover:bg-accent/50",
+                    "data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/30"
+                  )}
+                >
+                  <tab.Icon className="mr-2 h-5 w-5" /> {tab.label}
+                </TabsTrigger>
+              ))}
             </TabsList>
           </motion.div>
-          <TabsContent value="commit">
-            <CommitFeature />
-          </TabsContent>
-          <TabsContent value="issues">
-            <IssuesFeature />
-          </TabsContent>
-          <TabsContent value="releases">
-            <ReleasesFeature />
-          </TabsContent>
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeTab}
+              variants={contentVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+            >
+              {TABS.find(tab => tab.value === activeTab)?.component}
+            </motion.div>
+          </AnimatePresence>
         </Tabs>
       </motion.div>
     </motion.div>

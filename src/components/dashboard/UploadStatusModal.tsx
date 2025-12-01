@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose } from '@/components/ui/dialog';
@@ -30,12 +29,14 @@ type UploadStatusModalProps = {
 const operationDetails = {
     commit: { title: "Melakukan Commit...", successTitle: "Commit Berhasil!", successDesc: "File Anda telah berhasil diunggah dan di-commit.", buttonText: "Lihat Commit"},
     issue: { title: "Membuat Issue...", successTitle: "Issue Dibuat!", successDesc: "Issue baru telah berhasil dibuat di repositori.", buttonText: "Lihat Issue"},
-    release: { title: "Membuat Release...", successTitle: "Release Dibuat!", successDesc: "Rilis baru telah berhasil dipublikasikan.", buttonText: "Lihat Release"},
+    release: { title: "Membuat Rilis...", successTitle: "Rilis Dibuat!", successDesc: "Rilis baru telah berhasil dipublikasikan.", buttonText: "Lihat Rilis"},
 };
 
 
 export function UploadStatusModal({ status, operationStatus, resultUrl, repoName, onRestart, operationType }: UploadStatusModalProps) {
-  const isOpen = status !== 'inactive';
+  const isOpen = status !== 'inactive' && status !== 'processing';
+  const isProcessing = status === 'processing';
+  
   const { toast } = useToast();
   
   const details = operationDetails[operationType];
@@ -48,41 +49,42 @@ export function UploadStatusModal({ status, operationStatus, resultUrl, repoName
         variant: "success",
     });
   }
+  
+  const CurrentStepIcon = operationStatus.Icon || FileUp;
 
-  const renderContent = () => {
-    switch (status) {
-      case 'processing':
-        const CurrentStepIcon = operationStatus.Icon || FileUp;
-        return (
-          <>
-            <DialogHeader>
-              <DialogTitle className="text-center text-2xl font-headline">{details.title}</DialogTitle>
-              <DialogDescription className="text-center">
-                Mengirim permintaan Anda ke <span className="font-semibold text-primary">{repoName}</span>.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="py-8 px-4 space-y-6">
-                <motion.div
-                    key={operationStatus.step}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.5 }}
-                    className="flex flex-col items-center justify-center text-center"
-                >
-                    <CurrentStepIcon className="h-10 w-10 text-primary mb-3" />
-                    <p className="font-medium text-foreground">{operationStatus.text || "Mempersiapkan..."}</p>
-                </motion.div>
-                <div className="w-full max-w-sm mx-auto">
-                    <Progress value={operationStatus.progress} className="h-2 transition-all duration-300 ease-linear" />
-                    <p className="text-sm text-muted-foreground mt-2 text-center font-medium">{Math.round(operationStatus.progress)}%</p>
+  return (
+    <>
+    {isProcessing && (
+        <div className="fixed inset-0 z-[101] bg-background/80 backdrop-blur-sm flex items-center justify-center">
+            <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                className="w-full max-w-md p-6"
+            >
+                <div className="py-8 px-4 space-y-6 text-center">
+                    <motion.div
+                        key={operationStatus.step}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.5 }}
+                        className="flex flex-col items-center justify-center text-center"
+                    >
+                        <CurrentStepIcon className="h-12 w-12 text-primary mb-4" />
+                        <p className="text-lg font-medium text-foreground">{details.title}</p>
+                        <p className="text-muted-foreground">{operationStatus.text || "Mempersiapkan..."}</p>
+                    </motion.div>
+                    <div className="w-full max-w-sm mx-auto pt-4">
+                        <Progress value={operationStatus.progress} className="h-2 transition-all duration-300 ease-linear" />
+                        <p className="text-sm text-muted-foreground mt-2 text-center font-medium">{Math.round(operationStatus.progress)}%</p>
+                    </div>
                 </div>
-            </div>
-          </>
-        );
-      case 'done':
-        return (
-          <>
-             <DialogClose asChild>
+            </motion.div>
+        </div>
+    )}
+    <Dialog open={isOpen && !isProcessing} onOpenChange={(open) => !open && onRestart()}>
+      <DialogContent className="glass-card w-[95vw] max-w-md" onInteractOutside={(e) => e.preventDefault()}>
+            <DialogClose asChild>
                 <button 
                   onClick={handleDone}
                   className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground"
@@ -115,18 +117,8 @@ export function UploadStatusModal({ status, operationStatus, resultUrl, repoName
                     </a>
                 </Button>
             </div>
-          </>
-        );
-      default:
-        return null;
-    }
-  };
-
-  return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onRestart()}>
-      <DialogContent className="glass-card w-[95vw] max-w-md" onInteractOutside={(e) => e.preventDefault()}>
-        {renderContent()}
       </DialogContent>
     </Dialog>
+    </>
   );
 }
