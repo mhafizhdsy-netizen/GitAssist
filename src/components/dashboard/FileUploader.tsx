@@ -154,72 +154,67 @@ export function FileUploader() {
   }, [toast]);
 
   const handleManualExtract = useCallback(async (zipFile: FileOrFolder) => {
-    if (!zipFile.content) return;
-    
-    // Perform extraction
+    if (!zipFile.content || !isZipFile(zipFile)) return;
+
     const extracted = await extractZip(zipFile.content);
 
     if (extracted.length > 0) {
-      // Create a list of the new extracted file paths
       const extractedPaths = new Set(extracted.map(f => f.path));
 
-      // Update files: remove original zip, add extracted files
       setFiles(prev => {
+        // Remove the original zip file and add the new extracted files
         const otherFiles = prev.filter(f => f.path !== zipFile.path);
         const existingPaths = new Set(otherFiles.map(f => f.path));
         const newUniqueFiles = extracted.filter(f => !existingPaths.has(f.path));
         return [...otherFiles, ...newUniqueFiles];
       });
 
-      // Update selection: unselect original zip, select all new files
       setSelectedFilePaths(prev => {
         const newSelection = new Set(prev);
-        newSelection.delete(zipFile.path);
-        extractedPaths.forEach(p => newSelection.add(p));
+        newSelection.delete(zipFile.path); // Unselect original zip
+        extractedPaths.forEach(p => newSelection.add(p)); // Select all new files
         return newSelection;
       });
     }
   }, [extractZip]);
   
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
-      if (acceptedFiles.length === 0) return;
-  
-      const newFiles: FileOrFolder[] = [];
-      const newPaths = new Set<string>();
-  
-      for (const file of acceptedFiles) {
-        const fileToAdd: FileOrFolder = {
-          name: file.name,
-          path: (file as any).webkitRelativePath || file.name,
-          type: 'file',
-          content: file,
-        };
-  
-        if (autoExtractZip && isZipFile(file) && fileToAdd.content) {
-          const extracted = await extractZip(file);
-          for (const extractedFile of extracted) {
-            newFiles.push(extractedFile);
-            newPaths.add(extractedFile.path);
-          }
-        } else {
-          newFiles.push(fileToAdd);
-          newPaths.add(fileToAdd.path);
-        }
+    if (acceptedFiles.length === 0) return;
+
+    let newFiles: FileOrFolder[] = [];
+    let newPaths = new Set<string>();
+
+    for (const file of acceptedFiles) {
+      const fileToAdd: FileOrFolder = {
+        name: file.name,
+        path: (file as any).webkitRelativePath || file.name,
+        type: 'file',
+        content: file,
+      };
+      
+      if (autoExtractZip && isZipFile(file) && fileToAdd.content) {
+        const extracted = await extractZip(fileToAdd.content);
+        newFiles.push(...extracted);
+        extracted.forEach(f => newPaths.add(f.path));
+      } else {
+        newFiles.push(fileToAdd);
+        newPaths.add(fileToAdd.path);
       }
-  
-      // Update state once with all accumulated files
-      setFiles(prev => {
-        const existingPaths = new Set(prev.map(f => f.path));
-        const uniqueNewFiles = newFiles.filter(f => !existingPaths.has(f.path));
-        return [...prev, ...uniqueNewFiles];
-      });
-  
-      setSelectedFilePaths(prev => {
-        const newSelection = new Set(prev);
-        newPaths.forEach(path => newSelection.add(path));
-        return newSelection;
-      });
-  
+    }
+    
+    // Update state once with all accumulated files
+    setFiles(prev => {
+      const existingPaths = new Set(prev.map(f => f.path));
+      const uniqueNewFiles = newFiles.filter(f => !existingPaths.has(f.path));
+      return [...prev, ...uniqueNewFiles];
+    });
+
+    setSelectedFilePaths(prev => {
+      const newSelection = new Set(prev);
+      newPaths.forEach(path => newSelection.add(path));
+      return newSelection;
+    });
+
   }, [autoExtractZip, extractZip]);
   
   const { getRootProps, getInputProps, isDragActive, open: openFileDialog } = useDropzone({
