@@ -125,7 +125,7 @@ export function FileUploader() {
         .finally(() => setIsFetchingBranches(false));
   };
 
-  const extractZip = useCallback(async (zipFile: File) => {
+  const extractZip = useCallback(async (zipFile: File): Promise<FileOrFolder[]> => {
       setModalStatus('processing');
       setZipExtractProgress(0);
       try {
@@ -154,64 +154,72 @@ export function FileUploader() {
   }, [toast]);
 
   const handleManualExtract = useCallback(async (zipFile: FileOrFolder) => {
-      if (!zipFile.content) return;
-      const extracted = await extractZip(zipFile.content);
+    if (!zipFile.content) return;
+    
+    // Perform extraction
+    const extracted = await extractZip(zipFile.content);
 
-      if (extracted.length > 0) {
-          setFiles(prev => {
-              // Remove the original zip file and add the extracted contents
-              const otherFiles = prev.filter(f => f.path !== zipFile.path);
-              const existingPaths = new Set(otherFiles.map(f => f.path));
-              const newUniqueFiles = extracted.filter(f => !existingPaths.has(f.path));
-              return [...otherFiles, ...newUniqueFiles];
-          });
-          setSelectedFilePaths(prev => {
-              const newSelection = new Set(prev);
-              newSelection.delete(zipFile.path);
-              extracted.forEach(f => newSelection.add(f.path));
-              return newSelection;
-          });
-      }
+    if (extracted.length > 0) {
+      // Create a list of the new extracted file paths
+      const extractedPaths = new Set(extracted.map(f => f.path));
+
+      // Update files: remove original zip, add extracted files
+      setFiles(prev => {
+        const otherFiles = prev.filter(f => f.path !== zipFile.path);
+        const existingPaths = new Set(otherFiles.map(f => f.path));
+        const newUniqueFiles = extracted.filter(f => !existingPaths.has(f.path));
+        return [...otherFiles, ...newUniqueFiles];
+      });
+
+      // Update selection: unselect original zip, select all new files
+      setSelectedFilePaths(prev => {
+        const newSelection = new Set(prev);
+        newSelection.delete(zipFile.path);
+        extractedPaths.forEach(p => newSelection.add(p));
+        return newSelection;
+      });
+    }
   }, [extractZip]);
   
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
       if (acceptedFiles.length === 0) return;
-
-      const allFilesToAdd: FileOrFolder[] = [];
-      const allPathsToAdd = new Set<string>();
-
+  
+      const newFiles: FileOrFolder[] = [];
+      const newPaths = new Set<string>();
+  
       for (const file of acceptedFiles) {
-          const fileToAdd: FileOrFolder = {
-              name: file.name,
-              path: (file as any).webkitRelativePath || file.name,
-              type: 'file',
-              content: file,
-          };
-          
-          if (autoExtractZip && isZipFile(fileToAdd) && fileToAdd.content) {
-              const extracted = await extractZip(fileToAdd.content);
-              extracted.forEach(f => {
-                  allFilesToAdd.push(f);
-                  allPathsToAdd.add(f.path);
-              });
-          } else {
-              allFilesToAdd.push(fileToAdd);
-              allPathsToAdd.add(fileToAdd.path);
+        const fileToAdd: FileOrFolder = {
+          name: file.name,
+          path: (file as any).webkitRelativePath || file.name,
+          type: 'file',
+          content: file,
+        };
+  
+        if (autoExtractZip && isZipFile(file) && fileToAdd.content) {
+          const extracted = await extractZip(file);
+          for (const extractedFile of extracted) {
+            newFiles.push(extractedFile);
+            newPaths.add(extractedFile.path);
           }
+        } else {
+          newFiles.push(fileToAdd);
+          newPaths.add(fileToAdd.path);
+        }
       }
-
+  
+      // Update state once with all accumulated files
       setFiles(prev => {
-          const existingPaths = new Set(prev.map(f => f.path));
-          const uniqueNewFiles = allFilesToAdd.filter(f => !existingPaths.has(f.path));
-          return [...prev, ...uniqueNewFiles];
+        const existingPaths = new Set(prev.map(f => f.path));
+        const uniqueNewFiles = newFiles.filter(f => !existingPaths.has(f.path));
+        return [...prev, ...uniqueNewFiles];
       });
-
+  
       setSelectedFilePaths(prev => {
-          const newSelection = new Set(prev);
-          allPathsToAdd.forEach(path => newSelection.add(path));
-          return newSelection;
+        const newSelection = new Set(prev);
+        newPaths.forEach(path => newSelection.add(path));
+        return newSelection;
       });
-
+  
   }, [autoExtractZip, extractZip]);
   
   const { getRootProps, getInputProps, isDragActive, open: openFileDialog } = useDropzone({
@@ -352,10 +360,26 @@ export function FileUploader() {
           .filter((f) => f.type === 'file' && f.content)
           .map(async (file) => {
             const fileContent = file.content as (File | Blob);
-            const textContent = await fileContent.text();
+            // Check if content is binary or text
+            // A simple heuristic: check for null bytes
+            const buffer = await fileContent.arrayBuffer();
+            const uint8 = new Uint8Array(buffer);
+            let isBinary = false;
+            for (let i = 0; i < Math.min(uint8.length, 512); i++) {
+                if (uint8[i] === 0) {
+                    isBinary = true;
+                    break;
+                }
+            }
+            
+            const contentString = isBinary 
+                ? Buffer.from(buffer).toString('base64') 
+                : await fileContent.text();
+
             return {
               path: file.path,
-              content: textContent,
+              content: contentString,
+              encoding: isBinary ? 'base64' : 'utf-8',
             };
           })
       );

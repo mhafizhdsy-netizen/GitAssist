@@ -48,6 +48,7 @@ export type RepoContent = {
 type GitHubFile = {
   path: string;
   content: string;
+  encoding: 'utf-8' | 'base64';
 };
 
 export interface UploadProgress {
@@ -104,6 +105,7 @@ async function api(url: string, token: string, options: RequestInit = {}) {
         const errorBody = await response.json().catch(() => ({ message: response.statusText }));
         console.error('--- GITHUB API ERROR ---');
         console.error(`${options.method || 'GET'} ${url}: ${response.status}`);
+        console.error(errorBody);
         throw new Error(errorBody.message || `GitHub API error: ${response.status}`);
     }
   
@@ -134,7 +136,7 @@ async function isRepositoryEmpty(owner: string, repo: string, token: string): Pr
 async function initializeEmptyRepository(
     owner: string,
     repo: string,
-    files: Array<{ path: string; content: string }>,
+    files: Array<{ path: string; content: string; encoding: 'utf-8' | 'base64' }>,
     token: string,
     commitMessage: string,
     onProgress?: (progress: UploadProgress) => void
@@ -147,10 +149,9 @@ async function initializeEmptyRepository(
 
     const blobs = await Promise.all(
         files.map(async (file, index) => {
-            const base64Content = Buffer.from(file.content, 'utf-8').toString('base64');
             const blob = await api(`/repos/${owner}/${repo}/git/blobs`, token, {
                 method: 'POST',
-                body: JSON.stringify({ content: base64Content, encoding: 'base64' }),
+                body: JSON.stringify({ content: file.content, encoding: file.encoding }),
             });
             onProgress?.({ step: 'uploading', progress: 10 + Math.round(((index + 1) / files.length) * 70) });
             return { path: file.path, sha: blob.sha, mode: '100644', type: 'blob' as const };
@@ -193,7 +194,7 @@ async function initializeEmptyRepository(
 async function commitToExistingRepoOptimized(
     owner: string,
     repo: string,
-    files: Array<{ path: string; content: string }>,
+    files: Array<{ path: string; content: string; encoding: 'utf-8' | 'base64' }>,
     token: string,
     targetBranch: string,
     commitMessage: string,
@@ -217,10 +218,9 @@ async function commitToExistingRepoOptimized(
         const batch = files.slice(i, i + concurrency);
         const batchBlobs = await Promise.all(
             batch.map(async (file) => {
-                const base64Content = Buffer.from(file.content, 'utf-8').toString('base64');
                 const blob = await api(`/repos/${owner}/${repo}/git/blobs`, token, {
                     method: 'POST',
-                    body: JSON.stringify({ content: base64Content, encoding: 'base64' }),
+                    body: JSON.stringify({ content: file.content, encoding: file.encoding }),
                 });
                  filesProcessed++;
                  const overallProgress = 10 + Math.round((filesProcessed / totalFiles) * 70);
@@ -326,7 +326,7 @@ export async function commitToRepo({
 async function commitInBatches(
     owner: string,
     repo: string,
-    files: Array<{ path: string; content: string }>,
+    files: Array<{ path: string; content: string; encoding: 'utf-8' | 'base64' }>,
     token: string,
     branch: string,
     commitMessage: string,
