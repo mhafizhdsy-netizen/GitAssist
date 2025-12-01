@@ -173,6 +173,7 @@ export function FileUploader() {
         description: error.message || 'Gagal mengekstrak file ZIP. Mungkin file tersebut rusak atau formatnya tidak didukung.',
         variant: 'destructive',
       });
+      // Do not reset state if appending, to avoid clearing other files.
       if (!isAppending) resetState();
     } finally {
       setModalStatus('inactive');
@@ -188,29 +189,27 @@ export function FileUploader() {
   const onDrop = useCallback(
     (acceptedFiles: File[]) => {
       if (acceptedFiles.length === 0) return;
-
-      const isAppending = files.length > 0;
-
+  
+      const addFilesToState = (filesToAdd: FileOrFolder[]) => {
+        setFiles(prev => {
+          const existingPaths = new Set(prev.map(f => f.path));
+          const uniqueNewFiles = filesToAdd.filter(f => !existingPaths.has(f.path));
+          return [...prev, ...uniqueNewFiles];
+        });
+        setSelectedFilePaths(prev => {
+          const newSelection = new Set(prev);
+          filesToAdd.forEach(f => newSelection.add(f.path));
+          return newSelection;
+        });
+      };
+  
       const newFiles: FileOrFolder[] = acceptedFiles.map(file => ({
         name: file.name,
         path: (file as any).webkitRelativePath || file.name,
         type: 'file',
         content: file,
       }));
-
-      const addFilesToState = (filesToAdd: FileOrFolder[]) => {
-        setFiles(prev => {
-            const existingPaths = new Set(prev.map(f => f.path));
-            const uniqueNewFiles = filesToAdd.filter(f => !existingPaths.has(f.path));
-            return [...prev, ...uniqueNewFiles];
-        });
-        setSelectedFilePaths(prev => {
-            const newSelection = new Set(prev);
-            filesToAdd.forEach(f => newSelection.add(f.path));
-            return newSelection;
-        });
-      };
-
+  
       if (autoExtractZip) {
         const zips: File[] = [];
         const nonZips: FileOrFolder[] = [];
@@ -222,17 +221,17 @@ export function FileUploader() {
             nonZips.push(file);
           }
         });
-
+  
         // Add non-ZIP files immediately
         if (nonZips.length > 0) {
-            addFilesToState(nonZips);
+          addFilesToState(nonZips);
         }
-
-        // Process ZIP files
+  
+        // Process ZIP files and always append their contents
         zips.forEach(zipFile => {
-            handleZipExtraction(zipFile, isAppending || nonZips.length > 0 || zips.length > 1);
+          handleZipExtraction(zipFile, true); // Always append when auto-extracting
         });
-
+  
       } else {
         // Add all files as they are, without extraction
         addFilesToState(newFiles);
@@ -240,7 +239,7 @@ export function FileUploader() {
     },
     [files, toast, handleZipExtraction, autoExtractZip]
   );
-
+  
   const { getRootProps, getInputProps, isDragActive, open: openFileDialog } = useDropzone({
     onDrop,
     noClick: true, // We'll handle clicks manually
@@ -692,7 +691,5 @@ export function FileUploader() {
     </>
   );
 }
-
-    
 
     
