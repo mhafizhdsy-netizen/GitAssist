@@ -1,9 +1,12 @@
 'use server';
 
 import { redirect } from 'next/navigation';
+import { Buffer } from 'buffer';
 import crypto from 'crypto';
 
 export async function signOut() {
+  // This server action is now only responsible for redirection.
+  // The client will handle the actual Firebase sign-out.
   return redirect('/');
 }
 
@@ -46,7 +49,6 @@ export type RepoContent = {
 type GitHubFile = {
   path: string;
   content: string;
-  encoding: 'utf-8' | 'base64';
 };
 
 export interface UploadProgress {
@@ -66,6 +68,48 @@ type CommitParams = {
   onProgress?: (progress: UploadProgress) => void;
 };
 
+/**
+ * Generate SHA-1 hash for Git empty tree
+ * This creates the universal empty tree hash that Git uses
+ * Formula: sha1("tree 0\0")
+ */
+function generateEmptyTreeSHA(): string {
+    const header = 'tree 0\0';
+    const hash = crypto.createHash('sha1');
+    hash.update(header);
+    const sha = hash.digest('hex');
+    
+    console.log(`✓ Generated empty tree SHA: ${sha}`);
+    return sha;
+}
+
+/**
+ * Fallback: hardcoded SHA-1 empty tree hash
+ * This is the universal Git empty tree hash for SHA-1
+ */
+const FALLBACK_EMPTY_TREE_SHA = '4b825dc642cb6eb9a060e54bf8d69288fbee4904';
+
+/**
+ * Get empty tree SHA with fallback
+ */
+function getEmptyTreeSHA(): string {
+    try {
+        const dynamicSHA = generateEmptyTreeSHA();
+        
+        if (dynamicSHA === FALLBACK_EMPTY_TREE_SHA) {
+            console.log('✓ Dynamic SHA matches expected value');
+            return dynamicSHA;
+        } else {
+            console.warn(`⚠️ Dynamic SHA (${dynamicSHA}) doesn't match expected (${FALLBACK_EMPTY_TREE_SHA})`);
+            console.warn('Using fallback SHA');
+            return FALLBACK_EMPTY_TREE_SHA;
+        }
+    } catch (error) {
+        console.error('Failed to generate empty tree SHA dynamically:', error);
+        console.log('Using fallback SHA');
+        return FALLBACK_EMPTY_TREE_SHA;
+    }
+}
 
 async function api(url: string, token: string, options: RequestInit = {}) {
     const response = await fetch(`https://api.github.com${url}`, {
@@ -80,10 +124,15 @@ async function api(url: string, token: string, options: RequestInit = {}) {
 
     if (!response.ok) {
         const errorBody = await response.json().catch(() => ({ message: response.statusText }));
-        console.error('--- GITHUB API ERROR ---');
-        console.error(`${options.method || 'GET'} ${url}: ${response.status}`);
-        console.error(errorBody);
-        throw new Error(errorBody.message || `GitHub API error: ${response.status}`);
+        
+        console.error('--- GITHUB API ERROR DETAIL ---');
+        console.error(`METHOD: ${options.method || 'GET'}`);
+        console.error(`URL: https://api.github.com${url}`);
+        console.error(`STATUS: ${response.status} ${response.statusText}`);
+        console.error('BODY:', errorBody);
+        console.error('-----------------------------');
+
+        throw new Error(errorBody.message || `GitHub API error: ${response.status} ${response.statusText}`);
     }
   
     if (response.status === 204 || response.headers.get('Content-Length') === '0') {
@@ -96,7 +145,7 @@ async function api(url: string, token: string, options: RequestInit = {}) {
 async function isRepositoryEmpty(owner: string, repo: string, token: string): Promise<boolean> {
     try {
         const repoData = await api(`/repos/${owner}/${repo}`, token);
-        if (!repoData || repoData.size === 0) return true;
+        if (!repoData) return true;
 
         const branchName = repoData.default_branch || 'main';
         await api(`/repos/${owner}/${repo}/git/ref/heads/${branchName}`, token);
@@ -106,6 +155,7 @@ async function isRepositoryEmpty(owner: string, repo: string, token: string): Pr
         if (error.message && (error.message.includes('Not Found') || error.message.includes('Git Repository is empty'))) {
             return true;
         }
+        console.error("Error saat mendeteksi repositori kosong:", error);
         throw error;
     }
 }
@@ -118,30 +168,39 @@ async function initializeEmptyRepository(
     commitMessage: string,
     onProgress?: (progress: UploadProgress) => void
 ): Promise<{ success: boolean; commitUrl: string }> {
-    console.log(`Initializing empty repository ${owner}/${repo}`);
-    onProgress?.({ step: 'preparing', progress: 10 });
+    console.log(`Memulai inisialisasi repositori kosong untuk ${owner}/${repo}`);
 
     const repoInfo = await api(`/repos/${owner}/${repo}`, token);
     const branchToCreate = repoInfo.default_branch || 'main';
 
+    onProgress?.({ step: 'preparing', progress: 10 });
+    
+    // Step 1: Buat blobs untuk semua file
+    console.log(`Step 1: Creating ${files.length} blob(s)...`);
     const blobs = await Promise.all(
         files.map(async (file, index) => {
             const blob = await api(`/repos/${owner}/${repo}/git/blobs`, token, {
                 method: 'POST',
                 body: JSON.stringify({ content: file.content, encoding: file.encoding }),
             });
+            console.log(`✓ Created blob for ${file.path}: ${blob.sha}`);
             onProgress?.({ step: 'uploading', progress: 10 + Math.round(((index + 1) / files.length) * 70) });
             return { path: file.path, sha: blob.sha, mode: '100644', type: 'blob' as const };
         })
     );
-    
+
     onProgress?.({ step: 'finalizing', progress: 80 });
 
+    // Step 2: Buat tree dari blobs
+    console.log('Step 2: Creating tree from blobs...');
     const tree = await api(`/repos/${owner}/${repo}/git/trees`, token, {
         method: 'POST',
         body: JSON.stringify({ tree: blobs }),
     });
-
+    console.log(`✓ Created tree: ${tree.sha}`);
+    
+    // Step 3: Buat commit yang menunjuk ke tree
+    console.log('Step 3: Creating commit...');
     const commit = await api(`/repos/${owner}/${repo}/git/commits`, token, {
         method: 'POST',
         body: JSON.stringify({
@@ -150,9 +209,12 @@ async function initializeEmptyRepository(
             parents: [],
         }),
     });
+    console.log(`✓ Created commit: ${commit.sha}`);
     
     onProgress?.({ step: 'finalizing', progress: 90 });
 
+    // Step 4: Buat branch reference ke commit baru
+    console.log('Step 4: Creating branch reference...');
     await api(`/repos/${owner}/${repo}/git/refs`, token, {
         method: 'POST',
         body: JSON.stringify({
@@ -160,6 +222,7 @@ async function initializeEmptyRepository(
             sha: commit.sha,
         }),
     });
+    console.log(`✓ Branch ${branchToCreate} now points to new commit`);
 
     return { 
         success: true, 
@@ -344,7 +407,7 @@ export async function commitToRepo({
 
 export async function fetchUserRepos(githubToken: string, page: number = 1, perPage: number = 100): Promise<Repo[]> {
     if (!githubToken) {
-        throw new Error('GitHub token required');
+        throw new Error('Token GitHub diperlukan.');
     }
     
     const repos = await api(`/user/repos?type=owner&sort=updated&per_page=${perPage}&page=${page}`, githubToken);
@@ -371,7 +434,7 @@ export async function fetchUserRepos(githubToken: string, page: number = 1, perP
 
 export async function fetchRepoBranches(githubToken: string, owner: string, repo: string): Promise<Branch[]> {
     if (!githubToken) {
-        throw new Error('GitHub token required');
+        throw new Error('Token GitHub diperlukan.');
     }
     try {
         const branches = await api(`/repos/${owner}/${repo}/branches`, githubToken);
@@ -380,18 +443,21 @@ export async function fetchRepoBranches(githubToken: string, owner: string, repo
         if (error.message && (error.message.includes('Git Repository is empty') || error.message.includes('Not Found'))) {
             return [];
         }
+        console.error("Gagal mengambil branches:", error);
         throw error;
     }
 }
 
 export async function fetchRepoContents(githubToken: string, owner: string, repo: string, path: string = ''): Promise<RepoContent[] | string> {
     if (!githubToken) {
-        throw new Error('GitHub token required');
+        throw new Error('Token GitHub diperlukan.');
     }
     try {
       const contents = await api(`/repos/${owner}/${repo}/contents/${path}`, githubToken);
       
-      if (contents === null) return [];
+      if (contents === null) {
+          return [];
+      }
 
       if (contents?.type === 'file' && typeof contents?.content === 'string' && contents.encoding === 'base64') {
           try {
