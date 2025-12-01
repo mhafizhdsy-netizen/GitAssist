@@ -6,25 +6,7 @@ import { usePathname } from "next/navigation";
 import { Github, Instagram } from "lucide-react";
 import { FOOTER_LINKS } from "@/lib/constants";
 import { Separator } from "../ui/separator";
-
-const CustomGitIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    {...props}
-  >
-    <circle cx="6" cy="18" r="3" />
-    <circle cx="6" cy="6" r="3" />
-    <circle cx="18" cy="18" r="3" />
-    <path d="M18 9a3 3 0 0 0-3-3H9" />
-    <path d="M6 9v6" />
-  </svg>
-);
+import NewLogo from "./NewLogo";
 
 const LargeFooter = () => (
   <footer className="border-t bg-background/50 py-12 relative overflow-hidden">
@@ -32,7 +14,7 @@ const LargeFooter = () => (
       <div className="grid grid-cols-1 gap-12 md:grid-cols-12">
         <div className="md:col-span-4">
           <Link href="/" className="flex items-center gap-2 mb-4">
-            <CustomGitIcon className="h-8 w-8 text-primary" />
+            <NewLogo className="h-8 w-8 text-primary" />
             <span className="text-2xl font-bold">GitAssist</span>
           </Link>
           <p className="text-muted-foreground text-sm max-w-xs">
