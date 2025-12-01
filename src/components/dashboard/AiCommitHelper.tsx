@@ -66,7 +66,7 @@ export function AiCommitHelper() {
             </div>
             <div>
                 <CardTitle className="font-headline text-2xl">Asisten Commit AI</CardTitle>
-                <CardDescription>Buat pesan commit konvensional.</CardDescription>
+                <CardDescription>Buat pesan commit konvensional dari diff.</CardDescription>
             </div>
         </div>
       </CardHeader>
@@ -78,7 +78,7 @@ export function AiCommitHelper() {
             placeholder="Tempelkan git diff Anda di sini..."
             value={diff}
             onChange={(e) => setDiff(e.target.value)}
-            className="font-code h-48 flex-grow"
+            className="font-mono h-48 flex-grow bg-background/50"
           />
         </div>
         <div className="pt-4">
@@ -90,7 +90,7 @@ export function AiCommitHelper() {
             )}
             {commitMessage && !isLoading && (
                 <div className="p-4 bg-background/50 rounded-lg border relative group">
-                    <pre className="whitespace-pre-wrap font-code text-sm text-foreground/90">{commitMessage}</pre>
+                    <pre className="whitespace-pre-wrap font-mono text-sm text-foreground/90">{commitMessage}</pre>
                     <Button variant="ghost" size="icon" className="absolute top-2 right-2 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity" onClick={handleCopy}>
                         <Clipboard className="h-4 w-4" />
                     </Button>

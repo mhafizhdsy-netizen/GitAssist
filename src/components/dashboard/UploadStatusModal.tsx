@@ -4,44 +4,47 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { CheckCircle, Github, X, FileUp, GitCommit, Check } from 'lucide-react';
+import { CheckCircle, Github, X, FileUp, GitCommit, Check, LucideIcon, AlertCircle, Rocket } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useToast } from '@/hooks/use-toast';
 
-type ModalStatus = 'inactive' | 'processing' | 'committing' | 'done';
+export type ModalStatus = 'inactive' | 'processing' | 'committing' | 'done';
+export type OperationType = 'commit' | 'issue' | 'release';
 
-type CommitStatus = {
+export type OperationStatus = {
   step: 'inactive' | 'preparing' | 'uploading' | 'finalizing';
   progress: number;
-  currentBatch?: number;
-  totalBatches?: number;
+  text?: string;
+  Icon?: LucideIcon;
 };
 
 type UploadStatusModalProps = {
   status: ModalStatus;
-  zipExtractProgress: number;
-  commitStatus: CommitStatus;
-  commitUrl: string;
+  operationStatus: OperationStatus;
+  resultUrl: string;
   repoName: string;
   onRestart: () => void;
+  operationType: OperationType;
 };
 
-const commitStepDetails = {
-    inactive: { text: "Memulai...", icon: FileUp },
-    preparing: { text: "Mempersiapkan file...", icon: FileUp },
-    uploading: { text: "Mengunggah file ke repositori...", icon: GitCommit },
-    finalizing: { text: "Menyelesaikan commit...", icon: Check },
+const operationDetails = {
+    commit: { title: "Melakukan Commit...", successTitle: "Commit Berhasil!", successDesc: "File Anda telah berhasil diunggah dan di-commit.", buttonText: "Lihat Commit"},
+    issue: { title: "Membuat Issue...", successTitle: "Issue Dibuat!", successDesc: "Issue baru telah berhasil dibuat di repositori.", buttonText: "Lihat Issue"},
+    release: { title: "Membuat Release...", successTitle: "Release Dibuat!", successDesc: "Rilis baru telah berhasil dipublikasikan.", buttonText: "Lihat Release"},
 };
 
-export function UploadStatusModal({ status, zipExtractProgress, commitStatus, commitUrl, repoName, onRestart }: UploadStatusModalProps) {
+
+export function UploadStatusModal({ status, operationStatus, resultUrl, repoName, onRestart, operationType }: UploadStatusModalProps) {
   const isOpen = status !== 'inactive';
   const { toast } = useToast();
+  
+  const details = operationDetails[operationType];
 
   const handleDone = () => {
     onRestart();
     toast({
-        title: "Commit Berhasil!",
-        description: "File Anda telah berhasil diunggah ke repositori.",
+        title: details.successTitle,
+        description: "Operasi berhasil diselesaikan.",
         variant: "success",
     });
   }
@@ -49,50 +52,29 @@ export function UploadStatusModal({ status, zipExtractProgress, commitStatus, co
   const renderContent = () => {
     switch (status) {
       case 'processing':
+        const CurrentStepIcon = operationStatus.Icon || FileUp;
         return (
           <>
             <DialogHeader>
-              <DialogTitle className="text-center text-2xl font-headline">Mengekstrak File ZIP</DialogTitle>
+              <DialogTitle className="text-center text-2xl font-headline">{details.title}</DialogTitle>
               <DialogDescription className="text-center">
-                Harap tunggu, kami sedang memproses file Anda.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="py-8 text-center space-y-4">
-              <div className="w-full max-w-sm mx-auto pt-4">
-                <Progress value={zipExtractProgress} className="h-2" />
-                <p className="text-sm text-muted-foreground mt-2 font-medium">{Math.round(zipExtractProgress)}%</p>
-              </div>
-            </div>
-          </>
-        );
-      case 'committing':
-        const CurrentStepIcon = commitStepDetails[commitStatus.step].icon;
-        const stepText = commitStatus.totalBatches 
-            ? `${commitStepDetails[commitStatus.step].text} (Batch ${commitStatus.currentBatch}/${commitStatus.totalBatches})`
-            : commitStepDetails[commitStatus.step].text;
-
-        return (
-          <>
-            <DialogHeader>
-              <DialogTitle className="text-center text-2xl font-headline">Melakukan Commit...</DialogTitle>
-              <DialogDescription className="text-center">
-                Mengirim perubahan Anda ke <span className="font-semibold text-primary">{repoName}</span>.
+                Mengirim permintaan Anda ke <span className="font-semibold text-primary">{repoName}</span>.
               </DialogDescription>
             </DialogHeader>
             <div className="py-8 px-4 space-y-6">
                 <motion.div
-                    key={commitStatus.step}
+                    key={operationStatus.step}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.5 }}
                     className="flex flex-col items-center justify-center text-center"
                 >
                     <CurrentStepIcon className="h-10 w-10 text-primary mb-3" />
-                    <p className="font-medium text-foreground">{stepText}</p>
+                    <p className="font-medium text-foreground">{operationStatus.text || "Mempersiapkan..."}</p>
                 </motion.div>
                 <div className="w-full max-w-sm mx-auto">
-                    <Progress value={commitStatus.progress} className="h-2 transition-all duration-300 ease-linear" />
-                    <p className="text-sm text-muted-foreground mt-2 text-center font-medium">{Math.round(commitStatus.progress)}%</p>
+                    <Progress value={operationStatus.progress} className="h-2 transition-all duration-300 ease-linear" />
+                    <p className="text-sm text-muted-foreground mt-2 text-center font-medium">{Math.round(operationStatus.progress)}%</p>
                 </div>
             </div>
           </>
@@ -118,18 +100,18 @@ export function UploadStatusModal({ status, zipExtractProgress, commitStatus, co
                 >
                     <CheckCircle className="h-10 w-10 text-green-500" />
                 </motion.div>
-              <DialogTitle className="text-center text-2xl font-headline">Commit Berhasil!</DialogTitle>
+              <DialogTitle className="text-center text-2xl font-headline">{details.successTitle}</DialogTitle>
               <DialogDescription className="text-center max-w-sm mx-auto">
-                File Anda telah berhasil diunggah dan di-commit ke repositori.
+                {details.successDesc}
               </DialogDescription>
             </DialogHeader>
             <div className="pt-6 pb-2 flex flex-col sm:flex-row gap-3 justify-center">
                 <Button onClick={handleDone} size="lg" variant="outline">
-                    Unggah Lagi
+                    Selesai
                 </Button>
                 <Button size="lg" asChild>
-                    <a href={commitUrl} target="_blank" rel="noopener noreferrer">
-                    Lihat Commit <Github className="ml-2 h-4 w-4" />
+                    <a href={resultUrl} target="_blank" rel="noopener noreferrer">
+                    {details.buttonText} <Github className="ml-2 h-4 w-4" />
                     </a>
                 </Button>
             </div>
