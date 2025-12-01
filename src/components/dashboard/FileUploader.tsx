@@ -23,17 +23,6 @@ import { Label } from '../ui/label';
 import { Switch } from '../ui/switch';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 
-<<<<<<< HEAD
-// Polyfill Buffer dengan cara yang lebih andal untuk browser
-if (typeof window !== 'undefined') {
-  // Pastikan Buffer ada dan merupakan constructor yang benar
-  if (typeof (window as any).Buffer === 'undefined') {
-    (window as any).Buffer = require('buffer').Buffer;
-  }
-}
-
-=======
->>>>>>> 594ede4 (terdapat error seperti ini coba perbaiki)
 type FileOrFolder = {
   name: string;
   path: string;
@@ -136,12 +125,6 @@ export function FileUploader() {
         .finally(() => setIsFetchingBranches(false));
   };
   
-<<<<<<< HEAD
-// --- VERSI AKHIR DAN PALING KUAT DARI FUNGSI extractZip ---
-=======
-  // --- Fungsi extractZip yang menggunakan logika dari blueprint.txt ---
->>>>>>> 594ede4 (terdapat error seperti ini coba perbaiki)
-
 const extractZip = useCallback(async (zipFile: File): Promise<FileOrFolder[]> => {
     setModalStatus('processing');
     setZipExtractProgress(0);
@@ -150,14 +133,8 @@ const extractZip = useCallback(async (zipFile: File): Promise<FileOrFolder[]> =>
         const zip = await JSZip.loadAsync(zipFile);
         const extractedFiles: FileOrFolder[] = [];
         
-        // --- LANGKAH DEBUGGING: Lihat struktur yang ditemukan JSZip ---
-        // Buka konsol browser Anda (F12) dan lihat tab "Console".
-        // Ini akan menampilkan semua entri yang ditemukan di dalam file ZIP Anda.
         console.log("Struktur file yang ditemukan JSZip untuk", zipFile.name, ":", zip.files);
 
-        // --- PERUBAHAN KRUSIAL 1: Filter file yang lebih andal ---
-        // Kita tidak lagi menggunakan `entry.dir`. Sebagai gantinya, kita secara eksplisit
-        // mencari entri yang TIDAK BERAKHIR dengan '/', yang merupakan standar untuk direktori.
         const fileEntries = Object.values(zip.files).filter(entry => !entry.name.endsWith('/'));
         const totalFiles = fileEntries.length;
 
@@ -170,7 +147,6 @@ const extractZip = useCallback(async (zipFile: File): Promise<FileOrFolder[]> =>
         let processedFiles = 0;
 
         for (const zipEntry of fileEntries) {
-            // Lewati file metadata sistem yang tidak perlu
             if (zipEntry.name.startsWith('__MACOSX/') || zipEntry.name.endsWith('.DS_Store')) {
                 processedFiles++;
                 setZipExtractProgress((processedFiles / totalFiles) * 100);
@@ -178,9 +154,6 @@ const extractZip = useCallback(async (zipFile: File): Promise<FileOrFolder[]> =>
             }
 
             try {
-                // --- PERUBAHAN KRUSIAL 2: Metode ekstraksi data yang lebih kuat ---
-                // Kita mengambil data sebagai Uint8Array (array byte mentah), yang lebih andal,
-                // lalu kita membuat Blob secara manual. Ini menghindari potensi masalah di `async('blob')`.
                 const uint8Array = await zipEntry.async('uint8array');
                 const blob = new Blob([uint8Array]);
                 
@@ -198,9 +171,7 @@ const extractZip = useCallback(async (zipFile: File): Promise<FileOrFolder[]> =>
 
             } catch (fileError) {
                 console.error(`Gagal mengekstrak file ${zipEntry.name}:`, fileError);
-                // Lanjutkan ke file berikutnya jika ada yang gagal
             } finally {
-                // Selalu update progress agar progress bar selesai
                 processedFiles++;
                 setZipExtractProgress((processedFiles / totalFiles) * 100);
             }
@@ -450,30 +421,11 @@ const extractZip = useCallback(async (zipFile: File): Promise<FileOrFolder[]> =>
                 }
             }
             
-<<<<<<< HEAD
             const contentString = isBinary 
                 ? btoa(String.fromCharCode(...new Uint8Array(buffer)))
                 : await fileContent.text();
-=======
-            const reader = new FileReader();
-            const readPromise = new Promise<string>((resolve, reject) => {
-              reader.onload = () => resolve(reader.result as string);
-              reader.onerror = reject;
-            });
-
-            let contentString: string;
-            let encoding: 'base64' | 'utf-8';
-
-            if (isBinary) {
-                reader.readAsDataURL(fileContent);
-                contentString = (await readPromise).split(',')[1];
-                encoding = 'base64';
-            } else {
-                reader.readAsText(fileContent);
-                contentString = await readPromise;
-                encoding = 'utf-8';
-            }
->>>>>>> 594ede4 (terdapat error seperti ini coba perbaiki)
+            
+            const encoding = isBinary ? 'base64' : 'utf-8';
 
             return {
               path: file.path,
