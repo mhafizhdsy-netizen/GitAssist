@@ -4,7 +4,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import JSZip from 'jszip';
-import { UploadCloud, File, Github, Sparkles, Folder, PlusCircle, Trash2, Loader2, ArrowRight, GitBranch, X, FileArchive, Settings, PackageOpen } from 'lucide-react';
+import { UploadCloud, File as FileIcon, Github, Sparkles, Folder, PlusCircle, Trash2, Loader2, ArrowRight, GitBranch, X, FileArchive, Settings, PackageOpen } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -135,9 +135,11 @@ const extractZip = useCallback(async (zipFile: File): Promise<FileOrFolder[]> =>
         const zip = await JSZip.loadAsync(zipFile);
         const extractedFiles: FileOrFolder[] = [];
         
+        // Filter: ambil semua file (bukan directory)
         const allEntries = Object.values(zip.files);
         console.log('📦 Total entries di ZIP:', allEntries.length);
         
+        // Filter hanya file (bukan folder) dan skip __MACOSX
         const validEntries = allEntries.filter(entry => {
             const isFile = !entry.dir;
             const isMacOSJunk = entry.name.startsWith('__MACOSX/') || entry.name.includes('.DS_Store');
@@ -162,31 +164,32 @@ const extractZip = useCallback(async (zipFile: File): Promise<FileOrFolder[]> =>
         let successCount = 0;
         let failCount = 0;
 
+        // Proses setiap file
         for (const zipEntry of validEntries) {
             try {
                 console.log(`📄 Mengekstrak: ${zipEntry.name}`);
                 
-                // PERBAIKAN: Gunakan blob langsung, JANGAN convert ke File!
-                const arrayBuffer = await zipEntry.async('arraybuffer');
-                const blob = new Blob([arrayBuffer]);
+                // Dapatkan konten sebagai Uint8Array (lebih reliable dari blob)
+                const uint8Array = await zipEntry.async('uint8array');
                 
-                // Ambil nama file dari path
+                // Buat Blob dari Uint8Array
+                const blob = new Blob([uint8Array]);
+                
+                // Ambil nama file terakhir dari path
                 const fullPath = zipEntry.name;
                 const fileName = fullPath.split('/').pop() || fullPath;
                 
-                // KUNCI: Gunakan Blob langsung, BUKAN File constructor!
-                // Kita akan wrap blob dengan metadata tapi tetap sebagai Blob
-                const fileBlob = Object.assign(blob, {
-                    name: fileName,
-                    lastModified: Date.now(),
-                    webkitRelativePath: ''
-                }) as File;
+                // Buat File object
+                const extractedFile = new File([blob], fileName, { 
+                    type: blob.type || 'application/octet-stream'
+                });
                 
+                // Tambahkan ke array
                 extractedFiles.push({ 
-                    name: fileName, 
-                    path: fullPath,
+                    name: extractedFile.name, 
+                    path: fullPath, // Simpan path lengkap
                     type: 'file', 
-                    content: fileBlob
+                    content: extractedFile 
                 });
                 
                 successCount++;
@@ -208,6 +211,7 @@ const extractZip = useCallback(async (zipFile: File): Promise<FileOrFolder[]> =>
         console.log(`   ❌ Gagal: ${failCount}`);
         console.log(`   📦 Total file: ${extractedFiles.length}\n`);
         
+        // Validasi hasil
         if (extractedFiles.length === 0) {
             throw new Error(
                 `Gagal mengekstrak file dari ${zipFile.name}. ` +
@@ -216,6 +220,7 @@ const extractZip = useCallback(async (zipFile: File): Promise<FileOrFolder[]> =>
             );
         }
         
+        // Success toast
         toast({ 
             title: 'Ekstraksi Berhasil', 
             description: `${extractedFiles.length} file berhasil diekstrak dari ${zipFile.name}` +
@@ -262,8 +267,8 @@ const handleManualExtract = useCallback(async (zipFile: FileOrFolder) => {
         return;
     }
     
-    if (!(zipFile.content instanceof File) && !(zipFile.content instanceof Blob)) {
-        console.error('❌ Content bukan File atau Blob object');
+    if (!(zipFile.content instanceof File)) {
+        console.error('❌ Content bukan File object');
         toast({
             title: 'Error',
             description: 'Tipe file tidak valid untuk ekstraksi.',
@@ -283,7 +288,7 @@ const handleManualExtract = useCallback(async (zipFile: FileOrFolder) => {
     }
 
     console.log('✅ Validasi passed, memulai ekstraksi...');
-    const extracted = await extractZip(zipFile.content as File);
+    const extracted = await extractZip(zipFile.content);
 
     if (extracted.length > 0) {
         console.log(`✅ Menambahkan ${extracted.length} file ke daftar`);
@@ -640,7 +645,7 @@ const handleManualExtract = useCallback(async (zipFile: FileOrFolder) => {
                     checked={selectedFilePaths.has(file.path)}
                     onCheckedChange={(checked) => handleFileSelectionChange(file.path, checked)}
                     />
-                    { isZipFile(file) ? <FileArchive className="mr-2 h-4 w-4 flex-shrink-0 text-yellow-400" /> : <File className="mr-2 h-4 w-4 flex-shrink-0" /> }
+                    { isZipFile(file) ? <FileArchive className="mr-2 h-4 w-4 flex-shrink-0 text-yellow-400" /> : <FileIcon className="mr-2 h-4 w-4 flex-shrink-0" /> }
                     <label htmlFor={`select-${file.path}`} className="truncate flex-grow cursor-pointer">{file.path}</label>
                     { isZipFile(file) && (
                         <Button variant="ghost" size="icon" className="h-7 w-7 ml-2" onClick={() => handleManualExtract(file)}>
@@ -844,3 +849,5 @@ const handleManualExtract = useCallback(async (zipFile: FileOrFolder) => {
     </>
   );
 }
+
+    
