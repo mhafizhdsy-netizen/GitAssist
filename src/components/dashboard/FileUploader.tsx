@@ -34,7 +34,6 @@ type CommitStatus = UploadProgress & { step: 'preparing' | 'uploading' | 'finali
 
 type ModalStatus = 'inactive' | 'processing' | 'committing' | 'done';
 
-// Perbaikan fungsi deteksi ZIP
 const isZipFile = (file: FileOrFolder | File) => {
     const fileName = file.name.toLowerCase();
     return fileName.endsWith('.zip') || 
@@ -257,7 +256,9 @@ const handleManualExtract = useCallback(async (zipFileToExtract: FileOrFolder) =
       });
       return;
     }
+
     const extracted = await extractZip(zipFileToExtract.content as File);
+
     if (extracted.length > 0) {
       setFiles((prev) => [
         ...prev.filter((f) => f.path !== zipFileToExtract.path),
@@ -272,14 +273,12 @@ const handleManualExtract = useCallback(async (zipFileToExtract: FileOrFolder) =
     }
   }, [extractZip, toast]);
   
-  // Perbaikan fungsi onDrop
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     if (acceptedFiles.length === 0) return;
 
     let newFiles: FileOrFolder[] = [];
     let newPaths = new Set<string>();
     
-    // Gunakan loop `for...of` untuk menunggu setiap ekstraksi selesai
     for (const file of acceptedFiles) {
         if (autoExtractZip && isZipFile(file)) {
             const extracted = await extractZip(file);
@@ -297,7 +296,6 @@ const handleManualExtract = useCallback(async (zipFileToExtract: FileOrFolder) =
         }
     }
     
-    // Update state sekali setelah semua file diproses
     setFiles(prev => {
       const existingPaths = new Set(prev.map(f => f.path));
       const uniqueNewFiles = newFiles.filter(f => !existingPaths.has(f.path));
@@ -788,5 +786,3 @@ const handleManualExtract = useCallback(async (zipFileToExtract: FileOrFolder) =
     </>
   );
 }
-
-    
