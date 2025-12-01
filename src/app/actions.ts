@@ -2,7 +2,6 @@
 'use server';
 
 import { redirect } from 'next/navigation';
-import { Buffer } from 'buffer';
 import crypto from 'crypto';
 
 export async function signOut() {
@@ -418,7 +417,19 @@ export async function fetchRepoContents(githubToken: string, owner: string, repo
       if (contents === null) return [];
 
       if (contents?.type === 'file' && typeof contents?.content === 'string' && contents.encoding === 'base64') {
-          return Buffer.from(contents.content, 'base64').toString('utf-8');
+          const buffer = Buffer.from(contents.content, 'base64');
+          // Simple check for binary content (e.g. looking for null bytes)
+          let isBinary = false;
+          for (let i = 0; i < Math.min(buffer.length, 512); i++) {
+              if (buffer[i] === 0) {
+                  isBinary = true;
+                  break;
+              }
+          }
+          if (isBinary) {
+              return contents.content; // Return base64 for images/binary
+          }
+          return buffer.toString('utf-8');
       }
 
       if (!Array.isArray(contents)) return [];

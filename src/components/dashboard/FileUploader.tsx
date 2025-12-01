@@ -23,6 +23,7 @@ import { Label } from '../ui/label';
 import { Switch } from '../ui/switch';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 
+<<<<<<< HEAD
 // Polyfill Buffer dengan cara yang lebih andal untuk browser
 if (typeof window !== 'undefined') {
   // Pastikan Buffer ada dan merupakan constructor yang benar
@@ -31,6 +32,8 @@ if (typeof window !== 'undefined') {
   }
 }
 
+=======
+>>>>>>> 594ede4 (terdapat error seperti ini coba perbaiki)
 type FileOrFolder = {
   name: string;
   path: string;
@@ -133,7 +136,11 @@ export function FileUploader() {
         .finally(() => setIsFetchingBranches(false));
   };
   
+<<<<<<< HEAD
 // --- VERSI AKHIR DAN PALING KUAT DARI FUNGSI extractZip ---
+=======
+  // --- Fungsi extractZip yang menggunakan logika dari blueprint.txt ---
+>>>>>>> 594ede4 (terdapat error seperti ini coba perbaiki)
 
 const extractZip = useCallback(async (zipFile: File): Promise<FileOrFolder[]> => {
     setModalStatus('processing');
@@ -443,14 +450,35 @@ const extractZip = useCallback(async (zipFile: File): Promise<FileOrFolder[]> =>
                 }
             }
             
+<<<<<<< HEAD
             const contentString = isBinary 
                 ? btoa(String.fromCharCode(...new Uint8Array(buffer)))
                 : await fileContent.text();
+=======
+            const reader = new FileReader();
+            const readPromise = new Promise<string>((resolve, reject) => {
+              reader.onload = () => resolve(reader.result as string);
+              reader.onerror = reject;
+            });
+
+            let contentString: string;
+            let encoding: 'base64' | 'utf-8';
+
+            if (isBinary) {
+                reader.readAsDataURL(fileContent);
+                contentString = (await readPromise).split(',')[1];
+                encoding = 'base64';
+            } else {
+                reader.readAsText(fileContent);
+                contentString = await readPromise;
+                encoding = 'utf-8';
+            }
+>>>>>>> 594ede4 (terdapat error seperti ini coba perbaiki)
 
             return {
               path: file.path,
               content: contentString,
-              encoding: isBinary ? 'base64' : 'utf-8',
+              encoding: encoding,
             };
           })
       );
