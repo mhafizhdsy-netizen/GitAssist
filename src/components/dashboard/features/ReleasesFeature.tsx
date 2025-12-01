@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Github, Rocket, Loader2, Sparkles, GitBranch, UploadCloud, Paperclip, X, PlusCircle } from 'lucide-react';
+import { Github, Rocket, Loader2, Sparkles, GitBranch, UploadCloud, Paperclip, X, PlusCircle, Settings, FileArchive, PackageOpen } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { fetchUserRepos, fetchRepoBranches, createRelease, uploadReleaseAsset, type Repo, type Branch, type Release, fetchRepoReleases } from '@/app/actions';
 import { refineDescription } from '@/ai/flows/refine-description';
@@ -14,6 +14,21 @@ import { useDropzone } from 'react-dropzone';
 import { UploadStatusModal, type ModalStatus, type OperationStatus } from '../UploadStatusModal';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ReleasesList } from './ReleasesList';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import JSZip from 'jszip';
+
+const isZipFile = (file: File) => {
+    const fileName = file.name.toLowerCase();
+    return fileName.endsWith('.zip') || 
+           fileName.endsWith('.jar') || 
+           fileName.endsWith('.war') || 
+           fileName.endsWith('.ear') || 
+           file.type === 'application/zip' || 
+           file.type === 'application/x-zip-compressed' ||
+           file.type === 'application/x-zip';
+}
 
 export function ReleasesFeature() {
   const [repos, setRepos] = useState<Repo[]>([]);
@@ -32,6 +47,7 @@ export function ReleasesFeature() {
   const [isFetchingReleases, setIsFetchingReleases] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [isRefining, setIsRefining] = useState(false);
+  const [autoExtractZip, setAutoExtractZip] = useState(true);
 
   const [githubToken, setGithubToken] = useState<string | null>(null);
   const { toast } = useToast();
@@ -103,11 +119,61 @@ export function ReleasesFeature() {
     }
   };
   
-  const onDrop = useCallback((acceptedFiles: File[]) => {
-    if (acceptedFiles.length > 0) {
-        setAttachments(prev => [...prev, ...acceptedFiles]);
+  const extractZip = useCallback(async (zipFile: File): Promise<File[]> => {
+    setModalStatus('processing');
+    setOperationStatus({
+        step: 'preparing',
+        progress: 0,
+        text: `Mengekstrak ${zipFile.name}...`,
+        Icon: FileArchive,
+    });
+
+    try {
+        const zip = await JSZip.loadAsync(zipFile);
+        const extractedFiles: File[] = [];
+        const validEntries = Object.values(zip.files).filter(entry => !entry.dir && !entry.name.startsWith('__MACOSX/'));
+        
+        if (validEntries.length === 0) {
+            toast({ title: 'ZIP Kosong', description: 'Tidak ada file yang valid ditemukan dalam arsip ZIP.', variant: 'destructive' });
+            return [];
+        }
+
+        let processedFiles = 0;
+        for (const zipEntry of validEntries) {
+            const blob = await zipEntry.async('blob');
+            // Create a new File object from blob to have proper type for attachments
+            const file = new File([blob], zipEntry.name, { type: blob.type });
+            extractedFiles.push(file);
+            processedFiles++;
+            const progress = (processedFiles / validEntries.length) * 100;
+            setOperationStatus(prev => ({ ...prev, progress, text: `Mengekstrak: ${zipEntry.name}` }));
+        }
+
+        toast({ title: 'Ekstraksi Berhasil', description: `${extractedFiles.length} file berhasil diekstrak.` });
+        return extractedFiles;
+    } catch (error: any) {
+        console.error("Kesalahan Ekstraksi ZIP:", error);
+        toast({ title: 'Kesalahan Ekstraksi', description: `Gagal memproses ${zipFile.name}: ${error.message}`, variant: 'destructive' });
+        return [];
+    } finally {
+        setModalStatus('inactive');
     }
-  }, []);
+}, [toast]);
+
+  const onDrop = useCallback(async (acceptedFiles: File[]) => {
+    if (acceptedFiles.length === 0) return;
+
+    let newAttachments: File[] = [];
+    for (const file of acceptedFiles) {
+        if (autoExtractZip && isZipFile(file)) {
+            const extracted = await extractZip(file);
+            newAttachments.push(...extracted);
+        } else {
+            newAttachments.push(file);
+        }
+    }
+    setAttachments(prev => [...prev, ...newAttachments]);
+  }, [autoExtractZip, extractZip]);
 
   const { getRootProps, getInputProps, isDragActive, open: openFileDialog } = useDropzone({
     onDrop,
@@ -198,11 +264,39 @@ export function ReleasesFeature() {
         >
         <Card className="glass-card">
             <CardHeader>
-            <CardTitle className="font-headline text-2xl flex items-center gap-3">
-                <Rocket className="text-primary" />
-                Buat Rilis Baru
-            </CardTitle>
-            <CardDescription>Publikasikan versi baru dari perangkat lunak Anda.</CardDescription>
+                <div className="flex justify-between items-start">
+                    <div>
+                        <CardTitle className="font-headline text-2xl flex items-center gap-3">
+                            <Rocket className="text-primary" />
+                            Buat Rilis Baru
+                        </CardTitle>
+                        <CardDescription>Publikasikan versi baru dari perangkat lunak Anda.</CardDescription>
+                    </div>
+                    <Popover>
+                        <PopoverTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                                <Settings className="h-5 w-5" />
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-64" align="end">
+                            <div className="space-y-4">
+                                <div className="flex items-center justify-between">
+                                    <Label htmlFor="auto-extract-zip-release" className="flex flex-col space-y-1">
+                                        <span>Ekstrak ZIP Otomatis</span>
+                                        <span className="font-normal leading-snug text-muted-foreground text-xs">
+                                            Ekstrak file .zip secara otomatis saat diunggah.
+                                        </span>
+                                    </Label>
+                                    <Switch
+                                        id="auto-extract-zip-release"
+                                        checked={autoExtractZip}
+                                        onCheckedChange={setAutoExtractZip}
+                                    />
+                                </div>
+                            </div>
+                        </PopoverContent>
+                    </Popover>
+                </div>
             </CardHeader>
             <CardContent className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -278,7 +372,7 @@ export function ReleasesFeature() {
                         {attachments.map((file, index) => (
                             <div key={index} className="flex items-center justify-between p-2 rounded-lg border bg-background/50 text-sm">
                                 <div className="flex items-center gap-2 truncate">
-                                    <Paperclip className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                                    {isZipFile(file) ? <FileArchive className="h-4 w-4 text-yellow-400 flex-shrink-0" /> : <Paperclip className="h-4 w-4 text-muted-foreground flex-shrink-0" />}
                                     <p className="truncate">{file.name}</p>
                                 </div>
                                 <Button variant="ghost" size="icon" className="h-7 w-7 flex-shrink-0" onClick={(e) => {e.stopPropagation(); removeAttachment(file);}}>
