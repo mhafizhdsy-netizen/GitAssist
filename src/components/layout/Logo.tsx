@@ -1,5 +1,5 @@
 
-const NewLogo = (props: React.SVGProps<SVGSVGElement>) => (
+const Logo = (props: React.SVGProps<SVGSVGElement>) => (
   <svg
     version="1.0"
     xmlns="http://www.w3.org/2000/svg"
@@ -20,4 +20,4 @@ const NewLogo = (props: React.SVGProps<SVGSVGElement>) => (
     </g>
   </svg>
 );
-export default NewLogo;
+export default Logo;

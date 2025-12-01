@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { Github, Instagram } from "lucide-react";
 import { FOOTER_LINKS } from "@/lib/constants";
 import { Separator } from "../ui/separator";
-import NewLogo from "./NewLogo";
+import Logo from "./Logo";
 
 const LargeFooter = () => (
   <footer className="border-t bg-background/50 py-12 relative overflow-hidden">
@@ -14,7 +14,7 @@ const LargeFooter = () => (
       <div className="grid grid-cols-1 gap-12 md:grid-cols-12">
         <div className="md:col-span-4">
           <Link href="/" className="flex items-center gap-2 mb-4">
-            <NewLogo className="h-12 w-12 text-primary" />
+            <Logo className="h-12 w-12 text-primary" />
             <span className="text-2xl font-bold">GitAssist</span>
           </Link>
           <p className="text-muted-foreground text-sm max-w-xs">
