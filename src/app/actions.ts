@@ -1,4 +1,3 @@
-
 'use server';
 
 import { redirect } from 'next/navigation';
@@ -67,27 +66,6 @@ type CommitParams = {
   onProgress?: (progress: UploadProgress) => void;
 };
 
-
-function generateEmptyTreeSHA(): string {
-    const header = 'tree 0\0';
-    const hash = crypto.createHash('sha1');
-    hash.update(header);
-    return hash.digest('hex');
-}
-
-const FALLBACK_EMPTY_TREE_SHA = '4b825dc642cb6eb9a060e54bf8d69288fbee4904';
-
-function getEmptyTreeSHA(): string {
-    try {
-        const dynamicSHA = generateEmptyTreeSHA();
-        if (dynamicSHA === FALLBACK_EMPTY_TREE_SHA) {
-            return dynamicSHA;
-        }
-        return FALLBACK_EMPTY_TREE_SHA;
-    } catch (error) {
-        return FALLBACK_EMPTY_TREE_SHA;
-    }
-}
 
 async function api(url: string, token: string, options: RequestInit = {}) {
     const response = await fetch(`https://api.github.com${url}`, {
@@ -416,19 +394,24 @@ export async function fetchRepoContents(githubToken: string, owner: string, repo
       if (contents === null) return [];
 
       if (contents?.type === 'file' && typeof contents?.content === 'string' && contents.encoding === 'base64') {
-          const buffer = Buffer.from(contents.content, 'base64');
-          // Simple check for binary content (e.g. looking for null bytes)
-          let isBinary = false;
-          for (let i = 0; i < Math.min(buffer.length, 512); i++) {
-              if (buffer[i] === 0) {
-                  isBinary = true;
-                  break;
-              }
+          try {
+            const buffer = Buffer.from(contents.content, 'base64');
+            // Simple check for binary content (e.g. looking for null bytes)
+            let isBinary = false;
+            for (let i = 0; i < Math.min(buffer.length, 512); i++) {
+                if (buffer[i] === 0) {
+                    isBinary = true;
+                    break;
+                }
+            }
+            if (isBinary) {
+                return contents.content; // Return base64 for images/binary
+            }
+            return buffer.toString('utf-8');
+          } catch(e) {
+            // If buffer fails, it's likely a browser environment without polyfill, return base64
+            return contents.content;
           }
-          if (isBinary) {
-              return contents.content; // Return base64 for images/binary
-          }
-          return buffer.toString('utf-8');
       }
 
       if (!Array.isArray(contents)) return [];
