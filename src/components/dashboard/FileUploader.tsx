@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
@@ -129,16 +130,14 @@ const extractZip = useCallback(async (zipFile: File): Promise<FileOrFolder[]> =>
     setModalStatus('processing');
     setZipExtractProgress(0);
     
-   try {
+    try {
         console.log('🔄 Memulai ekstraksi ZIP:', zipFile.name);
         const zip = await JSZip.loadAsync(zipFile);
         const extractedFiles: FileOrFolder[] = [];
         
-        // Filter: ambil semua file (bukan directory)
         const allEntries = Object.values(zip.files);
         console.log('📦 Total entries di ZIP:', allEntries.length);
         
-        // Filter hanya file (bukan folder) dan skip __MACOSX
         const validEntries = allEntries.filter(entry => {
             const isFile = !entry.dir;
             const isMacOSJunk = entry.name.startsWith('__MACOSX/') || entry.name.includes('.DS_Store');
@@ -163,32 +162,31 @@ const extractZip = useCallback(async (zipFile: File): Promise<FileOrFolder[]> =>
         let successCount = 0;
         let failCount = 0;
 
-        // Proses setiap file
         for (const zipEntry of validEntries) {
             try {
                 console.log(`📄 Mengekstrak: ${zipEntry.name}`);
                 
-                // Dapatkan konten sebagai Uint8Array (lebih reliable dari blob)
-                const uint8Array = await zipEntry.async('uint8array');
+                // PERBAIKAN: Gunakan blob langsung, JANGAN convert ke File!
+                const arrayBuffer = await zipEntry.async('arraybuffer');
+                const blob = new Blob([arrayBuffer]);
                 
-                // Buat Blob dari Uint8Array
-                const blob = new Blob([uint8Array]);
-                
-                // Ambil nama file terakhir dari path
+                // Ambil nama file dari path
                 const fullPath = zipEntry.name;
                 const fileName = fullPath.split('/').pop() || fullPath;
                 
-                // Buat File object
-                const extractedFile = new File([blob], fileName, { 
-                    type: blob.type || 'application/octet-stream'
-                });
+                // KUNCI: Gunakan Blob langsung, BUKAN File constructor!
+                // Kita akan wrap blob dengan metadata tapi tetap sebagai Blob
+                const fileBlob = Object.assign(blob, {
+                    name: fileName,
+                    lastModified: Date.now(),
+                    webkitRelativePath: ''
+                }) as File;
                 
-                // Tambahkan ke array
                 extractedFiles.push({ 
-                    name: extractedFile.name, 
-                    path: fullPath, // Simpan path lengkap
+                    name: fileName, 
+                    path: fullPath,
                     type: 'file', 
-                    content: extractedFile 
+                    content: fileBlob
                 });
                 
                 successCount++;
@@ -210,7 +208,6 @@ const extractZip = useCallback(async (zipFile: File): Promise<FileOrFolder[]> =>
         console.log(`   ❌ Gagal: ${failCount}`);
         console.log(`   📦 Total file: ${extractedFiles.length}\n`);
         
-        // Validasi hasil
         if (extractedFiles.length === 0) {
             throw new Error(
                 `Gagal mengekstrak file dari ${zipFile.name}. ` +
@@ -219,7 +216,6 @@ const extractZip = useCallback(async (zipFile: File): Promise<FileOrFolder[]> =>
             );
         }
         
-        // Success toast
         toast({ 
             title: 'Ekstraksi Berhasil', 
             description: `${extractedFiles.length} file berhasil diekstrak dari ${zipFile.name}` +
@@ -266,8 +262,8 @@ const handleManualExtract = useCallback(async (zipFile: FileOrFolder) => {
         return;
     }
     
-    if (!(zipFile.content instanceof File)) {
-        console.error('❌ Content bukan File object');
+    if (!(zipFile.content instanceof File) && !(zipFile.content instanceof Blob)) {
+        console.error('❌ Content bukan File atau Blob object');
         toast({
             title: 'Error',
             description: 'Tipe file tidak valid untuk ekstraksi.',
@@ -287,7 +283,7 @@ const handleManualExtract = useCallback(async (zipFile: FileOrFolder) => {
     }
 
     console.log('✅ Validasi passed, memulai ekstraksi...');
-    const extracted = await extractZip(zipFile.content);
+    const extracted = await extractZip(zipFile.content as File);
 
     if (extracted.length > 0) {
         console.log(`✅ Menambahkan ${extracted.length} file ke daftar`);
