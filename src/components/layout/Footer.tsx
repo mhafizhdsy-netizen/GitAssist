@@ -14,7 +14,7 @@ const LargeFooter = () => (
       <div className="grid grid-cols-1 gap-12 md:grid-cols-12">
         <div className="md:col-span-4">
           <Link href="/" className="flex items-center gap-2 mb-4">
-            <NewLogo className="h-8 w-8 text-primary" />
+            <NewLogo className="h-10 w-10 text-primary" />
             <span className="text-2xl font-bold">GitAssist</span>
           </Link>
           <p className="text-muted-foreground text-sm max-w-xs">
