@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { CheckCircle, Github, X, FileUp, GitCommit, Check } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useToast } from '@/hooks/use-toast';
 
 type ModalStatus = 'inactive' | 'processing' | 'committing' | 'done';
 
@@ -34,6 +35,16 @@ const commitStepDetails = {
 
 export function UploadStatusModal({ status, zipExtractProgress, commitStatus, commitUrl, repoName, onRestart }: UploadStatusModalProps) {
   const isOpen = status !== 'inactive';
+  const { toast } = useToast();
+
+  const handleDone = () => {
+    onRestart();
+    toast({
+        title: "Commit Berhasil!",
+        description: "File Anda telah berhasil diunggah ke repositori.",
+        variant: "success",
+    });
+  }
 
   const renderContent = () => {
     switch (status) {
@@ -91,7 +102,7 @@ export function UploadStatusModal({ status, zipExtractProgress, commitStatus, co
           <>
              <DialogClose asChild>
                 <button 
-                  onClick={onRestart}
+                  onClick={handleDone}
                   className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground"
                 >
                   <X className="h-4 w-4" />
@@ -113,7 +124,7 @@ export function UploadStatusModal({ status, zipExtractProgress, commitStatus, co
               </DialogDescription>
             </DialogHeader>
             <div className="pt-6 pb-2 flex flex-col sm:flex-row gap-3 justify-center">
-                <Button onClick={onRestart} size="lg" variant="outline">
+                <Button onClick={handleDone} size="lg" variant="outline">
                     Unggah Lagi
                 </Button>
                 <Button size="lg" asChild>

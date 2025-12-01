@@ -19,8 +19,8 @@ export function AiCommitHelper() {
   const handleGenerate = async () => {
     if (!diff.trim()) {
       toast({
-        title: "Input diperlukan",
-        description: "Silakan tempelkan diff kode untuk membuat pesan commit.",
+        title: "Input Diperlukan",
+        description: "Silakan tempelkan `git diff` untuk membuat pesan commit.",
         variant: "destructive",
       });
       return;
@@ -30,6 +30,11 @@ export function AiCommitHelper() {
     try {
       const result = await generateCommitMessage({ diff });
       setCommitMessage(result.commitMessage);
+      toast({
+        title: "Pesan Commit Dibuat",
+        description: "Pesan berhasil dibuat menggunakan AI.",
+        variant: "success"
+      });
     } catch (error) {
       console.error(error);
       toast({
@@ -46,8 +51,9 @@ export function AiCommitHelper() {
     if (!commitMessage) return;
     navigator.clipboard.writeText(commitMessage);
     toast({
-      title: "Disalin!",
-      description: "Pesan commit disalin ke clipboard.",
+      title: "Pesan Disalin",
+      description: "Pesan commit telah disalin ke clipboard.",
+      variant: "success"
     });
   };
 

@@ -163,7 +163,7 @@ export function FileUploader() {
         extracted.forEach(f => newSelection.add(f.path));
         return newSelection;
       });
-      toast({ title: 'Berhasil', description: `${extracted.length} file diekstrak dan ditambahkan.` });
+      toast({ title: 'Ekstraksi Berhasil', description: `${extracted.length} file berhasil diekstrak.`, variant: 'success' });
     } catch (error: any) {
       console.error(error);
       toast({
@@ -309,8 +309,8 @@ export function FileUploader() {
     const newFiles = files.filter(f => !selectedFilePaths.has(f.path));
     setFiles(newFiles);
     toast({
-        title: "File dihapus",
-        description: `${selectedFilePaths.size} file telah dihapus.`,
+        title: "File Dihapus",
+        description: `${selectedFilePaths.size} file telah dihapus dari daftar.`,
     });
     setSelectedFilePaths(new Set());
     if (newFiles.length === 0) {
@@ -321,7 +321,7 @@ export function FileUploader() {
   const handleGenerateCommitMessage = async () => {
     const filesToConsider = files.filter(f => selectedFilePaths.has(f.path));
     if (filesToConsider.length === 0) {
-      toast({ title: 'Tidak ada file dipilih', description: 'Pilih file untuk membuat pesan commit.', variant: 'destructive' });
+      toast({ title: 'Tidak Ada File Dipilih', description: 'Pilih beberapa file untuk dibuatkan pesan commit.', variant: 'destructive' });
       return;
     }
     setIsGenerating(true);
@@ -330,6 +330,7 @@ export function FileUploader() {
       const diff = filesToConsider.map((f) => `A ${f.path}`).join('\n');
       const result = await generateCommitMessage({ diff });
       setCommitMessage(result.commitMessage);
+      toast({ title: 'Pesan Commit Dibuat', description: 'Pesan commit berhasil dibuat oleh AI.', variant: 'success' });
     } catch (error) {
       console.error(error);
       toast({ title: 'Kesalahan AI', description: 'Gagal membuat pesan commit.', variant: 'destructive' });
@@ -396,7 +397,6 @@ export function FileUploader() {
         setCommitUrl(result.commitUrl);
         setCommitStatus({ step: 'finalizing', progress: 100 });
         setModalStatus('done');
-        toast({ title: 'Berhasil!', description: 'File telah di-commit ke repositori.' });
       } else {
         throw new Error('Commit gagal karena alasan yang tidak diketahui.');
       }
@@ -685,7 +685,3 @@ export function FileUploader() {
     </>
   );
 }
-
-    
-
-    

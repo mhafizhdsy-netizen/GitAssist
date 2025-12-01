@@ -46,6 +46,7 @@ export function LoginForm() {
         toast({
           title: 'Login Berhasil',
           description: `Selamat datang kembali, ${user.displayName || user.email}!`,
+          variant: 'success',
         });
         router.push('/dashboard');
       } else {
