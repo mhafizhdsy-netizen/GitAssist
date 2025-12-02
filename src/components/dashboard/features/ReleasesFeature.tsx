@@ -43,7 +43,7 @@ export function ReleasesFeature() {
   const [releaseNotes, setReleaseNotes] = useState('');
   const [attachments, setAttachments] = useState<File[]>([]);
 
-  const [isFetchingRepos, setIsFetchingRepos] = useState(false);
+  const [isFetchingRepos, setIsFetchingRepos] = useState(true);
   const [isFetchingBranches, setIsFetchingBranches] = useState(false);
   const [isFetchingReleases, setIsFetchingReleases] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
@@ -61,18 +61,20 @@ export function ReleasesFeature() {
     const token = localStorage.getItem('github-token');
     if (token) {
         setGithubToken(token);
+    } else {
+        setIsFetchingRepos(false);
     }
   }, []);
 
   useEffect(() => {
-    if (githubToken && repos.length === 0) {
+    if (githubToken) {
       setIsFetchingRepos(true);
       fetchUserRepos(githubToken, 1, 100)
         .then(setRepos)
         .catch(err => toast({ title: "Gagal mengambil repositori", description: err.message, variant: "destructive" }))
         .finally(() => setIsFetchingRepos(false));
     }
-  }, [githubToken, toast, repos.length]);
+  }, [githubToken, toast]);
   
   const loadBranches = useCallback((repo: Repo) => {
     if (!githubToken) return;
@@ -155,20 +157,19 @@ export function ReleasesFeature() {
     if (acceptedFiles.length === 0) return;
   
     let newAttachments: File[] = [];
-    let zipProcessing = false;
     
     for (const file of acceptedFiles) {
         if (autoExtractZip && isZipFile(file)) {
-            zipProcessing = true;
-            const extracted = await extractZip(file);
-            newAttachments.push(...extracted);
+            setModalStatus('processing'); // Show processing modal for ZIP extraction
+            try {
+                const extracted = await extractZip(file);
+                newAttachments.push(...extracted);
+            } finally {
+                setModalStatus('inactive'); // Hide modal after processing
+            }
         } else {
             newAttachments.push(file);
         }
-    }
-    
-    if (zipProcessing) {
-      setModalStatus('inactive');
     }
 
     setAttachments(prev => {
@@ -417,3 +418,5 @@ export function ReleasesFeature() {
     </>
   );
 }
+
+    
