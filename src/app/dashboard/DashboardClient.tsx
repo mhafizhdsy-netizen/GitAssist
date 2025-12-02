@@ -39,20 +39,20 @@ export default function DashboardClient({ user }: DashboardClientProps) {
 
   return (
     <motion.div
-      className="container pt-24 pb-12 sm:pt-28 sm:pb-16"
+      className="container pt-28 pb-12 sm:pt-32 sm:pb-16"
       initial="hidden"
       animate="visible"
       variants={containerVariants}
     >
-      <div className="text-center mb-10">
-        <motion.h1 
-          className="text-xl md:text-2xl font-bold"
+      <div className="text-center mb-8">
+        <motion.p 
+          className="text-base font-medium"
           variants={containerVariants}
         >
           Selamat Datang, {user.displayName || user.email}
-        </motion.h1>
+        </motion.p>
         <motion.p 
-          className="text-muted-foreground mt-2 text-sm md:text-base max-w-lg mx-auto"
+          className="text-muted-foreground mt-1 text-sm max-w-lg mx-auto"
           variants={containerVariants}
         >
           Pilih fitur di bawah untuk memulai alur kerja GitHub Anda.
