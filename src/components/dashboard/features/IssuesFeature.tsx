@@ -42,14 +42,14 @@ export function IssuesFeature() {
   }, []);
 
   useEffect(() => {
-    if (githubToken) {
+    if (githubToken && repos.length === 0) {
       setIsFetchingRepos(true);
       fetchUserRepos(githubToken, 1, 100)
         .then(setRepos)
         .catch(err => toast({ title: "Gagal mengambil repositori", description: err.message, variant: "destructive" }))
         .finally(() => setIsFetchingRepos(false));
     }
-  }, [githubToken, toast]);
+  }, [githubToken, toast, repos.length]);
 
   const loadIssues = useCallback((repo: Repo) => {
     if (!githubToken) return;
@@ -70,7 +70,7 @@ export function IssuesFeature() {
   };
 
   const handleRefineDescription = async () => {
-    if (!description || description.length < 50) return;
+    if (!description || description.length < 20) return;
     setIsRefining(true);
     try {
         const result = await refineDescription({ text: description, context: 'issue' });
@@ -176,7 +176,7 @@ export function IssuesFeature() {
                     className="min-h-[150px] bg-background/50"
                 />
                 <AnimatePresence>
-                {description.length >= 50 && (
+                {description.length >= 20 && (
                     <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -212,7 +212,7 @@ export function IssuesFeature() {
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: 20 }}
-                transition={{ duration: 0.5, ease: 'easeOut' }}
+                transition={{ duration: 0.5, ease: 'easeOut', delay: 0.1 }}
              >
                 <IssuesList issues={issues} isLoading={isFetchingIssues} repoName={selectedRepo.name} />
              </motion.div>

@@ -65,14 +65,14 @@ export function ReleasesFeature() {
   }, []);
 
   useEffect(() => {
-    if (githubToken) {
+    if (githubToken && repos.length === 0) {
       setIsFetchingRepos(true);
       fetchUserRepos(githubToken, 1, 100)
         .then(setRepos)
         .catch(err => toast({ title: "Gagal mengambil repositori", description: err.message, variant: "destructive" }))
         .finally(() => setIsFetchingRepos(false));
     }
-  }, [githubToken, toast]);
+  }, [githubToken, toast, repos.length]);
   
   const loadBranches = useCallback((repo: Repo) => {
     if (!githubToken) return;
@@ -111,7 +111,7 @@ export function ReleasesFeature() {
   };
 
   const handleRefineDescription = async () => {
-    if (!releaseNotes || releaseNotes.length < 50) return;
+    if (!releaseNotes || releaseNotes.length < 20) return;
     setIsRefining(true);
     try {
         const result = await refineDescription({ text: releaseNotes, context: 'release notes' });
@@ -155,27 +155,27 @@ export function ReleasesFeature() {
     if (acceptedFiles.length === 0) return;
   
     let newAttachments: File[] = [];
+    let zipProcessing = false;
     
     for (const file of acceptedFiles) {
         if (autoExtractZip && isZipFile(file)) {
-            setModalStatus('processing');
-            setOperationStatus({
-              step: 'preparing',
-              progress: 0,
-              text: `Mengekstrak file...`,
-              Icon: FileArchive,
-            });
-            try {
-                const extracted = await extractZip(file);
-                newAttachments.push(...extracted);
-            } finally {
-                setModalStatus('inactive');
-            }
+            zipProcessing = true;
+            const extracted = await extractZip(file);
+            newAttachments.push(...extracted);
         } else {
             newAttachments.push(file);
         }
     }
-    setAttachments(prev => [...prev, ...newAttachments]);
+    
+    if (zipProcessing) {
+      setModalStatus('inactive');
+    }
+
+    setAttachments(prev => {
+        const existingNames = new Set(prev.map(f => f.name));
+        const uniqueNewFiles = newAttachments.filter(f => !existingNames.has(f.name));
+        return [...prev, ...uniqueNewFiles];
+    });
 
   }, [autoExtractZip, extractZip]);
 
@@ -308,7 +308,7 @@ export function ReleasesFeature() {
                     <label className="block text-sm font-medium">Repositori</label>
                     <Select onValueChange={handleRepoChange} disabled={isFetchingRepos || !githubToken}>
                         <SelectTrigger>
-                            <Github className="mr-2" />
+                            <Github className="mr-2 h-5 w-5 text-muted-foreground" />
                             <SelectValue placeholder={isFetchingRepos ? "Memuat..." : "Pilih repositori..."} />
                         </SelectTrigger>
                         <SelectContent>
@@ -320,7 +320,7 @@ export function ReleasesFeature() {
                     <label className="block text-sm font-medium">Branch Target</label>
                     <Select value={selectedBranch} onValueChange={setSelectedBranch} disabled={isFetchingBranches || !selectedRepo}>
                         <SelectTrigger>
-                            <GitBranch className="mr-2" />
+                            <GitBranch className="mr-2 h-5 w-5 text-muted-foreground" />
                             <SelectValue placeholder={isFetchingBranches ? "Memuat..." : "Pilih branch..."} />
                         </SelectTrigger>
                         <SelectContent>
@@ -349,7 +349,7 @@ export function ReleasesFeature() {
                     className="min-h-[200px] bg-background/50"
                 />
                 <AnimatePresence>
-                {releaseNotes.length >= 50 && (
+                {releaseNotes.length >= 20 && (
                     <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -407,7 +407,7 @@ export function ReleasesFeature() {
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: 20 }}
-                transition={{ duration: 0.5, ease: 'easeOut' }}
+                transition={{ duration: 0.5, ease: 'easeOut', delay: 0.1 }}
              >
                 <ReleasesList releases={releases} isLoading={isFetchingReleases} repoName={selectedRepo.name} />
              </motion.div>

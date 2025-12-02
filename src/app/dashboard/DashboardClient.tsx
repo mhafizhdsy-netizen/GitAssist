@@ -3,8 +3,8 @@
 
 import { type User } from "firebase/auth";
 import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { motion } from "framer-motion";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { GitCommit, AlertCircle, Rocket } from "lucide-react";
 import { CommitFeature } from "@/components/dashboard/features/CommitFeature";
 import { IssuesFeature } from "@/components/dashboard/features/IssuesFeature";
@@ -35,12 +35,6 @@ export default function DashboardClient({ user }: DashboardClientProps) {
         ease: 'easeOut'
       }
     },
-  };
-  
-  const contentVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } },
-    exit: { opacity: 0, y: -20, transition: { duration: 0.3, ease: "easeIn" } },
   };
 
   return (
@@ -84,17 +78,17 @@ export default function DashboardClient({ user }: DashboardClientProps) {
               ))}
             </TabsList>
           </motion.div>
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={activeTab}
-              variants={contentVariants}
-              initial="hidden"
-              animate="visible"
-              exit="exit"
-            >
-              {TABS.find(tab => tab.value === activeTab)?.component}
-            </motion.div>
-          </AnimatePresence>
+          
+          <TabsContent value="commit">
+              <CommitFeature />
+          </TabsContent>
+          <TabsContent value="issues">
+              <IssuesFeature />
+          </TabsContent>
+          <TabsContent value="releases">
+              <ReleasesFeature />
+          </TabsContent>
+
         </Tabs>
       </motion.div>
     </motion.div>
