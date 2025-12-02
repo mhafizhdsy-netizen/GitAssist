@@ -3,7 +3,7 @@
 
 import { type User } from "firebase/auth";
 import { useState } from "react";
-import { motion } from "framer-motion";
+import { motion }s from "framer-motion";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { GitCommit, AlertCircle, Rocket } from "lucide-react";
 import { CommitFeature } from "@/components/dashboard/features/CommitFeature";
@@ -39,20 +39,20 @@ export default function DashboardClient({ user }: DashboardClientProps) {
 
   return (
     <motion.div
-      className="container py-12 sm:py-16"
+      className="container pt-24 pb-12 sm:pt-28 sm:pb-16"
       initial="hidden"
       animate="visible"
       variants={containerVariants}
     >
-      <div className="text-center mb-8">
+      <div className="text-center mb-10">
         <motion.h1 
-          className="text-3xl md:text-4xl font-headline font-bold"
+          className="text-xl md:text-2xl font-bold"
           variants={containerVariants}
         >
           Selamat Datang, {user.displayName || user.email}
         </motion.h1>
         <motion.p 
-          className="text-muted-foreground mt-2 text-base md:text-lg"
+          className="text-muted-foreground mt-2 text-sm md:text-base max-w-lg mx-auto"
           variants={containerVariants}
         >
           Pilih fitur di bawah untuk memulai alur kerja GitHub Anda.
