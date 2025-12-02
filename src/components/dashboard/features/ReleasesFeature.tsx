@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Github, Rocket, Loader2, Sparkles, GitBranch, UploadCloud, Paperclip, X, PlusCircle, Settings, FileArchive, PackageOpen } from 'lucide-react';
+import { Github, Rocket, Loader2, Sparkles, GitBranch, Paperclip, X, PlusCircle, Settings, FileArchive } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { fetchUserRepos, fetchRepoBranches, createRelease, uploadReleaseAsset, type Repo, type Branch, type Release, fetchRepoReleases } from '@/app/actions';
 import { refineDescription } from '@/ai/flows/refine-description';
@@ -126,14 +126,6 @@ export function ReleasesFeature() {
   };
   
   const extractZip = useCallback(async (zipFile: File): Promise<File[]> => {
-    setModalStatus('processing');
-    setOperationStatus({
-        step: 'preparing',
-        progress: 0,
-        text: `Mengekstrak ${zipFile.name}...`,
-        Icon: FileArchive,
-    });
-
     try {
         const zip = await JSZip.loadAsync(zipFile);
         const extractedFiles: File[] = [];
@@ -144,15 +136,10 @@ export function ReleasesFeature() {
             return [];
         }
 
-        let processedFiles = 0;
         for (const zipEntry of validEntries) {
             const blob = await zipEntry.async('blob');
-            // Create a new File object from blob to have proper type for attachments
             const file = new File([blob], zipEntry.name, { type: blob.type });
             extractedFiles.push(file);
-            processedFiles++;
-            const progress = (processedFiles / validEntries.length) * 100;
-            setOperationStatus(prev => ({ ...prev, progress, text: `Mengekstrak: ${zipEntry.name}` }));
         }
 
         toast({ title: 'Ekstraksi Berhasil', description: `${extractedFiles.length} file berhasil diekstrak.` });
@@ -161,27 +148,38 @@ export function ReleasesFeature() {
         console.error("Kesalahan Ekstraksi ZIP:", error);
         toast({ title: 'Kesalahan Ekstraksi', description: `Gagal memproses ${zipFile.name}: ${error.message}`, variant: 'destructive' });
         return [];
-    } finally {
-        setModalStatus('inactive');
     }
-}, [toast]);
+  }, [toast]);
+
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     if (acceptedFiles.length === 0) return;
-
+  
+    setModalStatus('processing');
+    setOperationStatus({
+      step: 'preparing',
+      progress: 0,
+      text: `Mengekstrak file...`,
+      Icon: FileArchive,
+    });
+  
     let newAttachments: File[] = [];
-    for (const file of acceptedFiles) {
+    try {
+      for (const file of acceptedFiles) {
         if (autoExtractZip && isZipFile(file)) {
-            const extracted = await extractZip(file);
-            newAttachments.push(...extracted);
+          const extracted = await extractZip(file);
+          newAttachments.push(...extracted);
         } else {
-            newAttachments.push(file);
+          newAttachments.push(file);
         }
+      }
+      setAttachments(prev => [...prev, ...newAttachments]);
+    } finally {
+      setModalStatus('inactive');
     }
-    setAttachments(prev => [...prev, ...newAttachments]);
   }, [autoExtractZip, extractZip]);
 
-  const { getRootProps, getInputProps, isDragActive, open: openFileDialog } = useDropzone({
+  const { getRootProps, getInputProps, open: openFileDialog } = useDropzone({
     onDrop,
     noClick: true,
     noKeyboard: true,
@@ -219,7 +217,7 @@ export function ReleasesFeature() {
             for (let i = 0; i < totalAttachments; i++) {
                 const attachment = attachments[i];
                 const progress = 70 + (i / totalAttachments) * 20;
-                setOperationStatus({ step: 'uploading', progress, text: `Mengunggah lampiran ${i + 1}/${totalAttachments}...`, Icon: UploadCloud });
+                setOperationStatus({ step: 'uploading', progress, text: `Mengunggah lampiran ${i + 1}/${totalAttachments}...`, Icon: Paperclip });
                 
                 await uploadReleaseAsset(githubToken, release.upload_url, attachment);
             }

@@ -165,25 +165,19 @@ export function FileUploader() {
   
 const extractZip = useCallback(async (zipFile: File): Promise<FileOrFolder[]> => {
     setModalStatus('processing');
-    setZipExtractProgress(0);
-    
+
     try {
-        console.log('🔄 Memulai ekstraksi ZIP:', zipFile.name);
         const zip = await JSZip.loadAsync(zipFile);
         const extractedFiles: FileOrFolder[] = [];
         
         const allEntries = Object.values(zip.files);
-        console.log('📦 Total entries di ZIP:', allEntries.length);
         
         const validEntries = allEntries.filter(entry => {
             const isFile = !entry.dir;
             const isMacOSJunk = entry.name.startsWith('__MACOSX/') || entry.name.includes('.DS_Store');
             const isEmpty = entry.name.endsWith('/');
-            
             return isFile && !isMacOSJunk && !isEmpty;
         });
-        
-        console.log('✅ File valid yang akan diekstrak:', validEntries.length);
         
         if (validEntries.length === 0) {
             toast({ 
@@ -195,91 +189,36 @@ const extractZip = useCallback(async (zipFile: File): Promise<FileOrFolder[]> =>
         }
 
         const totalFiles = validEntries.length;
-        let processedFiles = 0;
-        let successCount = 0;
-        let failCount = 0;
-
+        let processedCount = 0;
         for (const zipEntry of validEntries) {
-            try {
-                console.log(`📄 Mengekstrak: ${zipEntry.name}`);
-                
-                // PERBAIKAN: Gunakan blob langsung, JANGAN convert ke File!
-                const arrayBuffer = await zipEntry.async('arraybuffer');
-                const blob = new Blob([arrayBuffer]);
-                
-                // Ambil nama file dari path
-                const fullPath = zipEntry.name;
-                const fileName = fullPath.split('/').pop() || fullPath;
-                
-                // KUNCI: Gunakan Blob langsung, BUKAN File constructor!
-                // Kita akan wrap blob dengan metadata tapi tetap sebagai Blob
-                const fileBlob = Object.assign(blob, {
-                    name: fileName,
-                    lastModified: Date.now(),
-                    webkitRelativePath: ''
-                }) as File;
-                
-                extractedFiles.push({ 
-                    name: fileName, 
-                    path: fullPath,
-                    type: 'file', 
-                    content: fileBlob
-                });
-                
-                successCount++;
-                console.log(`✅ Berhasil: ${fullPath} (${blob.size} bytes)`);
-                
-            } catch (fileError: any) {
-                failCount++;
-                console.error(`❌ Gagal ekstrak ${zipEntry.name}:`, fileError);
-            } finally {
-                processedFiles++;
-                const progress = (processedFiles / totalFiles) * 100;
-                setZipExtractProgress(progress);
-                console.log(`📊 Progress: ${Math.round(progress)}% (${processedFiles}/${totalFiles})`);
-            }
-        }
-        
-        console.log(`\n📊 HASIL EKSTRAKSI:`);
-        console.log(`   ✅ Berhasil: ${successCount}`);
-        console.log(`   ❌ Gagal: ${failCount}`);
-        console.log(`   📦 Total file: ${extractedFiles.length}\n`);
-        
-        if (extractedFiles.length === 0) {
-            throw new Error(
-                `Gagal mengekstrak file dari ${zipFile.name}. ` +
-                `Semua ${totalFiles} file gagal diproses. ` +
-                `Periksa console untuk detail error.`
-            );
+            const blob = await zipEntry.async('blob');
+            const fileName = zipEntry.name.split('/').pop() || zipEntry.name;
+            extractedFiles.push({ 
+                name: fileName, 
+                path: zipEntry.name,
+                type: 'file', 
+                content: blob
+            });
+            processedCount++;
+            setZipExtractProgress((processedCount / totalFiles) * 100);
         }
         
         toast({ 
             title: 'Ekstraksi Berhasil', 
-            description: `${extractedFiles.length} file berhasil diekstrak dari ${zipFile.name}` +
-                        (failCount > 0 ? ` (${failCount} file gagal)` : ''),
+            description: `${extractedFiles.length} file berhasil diekstrak dari ${zipFile.name}`,
             variant: 'default'
         });
         
         return extractedFiles;
 
     } catch (error: any) {
-        console.error('💥 ERROR EKSTRAKSI ZIP:', error);
-        
-        let errorMessage = error.message;
-        if (error.message?.includes('invalid signature')) {
-            errorMessage = 'File bukan arsip ZIP yang valid atau file rusak.';
-        } else if (error.message?.includes('encrypted')) {
-            errorMessage = 'ZIP file terenkripsi tidak didukung.';
-        }
-        
+        console.error('ERROR EKSTRAKSI ZIP:', error);
         toast({ 
             title: 'Kesalahan Ekstraksi', 
-            description: `Gagal memproses ${zipFile.name}: ${errorMessage}`, 
+            description: `Gagal memproses ${zipFile.name}: ${error.message || 'File ZIP tidak valid atau rusak.'}`, 
             variant: 'destructive' 
         });
-        
         return [];
-        
     } finally {
         setModalStatus('inactive');
         setZipExtractProgress(0);
@@ -487,25 +426,14 @@ const handleManualExtract = useCallback(async (zipFileToExtract: FileOrFolder) =
           .filter((f) => f.type === 'file' && f.content)
           .map(async (file) => {
             const fileContent = file.content as (File | Blob);
-            // Check if content is binary or text
-            // A simple heuristic: check for null bytes
-            const buffer = await fileContent.arrayBuffer();
-            const uint8 = new Uint8Array(buffer);
-            let isBinary = false;
-            for (let i = 0; i < Math.min(uint8.length, 512); i++) {
-                if (uint8[i] === 0) {
-                    isBinary = true;
-                    break;
-                }
-            }
-            
+            // This is a simplified check. A more robust check might be needed.
+            const isBinary = /[\x00-\x08\x0E-\x1F]/.test(await fileContent.text().catch(() => ''));
+
             let contentString: string;
             if (isBinary) {
-                // Handle binary files
-                const base64 = btoa(String.fromCharCode(...uint8));
-                contentString = base64;
+                const buffer = await fileContent.arrayBuffer();
+                contentString = Buffer.from(buffer).toString('base64');
             } else {
-                // Handle text files
                 contentString = await fileContent.text();
             }
 
