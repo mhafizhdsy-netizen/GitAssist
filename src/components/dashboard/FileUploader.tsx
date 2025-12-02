@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
@@ -15,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '../ui/skeleton';
 import { Checkbox } from '../ui/checkbox';
 import { cn } from '@/lib/utils';
-import { UploadStatusModal } from './UploadStatusModal';
+import { UploadStatusModal } from '../dashboard/UploadStatusModal';
 import { Alert, AlertDescription } from '../ui/alert';
 import { motion, AnimatePresence } from "framer-motion";
 import { RepoPathPickerModal } from './RepoPathPickerModal';

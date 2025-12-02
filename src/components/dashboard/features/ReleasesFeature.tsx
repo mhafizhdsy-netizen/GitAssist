@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -58,16 +59,21 @@ export function ReleasesFeature() {
 
   useEffect(() => {
     const token = localStorage.getItem('github-token');
-    setGithubToken(token);
     if (token) {
-      fetchUserRepos(token, 1, 100)
+        setGithubToken(token);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (githubToken) {
+      fetchUserRepos(githubToken, 1, 100)
         .then(setRepos)
         .catch(err => toast({ title: "Gagal mengambil repositori", description: err.message, variant: "destructive" }))
         .finally(() => setIsFetchingRepos(false));
     } else {
         setIsFetchingRepos(false);
     }
-  }, [toast]);
+  }, [githubToken, toast]);
   
   const loadBranches = useCallback((repo: Repo) => {
     if (!githubToken) return;
@@ -302,7 +308,7 @@ export function ReleasesFeature() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                     <label className="block text-sm font-medium">Repositori</label>
-                    <Select onValueChange={handleRepoChange} disabled={isFetchingRepos}>
+                    <Select onValueChange={handleRepoChange} disabled={isFetchingRepos || !githubToken}>
                         <SelectTrigger>
                             <Github className="mr-2" />
                             <SelectValue placeholder={isFetchingRepos ? "Memuat..." : "Pilih repositori..."} />
