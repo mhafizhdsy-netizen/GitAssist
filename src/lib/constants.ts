@@ -6,6 +6,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "Fitur", href: "/features" },
   { label: "Cara Kerja", href: "/how-it-works" },
   { label: "FAQ", href: "/faq" },
+  { label: "Donasi", href: "https://saweria.co/Antraxxx" },
 ];
 
 export const FEATURES: FeatureCard[] = [

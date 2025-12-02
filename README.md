@@ -9,7 +9,7 @@
 
 **GitAssist** adalah aplikasi web modern yang dirancang untuk menyederhanakan dan mempercepat alur kerja GitHub Anda. Dengan memanfaatkan kekuatan AI dari Google Gemini, GitAssist mengotomatiskan tugas-tugas yang membosankan, memungkinkan Anda untuk fokus pada hal yang paling penting: membuat kode berkualitas.
 
-### [➡️ Kunjungi Demo Langsung](https://git-assist.vercel.app/)
+### [➡️ Kunjungi Demo Langsung](https://git-assist.vercel.app/) | [❤️ Dukung Proyek Ini](https://saweria.co/Antraxxx)
 
 ---
 
