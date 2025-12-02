@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -14,7 +13,6 @@ import { refineDescription } from '@/ai/flows/refine-description';
 import { useDropzone } from 'react-dropzone';
 import { UploadStatusModal, type ModalStatus, type OperationStatus } from '../UploadStatusModal';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ReleasesList } from './ReleasesList';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -34,7 +32,6 @@ const isZipFile = (file: File) => {
 export function ReleasesFeature() {
   const [repos, setRepos] = useState<Repo[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
-  const [releases, setReleases] = useState<Release[]>([]);
   const [selectedRepo, setSelectedRepo] = useState<Repo | null>(null);
   const [selectedBranch, setSelectedBranch] = useState('');
   
@@ -45,7 +42,6 @@ export function ReleasesFeature() {
 
   const [isFetchingRepos, setIsFetchingRepos] = useState(true);
   const [isFetchingBranches, setIsFetchingBranches] = useState(false);
-  const [isFetchingReleases, setIsFetchingReleases] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [isRefining, setIsRefining] = useState(false);
   const [autoExtractZip, setAutoExtractZip] = useState(true);
@@ -91,25 +87,13 @@ export function ReleasesFeature() {
       .finally(() => setIsFetchingBranches(false));
   }, [githubToken, toast]);
 
-  const loadReleases = useCallback((repo: Repo) => {
-    if (!githubToken) return;
-    setIsFetchingReleases(true);
-    const [owner, repoName] = repo.full_name.split('/');
-    fetchRepoReleases(githubToken, owner, repoName)
-        .then(setReleases)
-        .catch(err => toast({ title: "Gagal mengambil rilis", description: err.message, variant: "destructive"}))
-        .finally(() => setIsFetchingReleases(false));
-  }, [githubToken, toast]);
-
   const handleRepoChange = (repoFullName: string) => {
     const repo = repos.find(r => r.full_name === repoFullName);
     if (!repo) return;
     setSelectedRepo(repo);
     setSelectedBranch('');
     setBranches([]);
-    setReleases([]);
     loadBranches(repo);
-    loadReleases(repo);
   };
 
   const handleRefineDescription = async () => {
@@ -229,12 +213,10 @@ export function ReleasesFeature() {
         setOperationStatus({ step: 'finalizing', progress: 100, text: 'Menyelesaikan...' });
         setModalStatus('done');
         
-        // Reset form and reload releases
         setTagName('');
         setReleaseTitle('');
         setReleaseNotes('');
         setAttachments([]);
-        loadReleases(selectedRepo);
 
     } catch (error: any) {
         toast({ title: "Gagal Membuat Rilis", description: error.message, variant: 'destructive' });
@@ -260,12 +242,12 @@ export function ReleasesFeature() {
         onRestart={resetModal}
         operationType="release"
       />
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-7xl mx-auto">
-        <motion.div
-            key="release-creator"
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.5, ease: 'easeOut' }}
+      <motion.div
+            className="max-w-3xl mx-auto"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.3 }}
         >
         <Card className="glass-card">
             <CardHeader>
@@ -400,21 +382,7 @@ export function ReleasesFeature() {
             </Button>
             </CardFooter>
         </Card>
-        </motion.div>
-        <AnimatePresence>
-        {selectedRepo && (
-             <motion.div
-                key="releases-list"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 20 }}
-                transition={{ duration: 0.5, ease: 'easeOut', delay: 0.1 }}
-             >
-                <ReleasesList releases={releases} isLoading={isFetchingReleases} repoName={selectedRepo.name} />
-             </motion.div>
-        )}
-        </AnimatePresence>
-      </div>
+      </motion.div>
     </>
   );
 }

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -9,21 +8,18 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Github, AlertCircle, Loader2, Sparkles } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { fetchUserRepos, fetchRepoIssues, createIssue, type Repo, type Issue } from '@/app/actions';
+import { fetchUserRepos, createIssue, type Repo, type Issue } from '@/app/actions';
 import { refineDescription } from '@/ai/flows/refine-description';
 import { UploadStatusModal, type ModalStatus, type OperationStatus } from '../UploadStatusModal';
-import { IssuesList } from './IssuesList';
 import { AnimatePresence, motion } from 'framer-motion';
 
 export function IssuesFeature() {
   const [repos, setRepos] = useState<Repo[]>([]);
-  const [issues, setIssues] = useState<Issue[]>([]);
   const [selectedRepo, setSelectedRepo] = useState<Repo | null>(null);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   
   const [isFetchingRepos, setIsFetchingRepos] = useState(false);
-  const [isFetchingIssues, setIsFetchingIssues] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [isRefining, setIsRefining] = useState(false);
 
@@ -51,22 +47,10 @@ export function IssuesFeature() {
     }
   }, [githubToken, toast, repos.length]);
 
-  const loadIssues = useCallback((repo: Repo) => {
-    if (!githubToken) return;
-    setIsFetchingIssues(true);
-    const [owner, repoName] = repo.full_name.split('/');
-    fetchRepoIssues(githubToken, owner, repoName)
-      .then(setIssues)
-      .catch(err => toast({ title: "Gagal mengambil issues", description: err.message, variant: "destructive" }))
-      .finally(() => setIsFetchingIssues(false));
-  }, [githubToken, toast]);
-
   const handleRepoChange = (repoFullName: string) => {
     const repo = repos.find(r => r.full_name === repoFullName);
     if (!repo) return;
     setSelectedRepo(repo);
-    setIssues([]);
-    loadIssues(repo);
   };
 
   const handleRefineDescription = async () => {
@@ -103,10 +87,8 @@ export function IssuesFeature() {
         setOperationStatus({ step: 'finalizing', progress: 100, text: 'Menyelesaikan...' });
         setModalStatus('done');
         
-        // Reset form and reload issues
         setTitle('');
         setDescription('');
-        loadIssues(selectedRepo);
 
     } catch (error: any) {
         toast({ title: "Gagal Membuat Issue", description: error.message, variant: 'destructive' });
@@ -132,12 +114,12 @@ export function IssuesFeature() {
         onRestart={resetModal}
         operationType="issue"
       />
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-7xl mx-auto">
-        <motion.div 
-            key="issue-creator"
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.5, ease: 'easeOut' }}
+       <motion.div 
+            className="max-w-3xl mx-auto"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.3 }}
         >
         <Card className="glass-card">
           <CardHeader>
@@ -203,22 +185,7 @@ export function IssuesFeature() {
             </Button>
           </CardFooter>
         </Card>
-        </motion.div>
-
-        <AnimatePresence>
-        {selectedRepo && (
-             <motion.div
-                key="issues-list"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 20 }}
-                transition={{ duration: 0.5, ease: 'easeOut', delay: 0.1 }}
-             >
-                <IssuesList issues={issues} isLoading={isFetchingIssues} repoName={selectedRepo.name} />
-             </motion.div>
-        )}
-        </AnimatePresence>
-      </div>
+      </motion.div>
     </>
   );
 }
