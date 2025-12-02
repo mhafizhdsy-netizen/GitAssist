@@ -314,6 +314,10 @@ export async function commitToRepo({ repoUrl, commitMessage, files, githubToken,
             // as this will also create the default branch.
             console.log(`Repositori kosong terdeteksi. Menginisialisasi dengan file pertama di branch '${targetBranch}'...`);
             
+            if (finalFiles.length === 0) {
+              throw new Error("Tidak ada file untuk di-commit.");
+            }
+
             const firstFile = finalFiles[0];
             const result = await api(`/repos/${owner}/${repo}/contents/${firstFile.path}`, githubToken, {
                 method: 'PUT',
@@ -329,7 +333,11 @@ export async function commitToRepo({ repoUrl, commitMessage, files, githubToken,
                 console.log("Melakukan commit file-file berikutnya...");
                 return await commitToExistingRepo(owner, repo, finalFiles.slice(1), githubToken, targetBranch, commitMessage);
             }
-            return { success: true, commitUrl: result.commit.html_url };
+
+            if (result && result.commit) {
+              return { success: true, commitUrl: result.commit.html_url };
+            }
+            throw new Error("Gagal menginisialisasi repositori.");
 
         } else {
             // For an existing repository, use the Git Data API for a single, efficient commit.
@@ -342,6 +350,11 @@ export async function commitToRepo({ repoUrl, commitMessage, files, githubToken,
         if (error.message === 'Branch not found' || error.message.includes("No commit found for the ref")) {
              console.log("Branch tidak ditemukan, mencoba inisialisasi seperti repositori kosong...");
              const targetBranch = branchName || 'main';
+             
+             if (finalFiles.length === 0) {
+              throw new Error("Tidak ada file untuk di-commit.");
+             }
+             
              const firstFile = finalFiles[0];
              const result = await api(`/repos/${owner}/${repo}/contents/${firstFile.path}`, githubToken, {
                  method: 'PUT',
@@ -354,7 +367,10 @@ export async function commitToRepo({ repoUrl, commitMessage, files, githubToken,
              if (finalFiles.length > 1) {
                  return await commitToExistingRepo(owner, repo, finalFiles.slice(1), githubToken, targetBranch, commitMessage);
              }
-             return { success: true, commitUrl: result.commit.html_url };
+             if (result && result.commit) {
+                return { success: true, commitUrl: result.commit.html_url };
+             }
+             throw new Error("Gagal menginisialisasi repositori setelah branch tidak ditemukan.");
         }
         throw new Error(error.message || 'Gagal melakukan commit file ke repositori.');
     }
