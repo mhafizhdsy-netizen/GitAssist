@@ -1,9 +1,10 @@
+
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { type Release } from '@/app/actions';
-import { Rocket, CheckCircle2, AlertTriangle, GitCommit, Download, FileArchive, FileCode } from 'lucide-react';
+import { Rocket, CheckCircle2, AlertTriangle, GitCommit, Download, FileArchive, FileCode, Tag } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -19,7 +20,8 @@ type ReleasesListProps = {
 
 export function ReleasesList({ releases, isLoading, repoName }: ReleasesListProps) {
   
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return 'beberapa waktu lalu';
     try {
         return formatDistanceToNow(new Date(dateString), { addSuffix: true, locale: id });
     } catch (e) {
@@ -79,7 +81,7 @@ export function ReleasesList({ releases, isLoading, repoName }: ReleasesListProp
                              {release.name || release.tag_name}
                            </Link>
                         </CardTitle>
-                        <CardDescription className="text-xs">
+                        <CardDescription className="text-xs mt-1">
                             <Badge variant="secondary" className="mr-2">{release.tag_name}</Badge>
                             dirilis {formatDate(release.published_at)}
                         </CardDescription>
@@ -87,12 +89,14 @@ export function ReleasesList({ releases, isLoading, repoName }: ReleasesListProp
                     <Tooltip>
                         <TooltipTrigger>
                             <Avatar className="h-8 w-8">
-                                <AvatarImage src={release.author.avatar_url} alt={release.author.login} />
-                                <AvatarFallback>{release.author.login.charAt(0)}</AvatarFallback>
+                                <AvatarImage src={release.author?.avatar_url} alt={release.author?.login || ''} />
+                                <AvatarFallback>
+                                    {release.author ? release.author.login.charAt(0) : <Tag className="h-4 w-4" />}
+                                </AvatarFallback>
                             </Avatar>
                         </TooltipTrigger>
                         <TooltipContent>
-                            <p>{release.author.login}</p>
+                            <p>{release.author?.login || `Dibuat dari tag oleh sistem`}</p>
                         </TooltipContent>
                     </Tooltip>
                 </CardHeader>
@@ -102,23 +106,23 @@ export function ReleasesList({ releases, isLoading, repoName }: ReleasesListProp
                         <div className="flex flex-wrap gap-2">
                              {release.assets.map(asset => (
                                  <Button key={asset.id} variant="outline" size="sm" asChild>
-                                     <Link href={asset.browser_download_url} target="_blank" rel="noopener noreferrer">
+                                     <a href={asset.browser_download_url} target="_blank" rel="noopener noreferrer">
                                         <Download className="mr-1.5 h-3.5 w-3.5"/> {asset.name}
-                                     </Link>
+                                     </a>
                                  </Button>
                              ))}
                              {release.zipball_url && (
                                 <Button variant="outline" size="sm" asChild>
-                                     <Link href={release.zipball_url}>
+                                     <a href={release.zipball_url}>
                                         <FileArchive className="mr-1.5 h-3.5 w-3.5"/> Source code (zip)
-                                     </Link>
+                                     </a>
                                  </Button>
                              )}
                               {release.tarball_url && (
                                 <Button variant="outline" size="sm" asChild>
-                                     <Link href={release.tarball_url}>
+                                     <a href={release.tarball_url}>
                                         <FileCode className="mr-1.5 h-3.5 w-3.5"/> Source code (tar.gz)
-                                     </Link>
+                                     </a>
                                  </Button>
                              )}
                         </div>

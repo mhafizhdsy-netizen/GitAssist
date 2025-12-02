@@ -1,3 +1,4 @@
+
 'use server';
 
 import { redirect } from 'next/navigation';
@@ -54,14 +55,14 @@ export type Issue = {
 export type Release = {
     id: number;
     tag_name: string;
-    name: string;
+    name: string | null;
     body: string | null;
     html_url: string;
-    published_at: string;
+    published_at: string | null;
     author: {
         login: string;
         avatar_url: string;
-    };
+    } | null;
     assets: Array<{
         id: number;
         name: string;
