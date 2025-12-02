@@ -13,20 +13,20 @@ export default function DashboardPage() {
     return (
       <div className="container py-12 sm:py-16">
         <div className="text-center mb-12">
-          <Skeleton className="h-12 w-3/5 mx-auto" />
-          <Skeleton className="h-7 w-4/5 mx-auto mt-4" />
+          <Skeleton className="h-12 w-3/5 mx-auto rounded-lg" />
+          <Skeleton className="h-7 w-4/5 mx-auto mt-4 rounded-lg" />
         </div>
 
         <div className="flex justify-center mb-8">
-            <Skeleton className="h-14 w-full max-w-sm rounded-xl" />
+            <Skeleton className="h-[58px] w-full max-w-sm rounded-xl" />
         </div>
         
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 max-w-7xl mx-auto">
             <div className="lg:col-span-3">
-                <Skeleton className="h-[700px] w-full" />
+                <Skeleton className="h-[700px] w-full rounded-2xl" />
             </div>
             <div className="lg:col-span-2">
-                <Skeleton className="h-[500px] w-full" />
+                <Skeleton className="h-[500px] w-full rounded-2xl" />
             </div>
         </div>
       </div>
