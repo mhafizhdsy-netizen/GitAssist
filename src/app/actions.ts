@@ -32,6 +32,7 @@ export type Repo = {
     };
     default_branch: string;
     topics: string[];
+    size: number;
 };
 
 export type Branch = {
@@ -154,7 +155,7 @@ export async function fetchUserRepos(githubToken: string, page: number = 1, perP
     return repos.map((repo: any) => ({
         id: repo.id, name: repo.name, full_name: repo.full_name, html_url: repo.html_url, description: repo.description, language: repo.language,
         stargazers_count: repo.stargazers_count, forks_count: repo.forks_count, updated_at: repo.updated_at,
-        owner: { login: repo.owner.login }, default_branch: repo.default_branch, topics: repo.topics || [],
+        owner: { login: repo.owner.login }, default_branch: repo.default_branch, topics: repo.topics || [], size: repo.size
     }));
 }
 
@@ -191,8 +192,18 @@ export async function fetchRepoContents(githubToken: string, owner: string, repo
       if (contents === null) return [];
 
       if (contents?.type === 'file' && typeof contents?.content === 'string' && contents.encoding === 'base64') {
-          // Use Buffer on server, but it's better to avoid Buffer on client/edge
-          return Buffer.from(contents.content, 'base64').toString('utf-8');
+          // This should run on server side where Buffer is available.
+          if (typeof Buffer !== 'undefined') {
+            return Buffer.from(contents.content, 'base64').toString('utf-8');
+          } else {
+            // Fallback for client-side or edge environments
+            const decoded = atob(contents.content);
+            const uint8Array = new Uint8Array(decoded.length);
+            for (let i = 0; i < decoded.length; i++) {
+                uint8Array[i] = decoded.charCodeAt(i);
+            }
+            return new TextDecoder().decode(uint8Array);
+          }
       }
 
       if (!Array.isArray(contents)) return [];
@@ -280,32 +291,6 @@ async function commitToExistingRepo(owner: string, repo: string, files: Array<{ 
     return { success: true, commitUrl: newCommit.html_url };
 }
 
-async function initializeEmptyRepository(owner: string, repo: string, files: Array<{ path: string; content: string }>, token: string, commitMessage: string, branchToCreate: string): Promise<{ success: boolean; commitUrl: string }> {
-    // This simplified approach uses the contents API for the very first commit, which is more robust for empty repos.
-    // It creates one file to initialize, then the next commit can use the standard Git Data API.
-    // Note: This creates one commit per file, which is a trade-off for robustness. A better approach for many files is to create one dummy file, then a second commit with all files.
-    // For this app's use case, we will commit files one by one for initialization.
-
-    const firstFile = files[0];
-    const firstCommit = await api(`/repos/${owner}/${repo}/contents/${firstFile.path}`, token, {
-        method: 'PUT',
-        body: JSON.stringify({
-            message: `init: ${commitMessage}`,
-            content: firstFile.content,
-            branch: branchToCreate
-        })
-    });
-    
-    // If there are more files, commit them in a second commit.
-    if (files.length > 1) {
-        const remainingFiles = files.slice(1);
-        return await commitToExistingRepo(owner, repo, remainingFiles, token, branchToCreate, commitMessage);
-    }
-
-    return { success: true, commitUrl: firstCommit.commit.html_url };
-}
-
-
 export async function commitToRepo({ repoUrl, commitMessage, files, githubToken, destinationPath, branchName }: CommitParams) {
     if (!githubToken) throw new Error('Token GitHub diperlukan.');
     const [owner, repo] = repoUrl.replace('https://github.com/', '').split('/');
@@ -321,32 +306,56 @@ export async function commitToRepo({ repoUrl, commitMessage, files, githubToken,
         const repoInfo = await api(`/repos/${owner}/${repo}`, githubToken);
         const targetBranch = branchName || repoInfo.default_branch || 'main';
         
-        // A simple check for an empty repository is its size.
+        // Check if the repository is empty by its size.
         const repoIsEmpty = repoInfo.size === 0;
         
         if (repoIsEmpty) {
-            // The contents API is more reliable for the very first commit.
-            // We'll create the first file to initialize the repo and the branch.
+            // For an empty repository, we must use the Contents API to create the first commit,
+            // as this will also create the default branch.
+            console.log(`Repositori kosong terdeteksi. Menginisialisasi dengan file pertama di branch '${targetBranch}'...`);
+            
             const firstFile = finalFiles[0];
             const result = await api(`/repos/${owner}/${repo}/contents/${firstFile.path}`, githubToken, {
                 method: 'PUT',
                 body: JSON.stringify({
-                    message: commitMessage,
+                    message: `Initial commit: ${commitMessage}`,
                     content: firstFile.content, // Content must be base64
                     branch: targetBranch,
                 }),
             });
 
-            // If there are more files, create a second commit with the rest.
+            // If there are more files, create a subsequent commit with the rest of them.
             if (finalFiles.length > 1) {
+                console.log("Melakukan commit file-file berikutnya...");
                 return await commitToExistingRepo(owner, repo, finalFiles.slice(1), githubToken, targetBranch, commitMessage);
             }
             return { success: true, commitUrl: result.commit.html_url };
+
         } else {
+            // For an existing repository, use the Git Data API for a single, efficient commit.
+            console.log(`Repositori yang ada terdeteksi. Melakukan commit ke branch '${targetBranch}'...`);
             return await commitToExistingRepo(owner, repo, finalFiles, githubToken, targetBranch, commitMessage);
         }
     } catch (error: any) {
         console.error('Gagal melakukan commit:', error);
+        // Special handling for the case where the branch might not exist even if the repo is not "empty" (e.g. repo with only tags).
+        if (error.message === 'Branch not found' || error.message.includes("No commit found for the ref")) {
+             console.log("Branch tidak ditemukan, mencoba inisialisasi seperti repositori kosong...");
+             const targetBranch = branchName || 'main';
+             const firstFile = finalFiles[0];
+             const result = await api(`/repos/${owner}/${repo}/contents/${firstFile.path}`, githubToken, {
+                 method: 'PUT',
+                 body: JSON.stringify({
+                     message: `Initial commit: ${commitMessage}`,
+                     content: firstFile.content,
+                     branch: targetBranch,
+                 }),
+             });
+             if (finalFiles.length > 1) {
+                 return await commitToExistingRepo(owner, repo, finalFiles.slice(1), githubToken, targetBranch, commitMessage);
+             }
+             return { success: true, commitUrl: result.commit.html_url };
+        }
         throw new Error(error.message || 'Gagal melakukan commit file ke repositori.');
     }
 }
@@ -389,6 +398,20 @@ export async function fetchRepoReleases(githubToken: string, owner: string, repo
 
 export async function createRelease(githubToken: string, owner: string, repo: string, payload: ReleasePayload): Promise<any> {
     if (!githubToken) throw new Error('Token GitHub diperlukan.');
+    
+    // Check if tag exists. If not, create it first. This is a robust way to handle it.
+    try {
+        await api(`/repos/${owner}/${repo}/git/ref/tags/${payload.tag_name}`, githubToken);
+    } catch (error: any) {
+        if (error.message === 'Not Found') {
+            console.log(`Tag '${payload.tag_name}' tidak ditemukan. Membuat tag baru...`);
+            const branchData = await api(`/repos/${owner}/${repo}/git/ref/heads/${payload.target_commitish}`, githubToken);
+            await createTagObject(githubToken, owner, repo, payload.tag_name, branchData.object.sha);
+        } else {
+            throw error; // Rethrow other errors
+        }
+    }
+
     return await api(`/repos/${owner}/${repo}/releases`, githubToken, {
         method: 'POST',
         body: JSON.stringify(payload),
