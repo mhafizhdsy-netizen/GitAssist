@@ -1,4 +1,3 @@
-
 'use client';
 
 import { AiCommitHelper } from "@/components/dashboard/AiCommitHelper";
@@ -8,7 +7,7 @@ import { motion } from "framer-motion";
 export function CommitFeature() {
     return (
         <motion.div 
-            className="grid grid-cols-1 lg:grid-cols-5 gap-8 max-w-7xl mx-auto"
+            className="grid grid-cols-1 lg:grid-cols-5 gap-8"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
