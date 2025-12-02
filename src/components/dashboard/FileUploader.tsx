@@ -45,6 +45,8 @@ type CommitStatus = {
   progress: number;
 };
 
+//Modl
+
 type ModalStatus = 'inactive' | 'processing' | 'committing' | 'done';
 
 const isZipFile = (file: FileOrFolder | File) => {
