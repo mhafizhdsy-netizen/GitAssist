@@ -834,5 +834,3 @@ const handleManualExtract = useCallback(async (zipFileToExtract: FileOrFolder) =
     </>
   );
 }
-
-    
