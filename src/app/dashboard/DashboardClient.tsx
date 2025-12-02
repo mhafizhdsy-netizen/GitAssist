@@ -44,15 +44,15 @@ export default function DashboardClient({ user }: DashboardClientProps) {
       animate="visible"
       variants={containerVariants}
     >
-      <div className="text-center mb-12">
+      <div className="text-center mb-8">
         <motion.h1 
-          className="text-4xl md:text-5xl font-headline font-bold"
+          className="text-3xl md:text-4xl font-headline font-bold"
           variants={containerVariants}
         >
           Selamat Datang, {user.displayName || user.email}
         </motion.h1>
         <motion.p 
-          className="text-muted-foreground mt-2 text-lg"
+          className="text-muted-foreground mt-2 text-base md:text-lg"
           variants={containerVariants}
         >
           Pilih fitur di bawah untuk memulai alur kerja GitHub Anda.
