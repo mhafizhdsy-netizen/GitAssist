@@ -58,6 +58,19 @@ const isZipFile = (file: FileOrFolder | File) => {
            file.type === 'application/x-zip';
 }
 
+function toBase64(file: File | Blob): Promise<string> {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => {
+            const result = reader.result as string;
+            // remove 'data:*/*;base64,' prefix
+            resolve(result.split(',')[1]);
+        };
+        reader.onerror = error => reject(error);
+    });
+}
+
 export function FileUploader() {
   const [files, setFiles] = useState<FileOrFolder[]>([]);
   const [selectedFilePaths, setSelectedFilePaths] = useState<Set<string>>(new Set());
@@ -99,7 +112,7 @@ export function FileUploader() {
   }, []);
 
   useEffect(() => {
-    if (files.length > 0 && githubToken && repos.length === 0) {
+    if (githubToken) {
       setIsFetchingRepos(true);
       fetchUserRepos(githubToken, 1, 100) // Fetch up to 100 repos
         .then(setRepos)
@@ -113,7 +126,7 @@ export function FileUploader() {
         })
         .finally(() => setIsFetchingRepos(false));
     }
-  }, [files.length, githubToken, toast, repos.length]);
+  }, [githubToken, toast]);
 
   const loadBranches = useCallback((repo: Repo) => {
     if (!githubToken) return;
@@ -295,7 +308,7 @@ const handleManualExtract = useCallback(async (zipFileToExtract: FileOrFolder) =
 
   }, [autoExtractZip, extractZip]);
   
-  const { getRootProps, getInputProps, isDragActive, open: openFileDialog } = useDropzone({
+  const { getRootProps, getInputProps, open: openFileDialog } = useDropzone({
     onDrop,
     noClick: true, // We'll handle clicks manually
     noKeyboard: true,
@@ -418,8 +431,8 @@ const handleManualExtract = useCallback(async (zipFileToExtract: FileOrFolder) =
       toast({ title: 'Pesan commit diperlukan', variant: 'destructive' });
       return;
     }
-    const filesToCommitPaths = files.filter(f => selectedFilePaths.has(f.path));
-    if (filesToCommitPaths.length === 0) {
+    const filesToCommit = files.filter(f => selectedFilePaths.has(f.path));
+    if (filesToCommit.length === 0) {
         toast({ title: 'Tidak ada file dipilih', description: 'Pilih setidaknya satu file untuk di-commit.', variant: 'destructive' });
         return;
     }
@@ -429,24 +442,15 @@ const handleManualExtract = useCallback(async (zipFileToExtract: FileOrFolder) =
 
     try {
       const filesToCommitContent = await Promise.all(
-        filesToCommitPaths
+        filesToCommit
           .filter((f) => f.type === 'file' && f.content)
           .map(async (file) => {
             const fileContent = file.content as (File | Blob);
-            // This is a simplified check. A more robust check might be needed.
-            const isBinary = /[\x00-\x08\x0E-\x1F]/.test(await fileContent.text().catch(() => ''));
-
-            let contentString: string;
-            if (isBinary) {
-                const buffer = await fileContent.arrayBuffer();
-                contentString = Buffer.from(buffer).toString('base64');
-            } else {
-                contentString = await fileContent.text();
-            }
+            const contentString = await toBase64(fileContent);
 
             return {
               path: file.path,
-              content: contentString,
+              content: contentString, // content is now base64
             };
           })
       );
@@ -509,13 +513,13 @@ const handleManualExtract = useCallback(async (zipFileToExtract: FileOrFolder) =
     setCommitMessage('');
     setModalStatus('inactive');
     setCommitUrl('');
-    setBranches([]);
-    setSelectedBranch('');
-    setCommitStatus({ step: 'preparing', progress: 0 });
     if (fullReset) {
       setRepos([]);
       setSelectedRepo(null);
+      setBranches([]);
+      setSelectedBranch('');
     }
+    setCommitStatus({ step: 'preparing', progress: 0 });
   };
   
   const renderUploadStep = () => (
@@ -701,7 +705,7 @@ const handleManualExtract = useCallback(async (zipFileToExtract: FileOrFolder) =
         zipExtractProgress={zipExtractProgress}
         commitStatus={commitStatus}
         commitUrl={commitUrl}
-        onRestart={() => resetState(true)}
+        onRestart={() => resetState(false)}
         repoName={selectedRepo?.name || ''}
       />
       {selectedRepo && githubToken && (
@@ -797,11 +801,7 @@ const handleManualExtract = useCallback(async (zipFileToExtract: FileOrFolder) =
           </div>
         </CardHeader>
         <CardContent className="p-6 flex-grow flex flex-col">
-            {files.length > 0 ? renderFileTree() :
-                <div className="w-full h-full flex items-center justify-center">
-                    {renderUploadStep()}
-                </div>
-            }
+            {files.length === 0 ? renderUploadStep() : renderFileTree() }
 
             <AnimatePresence>
                 {files.length > 0 && (
@@ -819,7 +819,7 @@ const handleManualExtract = useCallback(async (zipFileToExtract: FileOrFolder) =
         </CardContent>
         {files.length > 0 && (
           <CardFooter className="border-t pt-6 flex justify-between items-center">
-            <Button variant="ghost" onClick={() => resetState(true)}>Mulai Ulang</Button>
+            <Button variant="ghost" onClick={() => resetState(false)}>Mulai Ulang</Button>
             <Button size="lg" onClick={handleCommit} disabled={modalStatus !== 'inactive' || isFetchingRepos || !githubToken || selectedFilePaths.size === 0}>
               {modalStatus === 'committing' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : `Commit (${selectedFilePaths.size}) File`}
               {modalStatus !== 'committing' && <ArrowRight className="ml-2 h-4 w-4" />}
