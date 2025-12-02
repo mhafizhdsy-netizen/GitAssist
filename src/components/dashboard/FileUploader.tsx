@@ -4,14 +4,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import JSZip from 'jszip';
-import { UploadCloud, File as FileIcon, Github, Sparkles, Folder, PlusCircle, Trash2, Loader2, ArrowRight, GitBranch, X, FileArchive, Settings, PackageOpen, Plus } from 'lucide-react';
+import { UploadCloud, File as FileIcon, Github, Sparkles, Folder, PlusCircle, Trash2, Loader2, ArrowRight, GitBranch, X, FileArchive, Settings, PackageOpen, Plus, Tag } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { generateCommitMessage } from '@/ai/flows/generate-commit-message';
-import { commitToRepo, fetchUserRepos, fetchRepoBranches, type Repo, type Branch, createBranch } from '@/app/actions';
+import { commitToRepo, fetchUserRepos, fetchRepoBranches, type Repo, type Branch, createBranch, fetchRepoTags, type Tag } from '@/app/actions';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '../ui/skeleton';
 import { Checkbox } from '../ui/checkbox';
@@ -81,7 +81,9 @@ export function FileUploader() {
   const [selectedRepo, setSelectedRepo] = useState<Repo | null>(null);
 
   const [branches, setBranches] = useState<Branch[]>([]);
+  const [tags, setTags] = useState<Tag[]>([]);
   const [isFetchingBranches, setIsFetchingBranches] = useState(false);
+  const [isFetchingTags, setIsFetchingTags] = useState(false);
   const [selectedBranch, setSelectedBranch] = useState('');
   
   const [destinationPath, setDestinationPath] = useState('');
@@ -308,7 +310,7 @@ const handleManualExtract = useCallback(async (zipFileToExtract: FileOrFolder) =
 
   }, [autoExtractZip, extractZip]);
   
-  const { getRootProps, getInputProps, open: openFileDialog } = useDropzone({
+  const { getRootProps, getInputProps, isDragActive, open: openFileDialog } = useDropzone({
     onDrop,
     noClick: true, // We'll handle clicks manually
     noKeyboard: true,
