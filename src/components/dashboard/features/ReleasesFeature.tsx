@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -6,9 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Github, Rocket, Loader2, Sparkles, GitBranch, Paperclip, X, PlusCircle, Settings, FileArchive } from 'lucide-react';
+import { Github, Rocket, Loader2, Sparkles, GitBranch, Paperclip, X, PlusCircle, Settings, FileArchive, Tag, Plus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { fetchUserRepos, fetchRepoBranches, createRelease, uploadReleaseAsset, type Repo, type Branch, type Release, fetchRepoReleases } from '@/app/actions';
+import { fetchUserRepos, fetchRepoBranches, createRelease, uploadReleaseAsset, type Repo, type Branch, type Tag, fetchRepoTags } from '@/app/actions';
 import { refineDescription } from '@/ai/flows/refine-description';
 import { useDropzone } from 'react-dropzone';
 import { UploadStatusModal, type ModalStatus, type OperationStatus } from '../UploadStatusModal';
@@ -17,6 +18,16 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import JSZip from 'jszip';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
+} from "@/components/ui/dialog";
+import { Skeleton } from '@/components/ui/skeleton';
 
 const isZipFile = (file: File) => {
     const fileName = file.name.toLowerCase();
@@ -32,6 +43,7 @@ const isZipFile = (file: File) => {
 export function ReleasesFeature() {
   const [repos, setRepos] = useState<Repo[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
+  const [tags, setTags] = useState<Tag[]>([]);
   const [selectedRepo, setSelectedRepo] = useState<Repo | null>(null);
   const [selectedBranch, setSelectedBranch] = useState('');
   
@@ -40,8 +52,9 @@ export function ReleasesFeature() {
   const [releaseNotes, setReleaseNotes] = useState('');
   const [attachments, setAttachments] = useState<File[]>([]);
 
-  const [isFetchingRepos, setIsFetchingRepos] = useState(true);
+  const [isFetchingRepos, setIsFetchingRepos] = useState(false);
   const [isFetchingBranches, setIsFetchingBranches] = useState(false);
+  const [isFetchingTags, setIsFetchingTags] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [isRefining, setIsRefining] = useState(false);
   const [autoExtractZip, setAutoExtractZip] = useState(true);
@@ -52,39 +65,56 @@ export function ReleasesFeature() {
   const [modalStatus, setModalStatus] = useState<ModalStatus>('inactive');
   const [operationStatus, setOperationStatus] = useState<OperationStatus>({ step: 'inactive', progress: 0 });
   const [resultUrl, setResultUrl] = useState('');
+  
+  const [isCreateTagModalOpen, setCreateTagModalOpen] = useState(false);
+  const [newTagName, setNewTagName] = useState('');
+  const [sourceCommitSha, setSourceCommitSha] = useState('');
+
 
   useEffect(() => {
     const token = localStorage.getItem('github-token');
     if (token) {
         setGithubToken(token);
-    } else {
-        setIsFetchingRepos(false);
     }
   }, []);
 
   useEffect(() => {
-    if (githubToken) {
+    if (githubToken && repos.length === 0) {
       setIsFetchingRepos(true);
       fetchUserRepos(githubToken, 1, 100)
         .then(setRepos)
         .catch(err => toast({ title: "Gagal mengambil repositori", description: err.message, variant: "destructive" }))
         .finally(() => setIsFetchingRepos(false));
     }
-  }, [githubToken, toast]);
+  }, [githubToken, toast, repos.length]);
   
-  const loadBranches = useCallback((repo: Repo) => {
+  const loadRepoData = useCallback((repo: Repo) => {
     if (!githubToken) return;
-    setIsFetchingBranches(true);
     const [owner, repoName] = repo.full_name.split('/');
+    
+    setIsFetchingBranches(true);
     fetchRepoBranches(githubToken, owner, repoName)
       .then(branches => {
         setBranches(branches);
         if (branches.length > 0) {
-          setSelectedBranch(repo.default_branch);
+          const defaultBranch = branches.find(b => b.name === repo.default_branch) || branches[0];
+          setSelectedBranch(defaultBranch.name);
+          setSourceCommitSha(defaultBranch.commit.sha);
         }
       })
       .catch(err => toast({ title: "Gagal mengambil branch", description: err.message, variant: "destructive" }))
       .finally(() => setIsFetchingBranches(false));
+
+    setIsFetchingTags(true);
+    fetchRepoTags(githubToken, owner, repoName)
+      .then(tags => {
+        setTags(tags);
+        if (tags.length > 0) {
+            setTagName(tags[0].name);
+        }
+      })
+      .catch(err => toast({ title: "Gagal mengambil tag", description: err.message, variant: "destructive" }))
+      .finally(() => setIsFetchingTags(false));
   }, [githubToken, toast]);
 
   const handleRepoChange = (repoFullName: string) => {
@@ -92,8 +122,10 @@ export function ReleasesFeature() {
     if (!repo) return;
     setSelectedRepo(repo);
     setSelectedBranch('');
+    setTagName('');
     setBranches([]);
-    loadBranches(repo);
+    setTags([]);
+    loadRepoData(repo);
   };
 
   const handleRefineDescription = async () => {
@@ -173,6 +205,21 @@ export function ReleasesFeature() {
   const removeAttachment = (fileToRemove: File) => {
     setAttachments(prev => prev.filter(file => file !== fileToRemove));
   };
+  
+  const handleCreateTag = () => {
+    if (!newTagName || !sourceCommitSha) {
+      toast({ title: "Error", description: "Nama tag dan sumber branch/commit harus diisi.", variant: "destructive" });
+      return;
+    }
+    // This is an optimistic update. We add the new tag to the UI immediately.
+    // The actual tag is created on GitHub when the release is published.
+    const newTag = { name: newTagName, commit: { sha: sourceCommitSha, url: '' }};
+    setTags(prev => [newTag, ...prev]);
+    setTagName(newTagName);
+    toast({ title: "Tag Disiapkan", description: `Tag '${newTagName}' akan dibuat saat rilis dipublikasikan.` });
+    setCreateTagModalOpen(false);
+    setNewTagName('');
+  };
 
   const handleSubmit = async () => {
     if (!selectedRepo || !tagName || !releaseTitle || !githubToken || !selectedBranch) {
@@ -242,6 +289,53 @@ export function ReleasesFeature() {
         onRestart={resetModal}
         operationType="release"
       />
+       <Dialog open={isCreateTagModalOpen} onOpenChange={setCreateTagModalOpen}>
+        <DialogContent className="glass-card">
+            <DialogHeader>
+                <DialogTitle>Buat Tag Baru</DialogTitle>
+                <DialogDescription>
+                    Buat tag baru di repositori <span className="font-bold text-primary">{selectedRepo?.name}</span>. Tag ini akan dibuat saat rilis dipublikasikan.
+                </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                    <Label htmlFor="new-tag-name">Nama Tag Baru</Label>
+                    <Input 
+                        id="new-tag-name" 
+                        placeholder="cth: v1.0.1" 
+                        value={newTagName}
+                        onChange={(e) => setNewTagName(e.target.value)}
+                    />
+                </div>
+                 <div className="space-y-2">
+                    <Label htmlFor="source-branch-for-tag">Sumber Branch/Commit</Label>
+                    <Select value={sourceCommitSha} onValueChange={setSourceCommitSha}>
+                        <SelectTrigger id="source-branch-for-tag">
+                            <SelectValue placeholder="Pilih branch sebagai sumber..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {branches.map(branch => (
+                                <SelectItem key={branch.commit.sha} value={branch.commit.sha}>
+                                    <div className="flex items-center gap-2">
+                                        <GitBranch className="h-4 w-4 text-muted-foreground" />
+                                        <span>{branch.name}</span>
+                                    </div>
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+            </div>
+            <DialogFooter>
+                <DialogClose asChild>
+                    <Button variant="outline">Batal</Button>
+                </DialogClose>
+                <Button onClick={handleCreateTag} disabled={!newTagName || !sourceCommitSha}>
+                    Siapkan Tag
+                </Button>
+            </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <motion.div
             className="max-w-3xl mx-auto"
             initial={{ opacity: 0, y: 20 }}
@@ -286,94 +380,127 @@ export function ReleasesFeature() {
                 </div>
             </CardHeader>
             <CardContent className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                    <label className="block text-sm font-medium">Repositori</label>
-                    <Select onValueChange={handleRepoChange} disabled={isFetchingRepos || !githubToken}>
-                        <SelectTrigger>
-                            <Github className="mr-2 h-5 w-5 text-muted-foreground" />
-                            <SelectValue placeholder={isFetchingRepos ? "Memuat..." : "Pilih repositori..."} />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {repos.map(repo => <SelectItem key={repo.id} value={repo.full_name}>{repo.full_name}</SelectItem>)}
-                        </SelectContent>
-                    </Select>
-                </div>
-                <div className="space-y-2">
-                    <label className="block text-sm font-medium">Branch Target</label>
-                    <Select value={selectedBranch} onValueChange={setSelectedBranch} disabled={isFetchingBranches || !selectedRepo}>
-                        <SelectTrigger>
-                            <GitBranch className="mr-2 h-5 w-5 text-muted-foreground" />
-                            <SelectValue placeholder={isFetchingBranches ? "Memuat..." : "Pilih branch..."} />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {branches.map(branch => <SelectItem key={branch.name} value={branch.name}>{branch.name}</SelectItem>)}
-                        </SelectContent>
-                    </Select>
-                </div>
+            <div className="space-y-2">
+                <label className="block text-sm font-medium">Repositori</label>
+                {isFetchingRepos ? (
+                    <Skeleton className="h-10 w-full" />
+                ) : (
+                <Select onValueChange={handleRepoChange} disabled={isFetchingRepos || !githubToken}>
+                    <SelectTrigger>
+                        <Github className="mr-2 h-5 w-5 text-muted-foreground" />
+                        <SelectValue placeholder={isFetchingRepos ? "Memuat..." : "Pilih repositori..."} />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {repos.map(repo => <SelectItem key={repo.id} value={repo.full_name}>{repo.full_name}</SelectItem>)}
+                    </SelectContent>
+                </Select>
+                )}
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                    <label htmlFor="tag-name" className="block text-sm font-medium">Nama Tag</label>
-                    <Input id="tag-name" placeholder="cth: v1.0.0" value={tagName} onChange={e => setTagName(e.target.value)} />
+
+            {selectedRepo && (
+                <>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                        <Label>Nama Tag</Label>
+                        <div className="flex gap-2">
+                            {isFetchingTags ? (
+                                <Skeleton className="h-10 w-full" />
+                            ) : (
+                                <Select value={tagName} onValueChange={setTagName}>
+                                    <SelectTrigger>
+                                        <Tag className="mr-2 h-5 w-5 text-muted-foreground" />
+                                        <SelectValue placeholder="Pilih atau buat tag..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {tags.length > 0 ? tags.map(tag => (
+                                            <SelectItem key={tag.name} value={tag.name}>{tag.name}</SelectItem>
+                                        )) : (
+                                            <SelectItem value="none" disabled>Belum ada tag.</SelectItem>
+                                        )}
+                                    </SelectContent>
+                                </Select>
+                            )}
+                            <Button variant="outline" size="icon" className="h-10 w-10 flex-shrink-0" onClick={() => setCreateTagModalOpen(true)}>
+                                <Plus className="h-5 w-5" />
+                                <span className="sr-only">Buat Tag Baru</span>
+                            </Button>
+                        </div>
+                    </div>
+                    <div className="space-y-2">
+                        <Label>Branch Target</Label>
+                         {isFetchingBranches ? (
+                            <Skeleton className="h-10 w-full" />
+                        ) : (
+                        <Select value={selectedBranch} onValueChange={setSelectedBranch} disabled={isFetchingBranches}>
+                            <SelectTrigger>
+                                <GitBranch className="mr-2 h-5 w-5 text-muted-foreground" />
+                                <SelectValue placeholder="Pilih branch..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {branches.map(branch => <SelectItem key={branch.name} value={branch.name}>{branch.name}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                        )}
+                    </div>
                 </div>
-                <div className="space-y-2">
+                 <div className="space-y-2">
                     <label htmlFor="release-title" className="block text-sm font-medium">Judul Rilis</label>
                     <Input id="release-title" placeholder="cth: Peluncuran Versi 1.0" value={releaseTitle} onChange={e => setReleaseTitle(e.target.value)} />
                 </div>
-            </div>
-            <div className="space-y-2 relative">
-                <label htmlFor="release-notes" className="block text-sm font-medium">Catatan Rilis (Markdown didukung)</label>
-                <Textarea
-                    id="release-notes"
-                    placeholder="Deskripsikan perubahan dalam rilis ini..."
-                    value={releaseNotes}
-                    onChange={e => setReleaseNotes(e.target.value)}
-                    className="min-h-[200px] bg-background/50"
-                />
-                <AnimatePresence>
-                {releaseNotes.length >= 20 && (
-                    <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: 10 }}
-                        className="absolute bottom-3 right-3"
-                    >
-                        <Button
-                            size="icon"
-                            className="glass-card rounded-full h-10 w-10 bg-primary/80 hover:bg-primary"
-                            onClick={handleRefineDescription}
-                            disabled={isRefining}
+                <div className="space-y-2 relative">
+                    <label htmlFor="release-notes" className="block text-sm font-medium">Catatan Rilis (Markdown didukung)</label>
+                    <Textarea
+                        id="release-notes"
+                        placeholder="Deskripsikan perubahan dalam rilis ini..."
+                        value={releaseNotes}
+                        onChange={e => setReleaseNotes(e.target.value)}
+                        className="min-h-[200px] bg-background/50"
+                    />
+                    <AnimatePresence>
+                    {releaseNotes.length >= 20 && (
+                        <motion.div
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: 10 }}
+                            className="absolute bottom-3 right-3"
                         >
-                            {isRefining ? <Loader2 className="h-5 w-5 animate-spin" /> : <Sparkles className="h-5 w-5" />}
-                        </Button>
-                    </motion.div>
-                )}
-                </AnimatePresence>
-            </div>
-            <div className="space-y-2">
-                <label className="block text-sm font-medium">Lampiran Biner (Opsional)</label>
-                <div {...getRootProps({className: 'outline-none'})}>
-                    <input {...getInputProps()} />
-                    <div className={`flex flex-col gap-2`}>
-                        {attachments.map((file, index) => (
-                            <div key={index} className="flex items-center justify-between p-2 rounded-lg border bg-background/50 text-sm">
-                                <div className="flex items-center gap-2 truncate">
-                                    {isZipFile(file) ? <FileArchive className="h-4 w-4 text-yellow-400 flex-shrink-0" /> : <Paperclip className="h-4 w-4 text-muted-foreground flex-shrink-0" />}
-                                    <p className="truncate">{file.name}</p>
-                                </div>
-                                <Button variant="ghost" size="icon" className="h-7 w-7 flex-shrink-0" onClick={(e) => {e.stopPropagation(); removeAttachment(file);}}>
-                                    <X className="h-4 w-4"/>
-                                </Button>
-                            </div>
-                        ))}
-                    </div>
-                    <button type="button" onClick={openFileDialog} className="mt-2 w-full flex items-center justify-center gap-2 px-3 py-2 text-sm border-2 border-dashed rounded-lg cursor-pointer hover:border-primary/50 transition-colors border-border text-muted-foreground hover:text-foreground">
-                        <PlusCircle className="h-4 w-4" />
-                        Tambah File Lampiran
-                    </button>
+                            <Button
+                                size="icon"
+                                className="glass-card rounded-full h-10 w-10 bg-primary/80 hover:bg-primary"
+                                onClick={handleRefineDescription}
+                                disabled={isRefining}
+                            >
+                                {isRefining ? <Loader2 className="h-5 w-5 animate-spin" /> : <Sparkles className="h-5 w-5" />}
+                            </Button>
+                        </motion.div>
+                    )}
+                    </AnimatePresence>
                 </div>
-            </div>
+                <div className="space-y-2">
+                    <label className="block text-sm font-medium">Lampiran Biner (Opsional)</label>
+                    <div {...getRootProps({className: 'outline-none'})}>
+                        <input {...getInputProps()} />
+                        <div className={`flex flex-col gap-2`}>
+                            {attachments.map((file, index) => (
+                                <div key={index} className="flex items-center justify-between p-2 rounded-lg border bg-background/50 text-sm">
+                                    <div className="flex items-center gap-2 truncate">
+                                        {isZipFile(file) ? <FileArchive className="h-4 w-4 text-yellow-400 flex-shrink-0" /> : <Paperclip className="h-4 w-4 text-muted-foreground flex-shrink-0" />}
+                                        <p className="truncate">{file.name}</p>
+                                    </div>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 flex-shrink-0" onClick={(e) => {e.stopPropagation(); removeAttachment(file);}}>
+                                        <X className="h-4 w-4"/>
+                                    </Button>
+                                </div>
+                            ))}
+                        </div>
+                        <button type="button" onClick={openFileDialog} className="mt-2 w-full flex items-center justify-center gap-2 px-3 py-2 text-sm border-2 border-dashed rounded-lg cursor-pointer hover:border-primary/50 transition-colors border-border text-muted-foreground hover:text-foreground">
+                            <PlusCircle className="h-4 w-4" />
+                            Tambah File Lampiran
+                        </button>
+                    </div>
+                </div>
+                </>
+            )}
             </CardContent>
             <CardFooter>
             <Button className="w-full" size="lg" onClick={handleSubmit} disabled={isCreating || !selectedRepo || !tagName || !releaseTitle}>
@@ -386,5 +513,3 @@ export function ReleasesFeature() {
     </>
   );
 }
-
-    

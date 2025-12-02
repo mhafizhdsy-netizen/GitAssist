@@ -39,6 +39,14 @@ export type Branch = {
     protected: boolean;
 };
 
+export type Tag = {
+    name: string;
+    commit: {
+        sha: string;
+        url: string;
+    };
+};
+
 export type Issue = {
     id: number;
     number: number;
@@ -122,7 +130,7 @@ async function api(url: string, token: string, options: RequestInit = {}) {
 }
 
 // ==================================
-// REPO & BRANCH ACTIONS
+// REPO, BRANCH & TAG ACTIONS
 // ==================================
 export async function fetchUserRepos(githubToken: string, page: number = 1, perPage: number = 100): Promise<Repo[]> {
     if (!githubToken) throw new Error('Token GitHub diperlukan.');
@@ -149,6 +157,19 @@ export async function fetchRepoBranches(githubToken: string, owner: string, repo
         throw error;
     }
 }
+
+export async function fetchRepoTags(githubToken: string, owner: string, repo: string): Promise<Tag[]> {
+    if (!githubToken) throw new Error('Token GitHub diperlukan.');
+    try {
+        const tags = await api(`/repos/${owner}/${repo}/tags`, githubToken);
+        return tags || [];
+    } catch (error: any) {
+        if (error.message && (error.message.includes('Git Repository is empty') || error.message.includes('Not Found'))) return [];
+        console.error("Gagal mengambil tags:", error);
+        throw error;
+    }
+}
+
 
 export async function fetchRepoContents(githubToken: string, owner: string, repo: string, path: string = ''): Promise<RepoContent[] | string> {
     if (!githubToken) throw new Error('Token GitHub diperlukan.');
