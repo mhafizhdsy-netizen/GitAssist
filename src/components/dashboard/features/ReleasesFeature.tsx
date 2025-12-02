@@ -43,7 +43,7 @@ export function ReleasesFeature() {
   const [releaseNotes, setReleaseNotes] = useState('');
   const [attachments, setAttachments] = useState<File[]>([]);
 
-  const [isFetchingRepos, setIsFetchingRepos] = useState(true);
+  const [isFetchingRepos, setIsFetchingRepos] = useState(false);
   const [isFetchingBranches, setIsFetchingBranches] = useState(false);
   const [isFetchingReleases, setIsFetchingReleases] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
@@ -66,12 +66,11 @@ export function ReleasesFeature() {
 
   useEffect(() => {
     if (githubToken) {
+      setIsFetchingRepos(true);
       fetchUserRepos(githubToken, 1, 100)
         .then(setRepos)
         .catch(err => toast({ title: "Gagal mengambil repositori", description: err.message, variant: "destructive" }))
         .finally(() => setIsFetchingRepos(false));
-    } else {
-        setIsFetchingRepos(false);
     }
   }, [githubToken, toast]);
   
@@ -155,28 +154,29 @@ export function ReleasesFeature() {
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     if (acceptedFiles.length === 0) return;
   
-    setModalStatus('processing');
-    setOperationStatus({
-      step: 'preparing',
-      progress: 0,
-      text: `Mengekstrak file...`,
-      Icon: FileArchive,
-    });
-  
     let newAttachments: File[] = [];
-    try {
-      for (const file of acceptedFiles) {
+    
+    for (const file of acceptedFiles) {
         if (autoExtractZip && isZipFile(file)) {
-          const extracted = await extractZip(file);
-          newAttachments.push(...extracted);
+            setModalStatus('processing');
+            setOperationStatus({
+              step: 'preparing',
+              progress: 0,
+              text: `Mengekstrak file...`,
+              Icon: FileArchive,
+            });
+            try {
+                const extracted = await extractZip(file);
+                newAttachments.push(...extracted);
+            } finally {
+                setModalStatus('inactive');
+            }
         } else {
-          newAttachments.push(file);
+            newAttachments.push(file);
         }
-      }
-      setAttachments(prev => [...prev, ...newAttachments]);
-    } finally {
-      setModalStatus('inactive');
     }
+    setAttachments(prev => [...prev, ...newAttachments]);
+
   }, [autoExtractZip, extractZip]);
 
   const { getRootProps, getInputProps, open: openFileDialog } = useDropzone({

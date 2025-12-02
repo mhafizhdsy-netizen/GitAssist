@@ -22,7 +22,7 @@ export function IssuesFeature() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   
-  const [isFetchingRepos, setIsFetchingRepos] = useState(true);
+  const [isFetchingRepos, setIsFetchingRepos] = useState(false);
   const [isFetchingIssues, setIsFetchingIssues] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [isRefining, setIsRefining] = useState(false);
@@ -43,12 +43,11 @@ export function IssuesFeature() {
 
   useEffect(() => {
     if (githubToken) {
+      setIsFetchingRepos(true);
       fetchUserRepos(githubToken, 1, 100)
         .then(setRepos)
         .catch(err => toast({ title: "Gagal mengambil repositori", description: err.message, variant: "destructive" }))
         .finally(() => setIsFetchingRepos(false));
-    } else {
-        setIsFetchingRepos(false);
     }
   }, [githubToken, toast]);
 

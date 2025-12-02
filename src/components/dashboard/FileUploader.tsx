@@ -164,66 +164,63 @@ export function FileUploader() {
   };
   
 const extractZip = useCallback(async (zipFile: File): Promise<FileOrFolder[]> => {
-    setModalStatus('processing');
+    return new Promise(async (resolve, reject) => {
+        try {
+            const zip = await JSZip.loadAsync(zipFile);
+            const extractedFiles: FileOrFolder[] = [];
+            const allEntries = Object.values(zip.files);
+            
+            const validEntries = allEntries.filter(entry => {
+                const isFile = !entry.dir;
+                const isMacOSJunk = entry.name.startsWith('__MACOSX/') || entry.name.includes('.DS_Store');
+                const isEmpty = entry.name.endsWith('/');
+                return isFile && !isMacOSJunk && !isEmpty;
+            });
+            
+            if (validEntries.length === 0) {
+                toast({ 
+                    title: 'ZIP Kosong', 
+                    description: 'Tidak ada file yang valid ditemukan dalam arsip ZIP ini.',
+                    variant: 'destructive'
+                });
+                resolve([]);
+                return;
+            }
 
-    try {
-        const zip = await JSZip.loadAsync(zipFile);
-        const extractedFiles: FileOrFolder[] = [];
-        
-        const allEntries = Object.values(zip.files);
-        
-        const validEntries = allEntries.filter(entry => {
-            const isFile = !entry.dir;
-            const isMacOSJunk = entry.name.startsWith('__MACOSX/') || entry.name.includes('.DS_Store');
-            const isEmpty = entry.name.endsWith('/');
-            return isFile && !isMacOSJunk && !isEmpty;
-        });
-        
-        if (validEntries.length === 0) {
+            const totalFiles = validEntries.length;
+            let processedCount = 0;
+            for (const zipEntry of validEntries) {
+                const blob = await zipEntry.async('blob');
+                const fileName = zipEntry.name.split('/').pop() || zipEntry.name;
+                extractedFiles.push({ 
+                    name: fileName, 
+                    path: zipEntry.name,
+                    type: 'file', 
+                    content: blob
+                });
+                processedCount++;
+                setZipExtractProgress((processedCount / totalFiles) * 100);
+            }
+            
             toast({ 
-                title: 'ZIP Kosong', 
-                description: 'Tidak ada file yang valid ditemukan dalam arsip ZIP ini.',
-                variant: 'destructive'
+                title: 'Ekstraksi Berhasil', 
+                description: `${extractedFiles.length} file berhasil diekstrak dari ${zipFile.name}`,
+                variant: 'default'
             });
-            return [];
-        }
-
-        const totalFiles = validEntries.length;
-        let processedCount = 0;
-        for (const zipEntry of validEntries) {
-            const blob = await zipEntry.async('blob');
-            const fileName = zipEntry.name.split('/').pop() || zipEntry.name;
-            extractedFiles.push({ 
-                name: fileName, 
-                path: zipEntry.name,
-                type: 'file', 
-                content: blob
+            
+            resolve(extractedFiles);
+        } catch (error: any) {
+            console.error('ERROR EKSTRAKSI ZIP:', error);
+            toast({ 
+                title: 'Kesalahan Ekstraksi', 
+                description: `Gagal memproses ${zipFile.name}: ${error.message || 'File ZIP tidak valid atau rusak.'}`, 
+                variant: 'destructive' 
             });
-            processedCount++;
-            setZipExtractProgress((processedCount / totalFiles) * 100);
+            reject(error);
         }
-        
-        toast({ 
-            title: 'Ekstraksi Berhasil', 
-            description: `${extractedFiles.length} file berhasil diekstrak dari ${zipFile.name}`,
-            variant: 'default'
-        });
-        
-        return extractedFiles;
-
-    } catch (error: any) {
-        console.error('ERROR EKSTRAKSI ZIP:', error);
-        toast({ 
-            title: 'Kesalahan Ekstraksi', 
-            description: `Gagal memproses ${zipFile.name}: ${error.message || 'File ZIP tidak valid atau rusak.'}`, 
-            variant: 'destructive' 
-        });
-        return [];
-    } finally {
-        setModalStatus('inactive');
-        setZipExtractProgress(0);
-    }
+    });
 }, [toast]);
+
 
 const handleManualExtract = useCallback(async (zipFileToExtract: FileOrFolder) => {
     if (!zipFileToExtract.content || !(zipFileToExtract.content instanceof Blob)) {
@@ -234,20 +231,24 @@ const handleManualExtract = useCallback(async (zipFileToExtract: FileOrFolder) =
       });
       return;
     }
-
-    const extracted = await extractZip(zipFileToExtract.content as File);
-
-    if (extracted.length > 0) {
-      setFiles((prev) => [
-        ...prev.filter((f) => f.path !== zipFileToExtract.path),
-        ...extracted,
-      ]);
-      setSelectedFilePaths((prev) => {
-        const newSelection = new Set(prev);
-        newSelection.delete(zipFileToExtract.path);
-        extracted.forEach((f) => newSelection.add(f.path));
-        return newSelection;
-      });
+    setModalStatus('processing');
+    try {
+        const extracted = await extractZip(zipFileToExtract.content as File);
+        if (extracted.length > 0) {
+            setFiles((prev) => [
+                ...prev.filter((f) => f.path !== zipFileToExtract.path),
+                ...extracted,
+            ]);
+            setSelectedFilePaths((prev) => {
+                const newSelection = new Set(prev);
+                newSelection.delete(zipFileToExtract.path);
+                extracted.forEach((f) => newSelection.add(f.path));
+                return newSelection;
+            });
+        }
+    } finally {
+        setModalStatus('inactive');
+        setZipExtractProgress(0);
     }
   }, [extractZip, toast]);
   
@@ -259,9 +260,15 @@ const handleManualExtract = useCallback(async (zipFileToExtract: FileOrFolder) =
     
     for (const file of acceptedFiles) {
         if (autoExtractZip && isZipFile(file)) {
-            const extracted = await extractZip(file);
-            newFiles.push(...extracted);
-            extracted.forEach(f => newPaths.add(f.path));
+            setModalStatus('processing');
+            try {
+                const extracted = await extractZip(file);
+                newFiles.push(...extracted);
+                extracted.forEach(f => newPaths.add(f.path));
+            } finally {
+                setModalStatus('inactive');
+                setZipExtractProgress(0);
+            }
         } else {
             const fileToAdd: FileOrFolder = {
                 name: file.name,
