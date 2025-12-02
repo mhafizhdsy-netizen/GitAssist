@@ -3,6 +3,11 @@
 
 import { redirect } from 'next/navigation';
 
+export async function signOut() {
+  redirect('/');
+}
+
+
 // Helper function to handle base64 encoding universally
 function toBase64(data: string): string {
   if (typeof Buffer !== 'undefined') {
@@ -95,16 +100,8 @@ export type RepoContent = {
 
 type GitHubFile = {
   path: string;
-  content: string; // Can be base64 or utf-8
+  content: string;
 };
-
-
-// ==================================
-// ACTION: SIGN OUT
-// ==================================
-export async function signOut() {
-  return redirect('/');
-}
 
 // ==================================
 // GITHUB API WRAPPER
@@ -133,6 +130,7 @@ async function api(url: string, token: string, options: RequestInit = {}): Promi
         throw new Error(errorBody.message || `GitHub API error: ${response.status} ${response.statusText}`);
     }
   
+    // Handle 204 No Content response
     if (response.status === 204 || response.headers.get('Content-Length') === '0') {
       return null;
     }
@@ -163,7 +161,10 @@ export async function fetchRepoBranches(githubToken: string, owner: string, repo
         const branches = await api(`/repos/${owner}/${repo}/branches`, githubToken);
         return branches || [];
     } catch (error: any) {
-        if (error.message && (error.message.includes('Git Repository is empty') || error.message.includes('Not Found'))) return [];
+        // If the repo is empty, GitHub returns a specific error. We can treat this as "no branches".
+        if (error.message && (error.message.includes('Git Repository is empty') || error.message.includes('Not Found'))) {
+            return [];
+        }
         console.error("Gagal mengambil branches:", error);
         throw error;
     }
@@ -187,8 +188,10 @@ export async function fetchRepoContents(githubToken: string, owner: string, repo
     try {
       const contents = await api(`/repos/${owner}/${repo}/contents/${path}`, githubToken);
       
+      // If contents are null (e.g. empty repo), return an empty array
       if (contents === null) return [];
 
+      // If it's a file, decode its content
       if (contents?.type === 'file' && typeof contents?.content === 'string' && contents.encoding === 'base64') {
           // This should run on server side where Buffer is available.
           if (typeof Buffer !== 'undefined') {
@@ -204,8 +207,10 @@ export async function fetchRepoContents(githubToken: string, owner: string, repo
           }
       }
 
+      // If it's not an array (e.g., could be an object for a single item response not expected here), return empty array
       if (!Array.isArray(contents)) return [];
       
+      // Sort directories first, then files
       contents.sort((a, b) => {
           if (a.type === 'dir' && b.type !== 'dir') return -1;
           if (a.type !== 'dir' && b.type === 'dir') return 1;
@@ -217,7 +222,9 @@ export async function fetchRepoContents(githubToken: string, owner: string, repo
           html_url: item.html_url, download_url: item.download_url
       }));
     } catch (error: any) {
-      if (error.message && (error.message.includes("This repository is empty") || error.message.includes("Not Found"))) return [];
+      if (error.message && (error.message.includes("This repository is empty") || error.message.includes("Not Found"))) {
+        return [];
+      }
       throw error;
     }
 }
@@ -226,11 +233,15 @@ export async function fetchRepoContents(githubToken: string, owner: string, repo
 export async function createBranch(githubToken: string, owner: string, repo: string, newBranchName: string, sourceBranchName: string): Promise<any> {
     if (!githubToken) throw new Error('Token GitHub diperlukan.');
     
+    // Get the SHA of the source branch
     const refData = await api(`/repos/${owner}/${repo}/git/ref/heads/${sourceBranchName}`, githubToken);
     const sha = refData.object.sha;
   
-    if (!sha) throw new Error(`Tidak dapat menemukan SHA untuk branch sumber '${sourceBranchName}'.`);
+    if (!sha) {
+      throw new Error(`Tidak dapat menemukan SHA untuk branch sumber '${sourceBranchName}'.`);
+    }
   
+    // Create the new branch (ref)
     return await api(`/repos/${owner}/${repo}/git/refs`, githubToken, {
       method: 'POST',
       body: JSON.stringify({ ref: `refs/heads/${newBranchName}`, sha: sha }),
@@ -268,24 +279,61 @@ type CommitParams = {
   repoUrl: string; commitMessage: string; files: GitHubFile[]; githubToken: string; destinationPath?: string; branchName?: string;
 };
 
-async function commitToExistingRepo(owner: string, repo: string, files: Array<{ path: string; content: string }>, token: string, targetBranch: string, commitMessage: string): Promise<{ success: boolean; commitUrl: string; message?: string }> {
-    const refData = await api(`/repos/${owner}/${repo}/git/refs/heads/${targetBranch}`, token);
-    const latestCommitSha = refData.object.sha;
-    const latestCommitData = await api(`/repos/${owner}/${repo}/git/commits/${latestCommitSha}`, token);
-    const baseTreeSha = latestCommitData.tree.sha;
-    
+async function isRepositoryEmpty(owner: string, repo: string, token: string): Promise<boolean> {
+    try {
+        const repoData = await api(`/repos/${owner}/${repo}`, token);
+        // An empty repo has size 0
+        return repoData.size === 0;
+    } catch (error: any) {
+        if (error.message && error.message.includes('404')) return true; // Not found can be considered empty for our purpose
+        throw error;
+    }
+}
+
+async function initializeEmptyRepository(owner: string, repo: string, files: Array<{ path: string; content: string }>, token: string, commitMessage: string, branchToCreate: string): Promise<{ success: boolean; commitUrl: string }> {
     const blobs = await Promise.all(
         files.map(async (file) => {
             const blob = await api(`/repos/${owner}/${repo}/git/blobs`, token, {
                 method: 'POST',
                 body: JSON.stringify({ content: file.content, encoding: 'base64' }),
             });
+            return { path: file.path, sha: blob.sha, mode: '100644', type: 'blob' as const };
+        })
+    );
+    const tree = await api(`/repos/${owner}/${repo}/git/trees`, token, { method: 'POST', body: JSON.stringify({ tree: blobs }) });
+    const commit = await api(`/repos/${owner}/${repo}/git/commits`, token, { method: 'POST', body: JSON.stringify({ message: commitMessage, tree: tree.sha, parents: [] }) });
+    await api(`/repos/${owner}/${repo}/git/refs`, token, { method: 'POST', body: JSON.stringify({ ref: `refs/heads/${branchToCreate}`, sha: commit.sha }) });
+    return { success: true, commitUrl: commit.html_url };
+}
+
+async function commitToExistingRepo(owner: string, repo: string, files: Array<{ path: string; content: string }>, token: string, targetBranch: string, commitMessage: string): Promise<{ success: boolean; commitUrl: string }> {
+    const refData = await api(`/repos/${owner}/${repo}/git/refs/heads/${targetBranch}`, token);
+    const latestCommitSha = refData.object.sha;
+
+    // Step 2: Get the tree SHA of the latest commit
+    const latestCommitData = await api(`/repos/${owner}/${repo}/git/commits/${latestCommitSha}`, token);
+    const baseTreeSha = latestCommitData.tree.sha;
+    
+    // Step 3: Create blobs for all files
+    const blobs = await Promise.all(
+        files.map(async (file) => {
+            const blob = await api(`/repos/${owner}/${repo}/git/blobs`, token, {
+                method: 'POST',
+                body: JSON.stringify({ content: toBase64(file.content), encoding: 'base64' }),
+            });
             return { path: file.path, sha: blob.sha, mode: '100644' as const, type: 'blob' as const };
         })
     );
+
+    // Step 4: Create a new tree with the new file blobs, based on the old tree
     const newTree = await api(`/repos/${owner}/${repo}/git/trees`, token, { method: 'POST', body: JSON.stringify({ base_tree: baseTreeSha, tree: blobs }) });
+
+    // Step 5: Create a new commit
     const newCommit = await api(`/repos/${owner}/${repo}/git/commits`, token, { method: 'POST', body: JSON.stringify({ message: commitMessage, tree: newTree.sha, parents: [latestCommitSha] }) });
+
+    // Step 6: Update the branch reference to point to the new commit
     await api(`/repos/${owner}/${repo}/git/refs/heads/${targetBranch}`, token, { method: 'PATCH', body: JSON.stringify({ sha: newCommit.sha }) });
+
     return { success: true, commitUrl: newCommit.html_url };
 }
 
@@ -304,8 +352,18 @@ export async function commitToRepo({ repoUrl, commitMessage, files, githubToken,
         const repoInfo = await api(`/repos/${owner}/${repo}`, githubToken);
         const targetBranch = branchName || repoInfo.default_branch || 'main';
         
-        // Check if the repository is empty by its size.
-        const repoIsEmpty = repoInfo.size === 0;
+        let repoIsEmpty;
+        try {
+            // Check for branches. If it fails with 404 or empty repo error, it's empty.
+            await api(`/repos/${owner}/${repo}/branches/${targetBranch}`, githubToken);
+            repoIsEmpty = false;
+        } catch (error: any) {
+            if (error.message.includes('Not Found') || error.message.includes('Git Repository is empty')) {
+                repoIsEmpty = true;
+            } else {
+                throw error;
+            }
+        }
         
         if (repoIsEmpty) {
             // For an empty repository, we must use the Contents API to create the first commit,
@@ -455,5 +513,7 @@ export async function uploadReleaseAsset(githubToken: string, uploadUrl: string,
     }
     return response.json();
 }
+
+    
 
     
