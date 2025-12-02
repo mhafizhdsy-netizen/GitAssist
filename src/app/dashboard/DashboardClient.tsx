@@ -3,7 +3,7 @@
 
 import { type User } from "firebase/auth";
 import { useState } from "react";
-import { motion }s from "framer-motion";
+import { motion } from "framer-motion";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { GitCommit, AlertCircle, Rocket } from "lucide-react";
 import { CommitFeature } from "@/components/dashboard/features/CommitFeature";
