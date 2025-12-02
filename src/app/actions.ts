@@ -4,15 +4,13 @@
 import { redirect } from 'next/navigation';
 
 // Helper function to handle base64 encoding universally
-function toBase64(string: string) {
-    if (typeof btoa === 'function') {
-        return btoa(string);
-    }
-    if (typeof Buffer === 'function') {
-        return Buffer.from(string).toString('base64');
-    }
-    throw new Error("Tidak dapat menemukan fungsi encoding Base64 yang valid.");
+function toBase64(data: string): string {
+  if (typeof Buffer !== 'undefined') {
+    return Buffer.from(data).toString('base64');
+  }
+  return btoa(data);
 }
+
 
 // ==================================
 // COMMON TYPES
@@ -39,7 +37,7 @@ export type Branch = {
     name: string;
     commit: {
         sha: string;
-        url: string;
+        url:string;
     };
     protected: boolean;
 };
@@ -111,7 +109,7 @@ export async function signOut() {
 // ==================================
 // GITHUB API WRAPPER
 // ==================================
-async function api(url: string, token: string, options: RequestInit = {}) {
+async function api(url: string, token: string, options: RequestInit = {}): Promise<any> {
     const response = await fetch(`https://api.github.com${url}`, {
       ...options,
       headers: {
@@ -270,7 +268,7 @@ type CommitParams = {
   repoUrl: string; commitMessage: string; files: GitHubFile[]; githubToken: string; destinationPath?: string; branchName?: string;
 };
 
-async function commitToExistingRepo(owner: string, repo: string, files: Array<{ path: string; content: string }>, token: string, targetBranch: string, commitMessage: string): Promise<{ success: boolean; commitUrl: string }> {
+async function commitToExistingRepo(owner: string, repo: string, files: Array<{ path: string; content: string }>, token: string, targetBranch: string, commitMessage: string): Promise<{ success: boolean; commitUrl: string; message?: string }> {
     const refData = await api(`/repos/${owner}/${repo}/git/refs/heads/${targetBranch}`, token);
     const latestCommitSha = refData.object.sha;
     const latestCommitData = await api(`/repos/${owner}/${repo}/git/commits/${latestCommitSha}`, token);
@@ -291,7 +289,7 @@ async function commitToExistingRepo(owner: string, repo: string, files: Array<{ 
     return { success: true, commitUrl: newCommit.html_url };
 }
 
-export async function commitToRepo({ repoUrl, commitMessage, files, githubToken, destinationPath, branchName }: CommitParams) {
+export async function commitToRepo({ repoUrl, commitMessage, files, githubToken, destinationPath, branchName }: CommitParams): Promise<{ success: boolean; commitUrl?: string; message?: string }> {
     if (!githubToken) throw new Error('Token GitHub diperlukan.');
     const [owner, repo] = repoUrl.replace('https://github.com/', '').split('/');
     if (!owner || !repo) throw new Error('Format URL repositori tidak valid.');
@@ -333,7 +331,7 @@ export async function commitToRepo({ repoUrl, commitMessage, files, githubToken,
                 console.log("Melakukan commit file-file berikutnya...");
                 return await commitToExistingRepo(owner, repo, finalFiles.slice(1), githubToken, targetBranch, commitMessage);
             }
-
+            
             if (result && result.commit) {
               return { success: true, commitUrl: result.commit.html_url };
             }
@@ -372,7 +370,7 @@ export async function commitToRepo({ repoUrl, commitMessage, files, githubToken,
              }
              throw new Error("Gagal menginisialisasi repositori setelah branch tidak ditemukan.");
         }
-        throw new Error(error.message || 'Gagal melakukan commit file ke repositori.');
+        return { success: false, message: error.message || 'Gagal melakukan commit file ke repositori.' };
     }
 }
 
@@ -457,3 +455,5 @@ export async function uploadReleaseAsset(githubToken: string, uploadUrl: string,
     }
     return response.json();
 }
+
+    

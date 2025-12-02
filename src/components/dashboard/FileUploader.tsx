@@ -465,12 +465,12 @@ const handleManualExtract = useCallback(async (zipFileToExtract: FileOrFolder) =
       });
 
 
-      if (result.success && result.commitUrl) {
+      if (result && result.success && result.commitUrl) {
         setCommitUrl(result.commitUrl);
         setCommitStatus({ step: 'finalizing', progress: 100 });
         setModalStatus('done');
       } else {
-        throw new Error('Commit gagal karena alasan yang tidak diketahui.');
+        throw new Error(result?.message || 'Commit gagal karena alasan yang tidak diketahui.');
       }
     } catch (error: any) {
         console.error(error);
@@ -830,3 +830,5 @@ const handleManualExtract = useCallback(async (zipFileToExtract: FileOrFolder) =
     </>
   );
 }
+
+    
