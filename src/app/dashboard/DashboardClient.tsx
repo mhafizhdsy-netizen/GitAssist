@@ -39,7 +39,7 @@ export default function DashboardClient({ user }: DashboardClientProps) {
 
   return (
     <motion.div
-      className="container pt-28 pb-12 sm:pt-32 sm:pb-16"
+      className="container pt-28 pb-12 sm:pb-16"
       initial="hidden"
       animate="visible"
       variants={containerVariants}

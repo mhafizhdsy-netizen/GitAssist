@@ -37,15 +37,13 @@ type FileOrFolder = {
   name: string;
   path: string;
   type: 'file' | 'folder';
-  content?: File | Blob; // Content is always a File object from the browser
+  content?: File | Blob;
 };
 
 type CommitStatus = {
   step: 'preparing' | 'uploading' | 'finalizing';
   progress: number;
 };
-
-//Modl
 
 type ModalStatus = 'inactive' | 'processing' | 'committing' | 'done';
 
@@ -55,9 +53,9 @@ const isZipFile = (file: FileOrFolder | File) => {
            fileName.endsWith('.jar') || 
            fileName.endsWith('.war') || 
            fileName.endsWith('.ear') || 
-           file.type === 'application/zip' || 
+           (file.type && (file.type === 'application/zip' || 
            file.type === 'application/x-zip-compressed' ||
-           file.type === 'application/x-zip';
+           file.type === 'application/x-zip'));
 }
 
 function toBase64(file: File | Blob): Promise<string> {
@@ -142,11 +140,7 @@ export function FileUploader() {
             setBranches(fetchedBranches);
             if (fetchedBranches.length > 0) {
               const defaultBranch = fetchedBranches.find(b => b.name === repo.default_branch);
-              const newBranch = fetchedBranches.find(b => b.name === newBranchName);
-              if (newBranch) {
-                setSelectedBranch(newBranch.name);
-                setSourceBranch(newBranch.name);
-              } else if (defaultBranch) {
+              if (defaultBranch) {
                 setSelectedBranch(defaultBranch.name);
                 setSourceBranch(defaultBranch.name);
               } else {
@@ -154,7 +148,6 @@ export function FileUploader() {
                 setSourceBranch(fetchedBranches[0].name);
               }
             } else {
-                // For empty repos, set a default branch name
                 setSelectedBranch(repo.default_branch || 'main');
                 setSourceBranch(repo.default_branch || 'main');
             }
@@ -168,7 +161,13 @@ export function FileUploader() {
             });
         })
         .finally(() => setIsFetchingBranches(false));
-}, [githubToken, toast, newBranchName]);
+}, [githubToken, toast]);
+
+  useEffect(() => {
+    if (selectedRepo) {
+      loadBranches(selectedRepo);
+    }
+  }, [selectedRepo, loadBranches]);
 
   const handleRepoChange = (repoFullName: string) => {
     const repo = repos.find(r => r.full_name === repoFullName);
@@ -177,7 +176,6 @@ export function FileUploader() {
     setSelectedRepo(repo);
     setSelectedBranch('');
     setBranches([]);
-    loadBranches(repo);
   };
   
 const extractZip = useCallback(async (zipFile: File): Promise<FileOrFolder[]> => {
@@ -190,8 +188,7 @@ const extractZip = useCallback(async (zipFile: File): Promise<FileOrFolder[]> =>
             const validEntries = allEntries.filter(entry => {
                 const isFile = !entry.dir;
                 const isMacOSJunk = entry.name.startsWith('__MACOSX/') || entry.name.includes('.DS_Store');
-                const isEmpty = entry.name.endsWith('/');
-                return isFile && !isMacOSJunk && !isEmpty;
+                return isFile && !isMacOSJunk;
             });
             
             if (validEntries.length === 0) {
@@ -287,14 +284,15 @@ const handleManualExtract = useCallback(async (zipFileToExtract: FileOrFolder) =
                 setZipExtractProgress(0);
             }
         } else {
+            const path = (file as any).webkitRelativePath || file.name;
             const fileToAdd: FileOrFolder = {
                 name: file.name,
-                path: (file as any).webkitRelativePath || file.name,
+                path: path,
                 type: 'file',
                 content: file,
             };
             newFiles.push(fileToAdd);
-            newPaths.add(fileToAdd.path);
+            newPaths.add(path);
         }
     }
     
@@ -314,11 +312,12 @@ const handleManualExtract = useCallback(async (zipFileToExtract: FileOrFolder) =
   
   const { getRootProps, getInputProps, isDragActive, open: openFileDialog } = useDropzone({
     onDrop,
-    noClick: true, // We'll handle clicks manually
+    noClick: true,
     noKeyboard: true,
     getFilesFromEvent: async (event: any) => {
-        const items = event.dataTransfer ? event.dataTransfer.items : [];
+        const items = event.dataTransfer?.items;
         const files: File[] = [];
+
         if (items && items.length > 0) {
             const traverseFileTree = async (item: any, path: string = '') => {
                 path = path || '';
@@ -326,9 +325,7 @@ const handleManualExtract = useCallback(async (zipFileToExtract: FileOrFolder) =
                     await new Promise<void>((resolve) => {
                         item.file((file: File & { webkitRelativePath?: string }) => {
                             if (file) {
-                                Object.defineProperty(file, 'webkitRelativePath', {
-                                    value: path + file.name
-                                });
+                                file.webkitRelativePath = path + file.name;
                                 files.push(file);
                             }
                             resolve();
@@ -346,21 +343,23 @@ const handleManualExtract = useCallback(async (zipFileToExtract: FileOrFolder) =
                     });
                 }
             };
+            const itemPromises = [];
             for (const item of items) {
                 const entry = item.webkitGetAsEntry();
                 if (entry) {
-                    await traverseFileTree(entry);
+                    itemPromises.push(traverseFileTree(entry));
                 }
             }
-        } else {
-            const fileList = event.target.files;
-            for (const file of fileList) {
+            await Promise.all(itemPromises);
+        } else if (event.target?.files) {
+            for (const file of event.target.files) {
                 files.push(file);
             }
         }
         return files;
     }
-  });
+});
+
 
   const handleFileSelectionChange = (path: string, checked: boolean | 'indeterminate') => {
     setSelectedFilePaths(prev => {
@@ -492,13 +491,13 @@ const handleManualExtract = useCallback(async (zipFileToExtract: FileOrFolder) =
     setIsCreatingBranch(true);
     try {
         const [owner, repoName] = selectedRepo.full_name.split('/');
-        await createBranch(githubToken, owner, repoName, newBranchName, sourceBranch);
+        const newBranchData = await createBranch(githubToken, owner, repoName, newBranchName, sourceBranch);
         
         toast({ title: 'Berhasil', description: `Branch '${newBranchName}' berhasil dibuat.`, variant: 'success' });
         setCreateBranchModalOpen(false);
         
-        // Reload branches and set the new branch as selected
-        loadBranches(selectedRepo);
+        setBranches(prev => [...prev, { name: newBranchName, commit: { sha: newBranchData.object.sha, url: newBranchData.object.url }, protected: false }]);
+        setSelectedBranch(newBranchName);
 
     } catch (error: any) {
         console.error('Gagal membuat branch:', error);
