@@ -321,26 +321,43 @@ export async function commitToRepo({ repoUrl, commitMessage, files, githubToken,
               throw new Error("Tidak ada file untuk di-commit.");
             }
 
-            const firstFile = finalFiles[0];
-            const result = await api(`/repos/${owner}/${repo}/contents/${firstFile.path}`, githubToken, {
-                method: 'PUT',
+            // Create blobs for all files
+            const blobs = await Promise.all(
+                finalFiles.map(async (file) => {
+                    const blob = await api(`/repos/${owner}/${repo}/git/blobs`, githubToken, {
+                        method: 'POST',
+                        body: JSON.stringify({ content: file.content, encoding: 'base64' }),
+                    });
+                    return { path: file.path, sha: blob.sha, mode: '100644' as const, type: 'blob' as const };
+                })
+            );
+            
+            // Create a tree without a base tree
+            const tree = await api(`/repos/${owner}/${repo}/git/trees`, githubToken, {
+                method: 'POST',
+                body: JSON.stringify({ tree: blobs }),
+            });
+
+            // Create the initial commit (no parents)
+            const commit = await api(`/repos/${owner}/${repo}/git/commits`, githubToken, {
+                method: 'POST',
                 body: JSON.stringify({
-                    message: `Initial commit: ${commitMessage}`,
-                    content: firstFile.content,
-                    branch: targetBranch,
+                    message: commitMessage,
+                    tree: tree.sha,
+                    parents: [],
                 }),
             });
 
-            if (finalFiles.length > 1) {
-                console.log("Melakukan commit file-file berikutnya...");
-                return await commitToExistingRepo(owner, repo, finalFiles.slice(1), githubToken, targetBranch, commitMessage);
-            }
-            
-            if (result && result.commit) {
-              return { success: true, commitUrl: result.commit.html_url };
-            }
-            throw new Error("Gagal menginisialisasi repositori.");
+            // Create the branch ref
+            await api(`/repos/${owner}/${repo}/git/refs`, githubToken, {
+                method: 'POST',
+                body: JSON.stringify({
+                    ref: `refs/heads/${targetBranch}`,
+                    sha: commit.sha,
+                }),
+            });
 
+            return { success: true, commitUrl: commit.html_url };
         } else {
             console.log(`Repositori yang ada terdeteksi. Melakukan commit ke branch '${targetBranch}'...`);
             return await commitToExistingRepo(owner, repo, finalFiles, githubToken, targetBranch, commitMessage);
